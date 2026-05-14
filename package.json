@@ -1,0 +1,63 @@
+{
+  "name": "@kingsdk/tools",
+  "version": "0.1.0",
+  "description": "King SDK developer toolkit - HarmonyOS Hap analysis CLI and visual viewer.",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "kingsdk": "./dist/cli/index.cjs"
+  },
+  "main": "./dist/core/index.cjs",
+  "module": "./dist/core/index.js",
+  "types": "./dist/core/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js",
+      "require": "./dist/core/index.cjs"
+    },
+    "./shared": {
+      "types": "./dist/shared/index.d.ts",
+      "import": "./dist/shared/index.js",
+      "require": "./dist/shared/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup && node scripts/buildViewerTemplate.mjs",
+    "build:viewer": "node scripts/buildViewerTemplate.mjs",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cli": "tsx src/cli/index.ts",
+    "clean": "rimraf dist templates",
+    "wb": "node scripts/restart-workbench.mjs",
+    "wb:nobuild": "node scripts/restart-workbench.mjs --no-build",
+    "wb:dev": "node scripts/restart-workbench.mjs --dev",
+    "wb:stop": "node scripts/restart-workbench.mjs --kill-only"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cac": "^6.7.14",
+    "json5": "^2.2.3",
+    "yauzl": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/yauzl": "^2.10.3",
+    "happy-dom": "^20.9.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}

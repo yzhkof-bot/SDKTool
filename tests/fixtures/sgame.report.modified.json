@@ -1,0 +1,6007 @@
+{
+  "schemaVersion": "1.0",
+  "meta": {
+    "file": "C:\\Users\\windye\\Downloads\\SGame_OpenHarmony_smcs_test_Forcelog_11.4.1.1_r4219829_E3919849_LightProfiler_v8_il2cpp_Test_tg.shell.mock-mod.hap",
+    "fileSize": 3537889161,
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "analyzedAt": "2026-05-09T06:24:23.656Z",
+    "toolVersion": "0.1.0"
+  },
+  "warnings": [],
+  "basic": {
+    "bundleName": "com.tencent.tmgp.sgametest",
+    "bundleType": "app",
+    "versionCode": 1104010102,
+    "versionName": "11.4.1.1.test",
+    "moduleName": "entry",
+    "moduleType": "entry",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "2in1"
+    ],
+    "targetAPIVersion": 50000012,
+    "minAPIVersion": 50000012,
+    "abilities": [
+      {
+        "name": "SGameAbility",
+        "visible": true
+      }
+    ],
+    "rawModuleJson": {
+      "app": {
+        "iconId": 16777217,
+        "minAPIVersion": 50000012,
+        "icon": "$media:app_icon",
+        "label": "$string:app_name",
+        "bundleType": "app",
+        "versionName": "11.4.1.1",
+        "versionCode": 1104010101,
+        "appEnvironments": [],
+        "compileSdkType": "HarmonyOS",
+        "labelId": 16777216,
+        "compileSdkVersion": "5.0.0.71",
+        "targetAPIVersion": 50000012,
+        "vendor": "Tencent",
+        "bundleName": "com.tencent.tmgp.sgametest",
+        "distributedNotificationEnabled": true,
+        "apiReleaseType": "Release"
+      },
+      "module": {
+        "virtualMachine": "ark12.0.2.0",
+        "mainElement": "SGameAbility",
+        "metadata": [
+          {
+            "name": "client_id",
+            "value": "111573583"
+          },
+          {
+            "name": "app_id",
+            "value": "5765880207855382439"
+          },
+          {
+            "name": "ArkTSPartialUpdate",
+            "value": "true"
+          },
+          {
+            "name": "partialUpdateStrictCheck",
+            "value": "warn"
+          },
+          {
+            "name": "ITLoginAppID",
+            "value": "smoba"
+          },
+          {
+            "name": "ITLoginAppKey",
+            "value": "f5d185b0508258ecbdd646d51a56dca2"
+          },
+          {
+            "name": "UseTsHar",
+            "value": "true"
+          },
+          {
+            "name": "half_leading",
+            "value": "true"
+          }
+        ],
+        "installationFree": false,
+        "deliveryWithInstall": true,
+        "requestPermissions": [
+          {
+            "reason": "$string:app_name",
+            "reasonId": 16777216,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.INTERNET"
+          },
+          {
+            "reason": "$string:app_name",
+            "reasonId": 16777216,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.VIBRATE"
+          },
+          {
+            "reason": "$string:app_name",
+            "reasonId": 16777216,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.GET_NETWORK_INFO"
+          },
+          {
+            "reason": "$string:Permission_Location",
+            "reasonId": 16777224,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.LOCATION"
+          },
+          {
+            "reason": "$string:Permission_ApproximatelyLocation",
+            "reasonId": 16777223,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.APPROXIMATELY_LOCATION"
+          },
+          {
+            "reason": "$string:app_name",
+            "reasonId": 16777216,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.ACCELEROMETER"
+          },
+          {
+            "reason": "$string:Permission_Microphone",
+            "reasonId": 16777225,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.MICROPHONE"
+          },
+          {
+            "reason": "$string:app_name",
+            "reasonId": 16777216,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.GET_WIFI_INFO"
+          },
+          {
+            "reason": "$string:app_name",
+            "reasonId": 16777216,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.STORE_PERSISTENT_DATA"
+          },
+          {
+            "reason": "$string:app_name",
+            "reasonId": 16777216,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.GYROSCOPE"
+          },
+          {
+            "reason": "$string:Permission_WriteCalender",
+            "reasonId": 16777228,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.WRITE_CALENDAR"
+          },
+          {
+            "reason": "$string:Permission_PASTEBOARD",
+            "reasonId": 16777226,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.READ_PASTEBOARD"
+          },
+          {
+            "reason": "$string:Permission_APP_TRACKING_CONSENT",
+            "reasonId": 16777222,
+            "usedScene": {
+              "abilities": [
+                "SGameAbility"
+              ],
+              "when": "always"
+            },
+            "name": "ohos.permission.APP_TRACKING_CONSENT"
+          },
+          {
+            "reason": "$string:calendar_permission",
+            "reasonId": 16777253,
+            "usedScene": {
+              "abilities": [
+                "EntryAbility"
+              ],
+              "when": "inuse"
+            },
+            "name": "ohos.permission.READ_CALENDAR"
+          },
+          {
+            "name": "ohos.permission.KEEP_BACKGROUND_RUNNING"
+          },
+          {
+            "name": "ohos.permission.GET_BUNDLE_INFO"
+          }
+        ],
+        "description": "$string:module_desc",
+        "querySchemes": [
+          "weixin",
+          "wxopensdk",
+          "https",
+          "qqopenapi",
+          "uppaywallet",
+          "uppaysdk",
+          "snssdk1128",
+          "bilibili",
+          "smobagamehelper",
+          "xhsdiscover",
+          "kwai"
+        ],
+        "compileMode": "esmodule",
+        "type": "entry",
+        "dependencies": [],
+        "abilities": [
+          {
+            "iconId": 16777235,
+            "orientation": "auto_rotation_landscape",
+            "startWindowIconId": 16777249,
+            "visible": true,
+            "backgroundModes": [
+              "audioRecording",
+              "audioPlayback"
+            ],
+            "icon": "$media:icon",
+            "startWindowIcon": "$media:startWindowIcon_black",
+            "startWindowBackgroundId": 16777231,
+            "description": "$string:EntryAbility_desc",
+            "label": "$string:EntryAbility_label",
+            "skills": [
+              {
+                "entities": [
+                  "entity.system.home"
+                ],
+                "actions": [
+                  "action.system.home",
+                  "wxentity.action.open"
+                ]
+              },
+              {
+                "uris": [
+                  {
+                    "scheme": "tpns",
+                    "host": "com.tencent.tmgp.sgame.hw"
+                  },
+                  {
+                    "scheme": "stpns",
+                    "host": "com.tencent.tmgp.sgame.hw"
+                  }
+                ],
+                "actions": [
+                  ""
+                ]
+              },
+              {
+                "uris": [
+                  {
+                    "scheme": "tencent1104466820",
+                    "host": "www.sgame.com"
+                  },
+                  {
+                    "scheme": "gwallet100703379"
+                  },
+                  {
+                    "scheme": "tencentmsdk1104466820"
+                  },
+                  {
+                    "scheme": "smoba"
+                  },
+                  {
+                    "scheme": "smopa1104466820"
+                  },
+                  {
+                    "scheme": "itogin3-com_tencent_tmgp_sgame_hw"
+                  },
+                  {
+                    "scheme": "kwaisdk",
+                    "host": "router"
+                  },
+                  {
+                    "scheme": "midaspay"
+                  }
+                ],
+                "actions": [
+                  "action.uppay.open"
+                ]
+              },
+              {
+                "uris": [
+                  {
+                    "pathRegex": "\\b(auth|share)\\b",
+                    "scheme": "qqopenapi",
+                    "host": "1104466820"
+                  }
+                ],
+                "entities": [
+                  "entity.system.browser",
+                  "entity.system.home"
+                ],
+                "actions": [
+                  "ohos.want.action.viewData",
+                  "action.system.home"
+                ]
+              }
+            ],
+            "srcEntry": "./ets/ability/SGameAbility.ets",
+            "descriptionId": 16777220,
+            "labelId": 16777221,
+            "startWindowBackground": "$color:start_window_background_black",
+            "name": "SGameAbility",
+            "supportWindowMode": [
+              "fullscreen"
+            ]
+          }
+        ],
+        "deviceTypes": [
+          "phone",
+          "tablet",
+          "2in1"
+        ],
+        "pages": "$profile:main_pages",
+        "descriptionId": 16777229,
+        "name": "entry",
+        "compressNativeLibs": true,
+        "packageName": "entry"
+      }
+    },
+    "rawPackInfo": {
+      "summary": {
+        "app": {
+          "bundleName": "com.tencent.tmgp.sgametest",
+          "bundleType": "app",
+          "version": {
+            "code": 1104010101,
+            "name": "11.4.1.1"
+          }
+        },
+        "modules": [
+          {
+            "mainAbility": "SGameAbility",
+            "deviceType": [
+              "phone",
+              "tablet",
+              "2in1"
+            ],
+            "abilities": [
+              {
+                "name": "SGameAbility",
+                "label": "$string:EntryAbility_label",
+                "visible": true
+              }
+            ],
+            "distro": {
+              "moduleType": "entry",
+              "installationFree": false,
+              "deliveryWithInstall": true,
+              "moduleName": "entry"
+            },
+            "apiVersion": {
+              "compatible": 12,
+              "releaseType": "Release",
+              "target": 12
+            }
+          }
+        ]
+      },
+      "packages": [
+        {
+          "deviceType": [
+            "phone",
+            "tablet",
+            "2in1"
+          ],
+          "moduleType": "entry",
+          "deliveryWithInstall": true,
+          "name": "entry-default"
+        }
+      ]
+    }
+  },
+  "size": {
+    "total": 3920473863,
+    "compressed": 3537889161,
+    "breakdown": [
+      {
+        "category": "resources",
+        "bytes": 3327941441,
+        "ratio": 0.8607453062388619,
+        "fileCount": 494
+      },
+      {
+        "category": "libs",
+        "bytes": 583881840,
+        "ratio": 0.1370243177773503,
+        "fileCount": 71
+      },
+      {
+        "category": "ets",
+        "bytes": 8592088,
+        "ratio": 0.0022152944999297743,
+        "fileCount": 1
+      },
+      {
+        "category": "config",
+        "bytes": 58494,
+        "ratio": 0.000015081483858043843,
+        "fileCount": 4
+      }
+    ],
+    "topFiles": [
+      {
+        "path": "resources/rawfile/Data/Package/builtin/9/9_0.db",
+        "bytes": 687177728,
+        "ratio": 0.17717474975962053,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/3002/3002_0.db",
+        "bytes": 565968896,
+        "ratio": 0.14592352667246034,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/0/0_0.db",
+        "bytes": 542130176,
+        "ratio": 0.139777199341855,
+        "category": "resources"
+      },
+      {
+        "path": "libs/arm64-v8a/libil2cpp.so",
+        "bytes": 246324736,
+        "ratio": 0.06350980493419686,
+        "category": "libs"
+      },
+      {
+        "path": "resources/rawfile/8400/asr_model.dla",
+        "bytes": 128977266,
+        "ratio": 0.03325415521649446,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/9300/asr_model.dla",
+        "bytes": 125791363,
+        "ratio": 0.03243273516199668,
+        "category": "resources"
+      },
+      {
+        "path": "libs/arm64-v8a/libGameCore.so",
+        "bytes": 97936720,
+        "ratio": 0.025250984063147665,
+        "category": "libs"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/9900/9900_0.db",
+        "bytes": 66469888,
+        "ratio": 0.01713790376650566,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Managed/Metadata/global-metadata.dat",
+        "bytes": 57755728,
+        "ratio": 0.014891135493239832,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100015900/300100015900_0.db",
+        "bytes": 45088768,
+        "ratio": 0.01162521842874626,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100012300/300100012300_0.db",
+        "bytes": 43565056,
+        "ratio": 0.011232360393181798,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100014000/300100014000_0.db",
+        "bytes": 41648128,
+        "ratio": 0.010738119638761989,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100053800/300100053800_0.db",
+        "bytes": 38240256,
+        "ratio": 0.00985946940868233,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100051800/300100051800_0.db",
+        "bytes": 32669696,
+        "ratio": 0.008423214224898272,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100013300/300100013300_0.db",
+        "bytes": 31457280,
+        "ratio": 0.008110617508427623,
+        "category": "resources"
+      },
+      {
+        "path": "libs/arm64-v8a/libunity.so",
+        "bytes": 31407808,
+        "ratio": 0.008097862163102886,
+        "category": "libs"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100011200/300100011200_0.db",
+        "bytes": 30375936,
+        "ratio": 0.007831815031575423,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100015200/300100015200_0.db",
+        "bytes": 29032448,
+        "ratio": 0.007485424075486327,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100013700/300100013700_0.db",
+        "bytes": 27295744,
+        "ratio": 0.007037650400541886,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/Data/Package/builtin/300100052300/300100052300_0.db",
+        "bytes": 25542656,
+        "ratio": 0.006585652445645138,
+        "category": "resources"
+      }
+    ],
+    "fileCount": 573
+  },
+  "files": [
+    {
+      "path": "ets/modules.abc",
+      "bytes": 8592088,
+      "compressed": 8592088,
+      "category": "ets",
+      "crc": 4243525755
+    },
+    {
+      "path": "module.json",
+      "bytes": 4955,
+      "compressed": 4955,
+      "category": "config",
+      "crc": 516238625
+    },
+    {
+      "path": "pack.info",
+      "bytes": 600,
+      "compressed": 600,
+      "category": "config",
+      "crc": 2397908899
+    },
+    {
+      "path": "pkgContextInfo.json",
+      "bytes": 19427,
+      "compressed": 19427,
+      "category": "config",
+      "crc": 2034376763
+    },
+    {
+      "path": "resources.index",
+      "bytes": 33512,
+      "compressed": 33512,
+      "category": "config",
+      "crc": 1444604720
+    },
+    {
+      "path": "resources/base/media/app_icon.png",
+      "bytes": 304541,
+      "compressed": 304541,
+      "category": "resources",
+      "crc": 2957959096
+    },
+    {
+      "path": "resources/base/media/app_splash.png",
+      "bytes": 304541,
+      "compressed": 304541,
+      "category": "resources",
+      "crc": 2957959096
+    },
+    {
+      "path": "resources/base/media/background.png",
+      "bytes": 57364,
+      "compressed": 57364,
+      "category": "resources",
+      "crc": 661820539
+    },
+    {
+      "path": "resources/base/media/bssg_bg_bug_template_selected.png",
+      "bytes": 1668,
+      "compressed": 1668,
+      "category": "resources",
+      "crc": 15124312
+    },
+    {
+      "path": "resources/base/media/bssg_bg_common_page.webp",
+      "bytes": 19496,
+      "compressed": 19496,
+      "category": "resources",
+      "crc": 148190426
+    },
+    {
+      "path": "resources/base/media/bssg_bth_new_delete.png",
+      "bytes": 1001,
+      "compressed": 1001,
+      "category": "resources",
+      "crc": 3019748038
+    },
+    {
+      "path": "resources/base/media/bssg_btn_add.png",
+      "bytes": 1112,
+      "compressed": 1112,
+      "category": "resources",
+      "crc": 3629950376
+    },
+    {
+      "path": "resources/base/media/bssg_bug_template_select_bg.png",
+      "bytes": 45449,
+      "compressed": 45449,
+      "category": "resources",
+      "crc": 3087680578
+    },
+    {
+      "path": "resources/base/media/bssg_common_btn_blue.png",
+      "bytes": 6266,
+      "compressed": 6266,
+      "category": "resources",
+      "crc": 2194691025
+    },
+    {
+      "path": "resources/base/media/bssg_common_btn_yellow.png",
+      "bytes": 6701,
+      "compressed": 6701,
+      "category": "resources",
+      "crc": 866100974
+    },
+    {
+      "path": "resources/base/media/bssg_common_btn_yellow_disabled.png",
+      "bytes": 3786,
+      "compressed": 3786,
+      "category": "resources",
+      "crc": 3871986796
+    },
+    {
+      "path": "resources/base/media/bssg_icon_add.png",
+      "bytes": 1333,
+      "compressed": 1333,
+      "category": "resources",
+      "crc": 1387768588
+    },
+    {
+      "path": "resources/base/media/bssg_icon_arrow.png",
+      "bytes": 2881,
+      "compressed": 2881,
+      "category": "resources",
+      "crc": 2553122370
+    },
+    {
+      "path": "resources/base/media/bssg_icon_arrow_white.png",
+      "bytes": 140,
+      "compressed": 140,
+      "category": "resources",
+      "crc": 1836854386
+    },
+    {
+      "path": "resources/base/media/bssg_icon_back.png",
+      "bytes": 4520,
+      "compressed": 4520,
+      "category": "resources",
+      "crc": 2151174098
+    },
+    {
+      "path": "resources/base/media/bssg_icon_ball.png",
+      "bytes": 459,
+      "compressed": 459,
+      "category": "resources",
+      "crc": 2850770755
+    },
+    {
+      "path": "resources/base/media/bssg_icon_batch_operation.png",
+      "bytes": 787,
+      "compressed": 787,
+      "category": "resources",
+      "crc": 1612995684
+    },
+    {
+      "path": "resources/base/media/bssg_icon_change.png",
+      "bytes": 808,
+      "compressed": 808,
+      "category": "resources",
+      "crc": 3424201650
+    },
+    {
+      "path": "resources/base/media/bssg_icon_checkbox_checked.png",
+      "bytes": 1599,
+      "compressed": 1599,
+      "category": "resources",
+      "crc": 72376192
+    },
+    {
+      "path": "resources/base/media/bssg_icon_checkbox_diamond_checked.png",
+      "bytes": 292,
+      "compressed": 292,
+      "category": "resources",
+      "crc": 2096628282
+    },
+    {
+      "path": "resources/base/media/bssg_icon_checkbox_diamond_unchecked.png",
+      "bytes": 386,
+      "compressed": 386,
+      "category": "resources",
+      "crc": 1959396253
+    },
+    {
+      "path": "resources/base/media/bssg_icon_checkbox_gray_unchecked.png",
+      "bytes": 161,
+      "compressed": 161,
+      "category": "resources",
+      "crc": 1946398140
+    },
+    {
+      "path": "resources/base/media/bssg_icon_checkbox_white_unckecked.png",
+      "bytes": 125,
+      "compressed": 125,
+      "category": "resources",
+      "crc": 3679664995
+    },
+    {
+      "path": "resources/base/media/bssg_icon_clear.png",
+      "bytes": 438,
+      "compressed": 438,
+      "category": "resources",
+      "crc": 1683491628
+    },
+    {
+      "path": "resources/base/media/bssg_icon_close.png",
+      "bytes": 1049,
+      "compressed": 1049,
+      "category": "resources",
+      "crc": 1578705709
+    },
+    {
+      "path": "resources/base/media/bssg_icon_close_save_toast.png",
+      "bytes": 3832,
+      "compressed": 3832,
+      "category": "resources",
+      "crc": 194175604
+    },
+    {
+      "path": "resources/base/media/bssg_icon_delete.png",
+      "bytes": 479,
+      "compressed": 479,
+      "category": "resources",
+      "crc": 4225566228
+    },
+    {
+      "path": "resources/base/media/bssg_icon_expand.png",
+      "bytes": 158,
+      "compressed": 158,
+      "category": "resources",
+      "crc": 3644715555
+    },
+    {
+      "path": "resources/base/media/bssg_icon_float_view_more.png",
+      "bytes": 347,
+      "compressed": 347,
+      "category": "resources",
+      "crc": 1646206042
+    },
+    {
+      "path": "resources/base/media/bssg_icon_float_view_more_arrow.png",
+      "bytes": 165,
+      "compressed": 165,
+      "category": "resources",
+      "crc": 867533751
+    },
+    {
+      "path": "resources/base/media/bssg_icon_lock.png",
+      "bytes": 1143,
+      "compressed": 1143,
+      "category": "resources",
+      "crc": 2670125296
+    },
+    {
+      "path": "resources/base/media/bssg_icon_no_media.png",
+      "bytes": 6068,
+      "compressed": 6068,
+      "category": "resources",
+      "crc": 3013617770
+    },
+    {
+      "path": "resources/base/media/bssg_icon_only_screenshot.png",
+      "bytes": 453,
+      "compressed": 453,
+      "category": "resources",
+      "crc": 1700139270
+    },
+    {
+      "path": "resources/base/media/bssg_icon_panel_close.png",
+      "bytes": 6373,
+      "compressed": 6373,
+      "category": "resources",
+      "crc": 488935733
+    },
+    {
+      "path": "resources/base/media/bssg_icon_remove_user.png",
+      "bytes": 2010,
+      "compressed": 2010,
+      "category": "resources",
+      "crc": 2825131250
+    },
+    {
+      "path": "resources/base/media/bssg_icon_remove_v2.png",
+      "bytes": 1001,
+      "compressed": 1001,
+      "category": "resources",
+      "crc": 3019748038
+    },
+    {
+      "path": "resources/base/media/bssg_icon_resource_library.png",
+      "bytes": 584,
+      "compressed": 584,
+      "category": "resources",
+      "crc": 1938076934
+    },
+    {
+      "path": "resources/base/media/bssg_icon_right_down_selected.png",
+      "bytes": 372,
+      "compressed": 372,
+      "category": "resources",
+      "crc": 3672350874
+    },
+    {
+      "path": "resources/base/media/bssg_icon_screenshot.png",
+      "bytes": 716,
+      "compressed": 716,
+      "category": "resources",
+      "crc": 4113664629
+    },
+    {
+      "path": "resources/base/media/bssg_icon_search.png",
+      "bytes": 633,
+      "compressed": 633,
+      "category": "resources",
+      "crc": 1178307640
+    },
+    {
+      "path": "resources/base/media/bssg_icon_search_icon.png",
+      "bytes": 544,
+      "compressed": 544,
+      "category": "resources",
+      "crc": 4001543220
+    },
+    {
+      "path": "resources/base/media/bssg_icon_setting.png",
+      "bytes": 834,
+      "compressed": 834,
+      "category": "resources",
+      "crc": 7549064
+    },
+    {
+      "path": "resources/base/media/bssg_icon_setting_float.png",
+      "bytes": 832,
+      "compressed": 832,
+      "category": "resources",
+      "crc": 4241488518
+    },
+    {
+      "path": "resources/base/media/bssg_icon_submit.png",
+      "bytes": 1559,
+      "compressed": 1559,
+      "category": "resources",
+      "crc": 827443272
+    },
+    {
+      "path": "resources/base/media/bssg_icon_submit_disable.png",
+      "bytes": 914,
+      "compressed": 914,
+      "category": "resources",
+      "crc": 2801839244
+    },
+    {
+      "path": "resources/base/media/bssg_icon_submit_manual.png",
+      "bytes": 461,
+      "compressed": 461,
+      "category": "resources",
+      "crc": 2379134461
+    },
+    {
+      "path": "resources/base/media/bssg_icon_vide_small.png",
+      "bytes": 278,
+      "compressed": 278,
+      "category": "resources",
+      "crc": 583836182
+    },
+    {
+      "path": "resources/base/media/bssg_icon_video.png",
+      "bytes": 265,
+      "compressed": 265,
+      "category": "resources",
+      "crc": 1898446763
+    },
+    {
+      "path": "resources/base/media/bssg_icon_video_play.png",
+      "bytes": 278,
+      "compressed": 278,
+      "category": "resources",
+      "crc": 2910749274
+    },
+    {
+      "path": "resources/base/media/bssg_icon_video_play_large.png",
+      "bytes": 947,
+      "compressed": 947,
+      "category": "resources",
+      "crc": 2281875079
+    },
+    {
+      "path": "resources/base/media/bssg_icon_video_record.png",
+      "bytes": 405,
+      "compressed": 405,
+      "category": "resources",
+      "crc": 97989700
+    },
+    {
+      "path": "resources/base/media/bssg_icon_video_record_screenshot.png",
+      "bytes": 442,
+      "compressed": 442,
+      "category": "resources",
+      "crc": 626092178
+    },
+    {
+      "path": "resources/base/media/bssg_img_empty.png",
+      "bytes": 4047,
+      "compressed": 4047,
+      "category": "resources",
+      "crc": 1206662499
+    },
+    {
+      "path": "resources/base/media/bssg_ioa_icon.png",
+      "bytes": 113136,
+      "compressed": 113136,
+      "category": "resources",
+      "crc": 1000354374
+    },
+    {
+      "path": "resources/base/media/bssg_logout_icon.png",
+      "bytes": 785,
+      "compressed": 785,
+      "category": "resources",
+      "crc": 2449278062
+    },
+    {
+      "path": "resources/base/media/bssg_menu_arrow.png",
+      "bytes": 259,
+      "compressed": 259,
+      "category": "resources",
+      "crc": 3480441082
+    },
+    {
+      "path": "resources/base/media/bssg_menu_bg.png",
+      "bytes": 559,
+      "compressed": 559,
+      "category": "resources",
+      "crc": 3163521757
+    },
+    {
+      "path": "resources/base/media/bssg_menu_bg_selected.png",
+      "bytes": 1124,
+      "compressed": 1124,
+      "category": "resources",
+      "crc": 3186991563
+    },
+    {
+      "path": "resources/base/media/bssg_menu_circle.png",
+      "bytes": 576,
+      "compressed": 576,
+      "category": "resources",
+      "crc": 592455167
+    },
+    {
+      "path": "resources/base/media/bssg_menu_line.png",
+      "bytes": 448,
+      "compressed": 448,
+      "category": "resources",
+      "crc": 2847732869
+    },
+    {
+      "path": "resources/base/media/bssg_menu_rollback.png",
+      "bytes": 582,
+      "compressed": 582,
+      "category": "resources",
+      "crc": 132531897
+    },
+    {
+      "path": "resources/base/media/bssg_menu_square.png",
+      "bytes": 175,
+      "compressed": 175,
+      "category": "resources",
+      "crc": 3465141787
+    },
+    {
+      "path": "resources/base/media/bssg_phone_album.png",
+      "bytes": 1229,
+      "compressed": 1229,
+      "category": "resources",
+      "crc": 2710187019
+    },
+    {
+      "path": "resources/base/media/bssg_setting_item_selected.png",
+      "bytes": 35035,
+      "compressed": 35035,
+      "category": "resources",
+      "crc": 2409723051
+    },
+    {
+      "path": "resources/base/media/bssg_setting_menu_bg.png",
+      "bytes": 3786,
+      "compressed": 3786,
+      "category": "resources",
+      "crc": 4181654939
+    },
+    {
+      "path": "resources/base/media/bssg_taihu_iocn.png",
+      "bytes": 9633,
+      "compressed": 9633,
+      "category": "resources",
+      "crc": 2281707039
+    },
+    {
+      "path": "resources/base/media/bssg_template_checked.png",
+      "bytes": 266,
+      "compressed": 266,
+      "category": "resources",
+      "crc": 417085311
+    },
+    {
+      "path": "resources/base/media/bssg_template_un_check.png",
+      "bytes": 359,
+      "compressed": 359,
+      "category": "resources",
+      "crc": 3615985054
+    },
+    {
+      "path": "resources/base/media/bugsubmit_icon.png",
+      "bytes": 146047,
+      "compressed": 146047,
+      "category": "resources",
+      "crc": 1192020061
+    },
+    {
+      "path": "resources/base/media/button.png",
+      "bytes": 2188,
+      "compressed": 2188,
+      "category": "resources",
+      "crc": 4016283240
+    },
+    {
+      "path": "resources/base/media/button_blue.png",
+      "bytes": 2208,
+      "compressed": 2208,
+      "category": "resources",
+      "crc": 2710203974
+    },
+    {
+      "path": "resources/base/media/edit_confirm_btn.png",
+      "bytes": 3578,
+      "compressed": 3578,
+      "category": "resources",
+      "crc": 2730361365
+    },
+    {
+      "path": "resources/base/media/edit_unconfirm_btn.png",
+      "bytes": 3194,
+      "compressed": 3194,
+      "category": "resources",
+      "crc": 589688679
+    },
+    {
+      "path": "resources/base/media/es_chat_send_btn.png",
+      "bytes": 18929,
+      "compressed": 18929,
+      "category": "resources",
+      "crc": 2999069122
+    },
+    {
+      "path": "resources/base/media/es_chat_unsend_btn.png",
+      "bytes": 18929,
+      "compressed": 18929,
+      "category": "resources",
+      "crc": 2999069122
+    },
+    {
+      "path": "resources/base/media/es_exit.png",
+      "bytes": 478,
+      "compressed": 478,
+      "category": "resources",
+      "crc": 24476152
+    },
+    {
+      "path": "resources/base/media/es_h5_exit.png",
+      "bytes": 119,
+      "compressed": 119,
+      "category": "resources",
+      "crc": 2948147478
+    },
+    {
+      "path": "resources/base/media/foreground.png",
+      "bytes": 12430,
+      "compressed": 12430,
+      "category": "resources",
+      "crc": 765356069
+    },
+    {
+      "path": "resources/base/media/ic_public_cancel.svg",
+      "bytes": 1325,
+      "compressed": 1325,
+      "category": "resources",
+      "crc": 2326607041
+    },
+    {
+      "path": "resources/base/media/ic_public_ok.svg",
+      "bytes": 1286,
+      "compressed": 1286,
+      "category": "resources",
+      "crc": 2481198822
+    },
+    {
+      "path": "resources/base/media/ic_roundbtn.svg",
+      "bytes": 647,
+      "compressed": 647,
+      "category": "resources",
+      "crc": 1120903736
+    },
+    {
+      "path": "resources/base/media/icon.png",
+      "bytes": 304541,
+      "compressed": 304541,
+      "category": "resources",
+      "crc": 2957959096
+    },
+    {
+      "path": "resources/base/media/item_permission_bg.png",
+      "bytes": 7845,
+      "compressed": 7845,
+      "category": "resources",
+      "crc": 366202249
+    },
+    {
+      "path": "resources/base/media/layered_image.json",
+      "bytes": 81,
+      "compressed": 81,
+      "category": "resources",
+      "crc": 1502484542
+    },
+    {
+      "path": "resources/base/media/line.png",
+      "bytes": 1350,
+      "compressed": 1350,
+      "category": "resources",
+      "crc": 1230948365
+    },
+    {
+      "path": "resources/base/media/midas_alert_success_icon.png",
+      "bytes": 5011,
+      "compressed": 5011,
+      "category": "resources",
+      "crc": 3352741935
+    },
+    {
+      "path": "resources/base/media/midas_alert_success_icon_bg.png",
+      "bytes": 35436,
+      "compressed": 35436,
+      "category": "resources",
+      "crc": 3656100846
+    },
+    {
+      "path": "resources/base/media/midas_alert_success_icon_bg_land.png",
+      "bytes": 49096,
+      "compressed": 49096,
+      "category": "resources",
+      "crc": 2623184535
+    },
+    {
+      "path": "resources/base/media/midas_channel_grid_bg.png",
+      "bytes": 28970,
+      "compressed": 28970,
+      "category": "resources",
+      "crc": 1454218800
+    },
+    {
+      "path": "resources/base/media/midas_qrcode_complete.png",
+      "bytes": 2978,
+      "compressed": 2978,
+      "category": "resources",
+      "crc": 869218998
+    },
+    {
+      "path": "resources/base/media/midas_qrcode_default.png",
+      "bytes": 4512,
+      "compressed": 4512,
+      "category": "resources",
+      "crc": 2453112590
+    },
+    {
+      "path": "resources/base/media/midas_qrcode_logo_qq.png",
+      "bytes": 1479,
+      "compressed": 1479,
+      "category": "resources",
+      "crc": 1294525830
+    },
+    {
+      "path": "resources/base/media/midas_qrcode_logo_wechat.png",
+      "bytes": 1563,
+      "compressed": 1563,
+      "category": "resources",
+      "crc": 3462713765
+    },
+    {
+      "path": "resources/base/media/midas_qrcode_refresh.png",
+      "bytes": 3255,
+      "compressed": 3255,
+      "category": "resources",
+      "crc": 3285198041
+    },
+    {
+      "path": "resources/base/media/midas_qudao_icon_friend.png",
+      "bytes": 2312,
+      "compressed": 2312,
+      "category": "resources",
+      "crc": 578279957
+    },
+    {
+      "path": "resources/base/media/midas_qudao_icon_qb.png",
+      "bytes": 2856,
+      "compressed": 2856,
+      "category": "resources",
+      "crc": 677353933
+    },
+    {
+      "path": "resources/base/media/midas_qudao_icon_qqcard.png",
+      "bytes": 2423,
+      "compressed": 2423,
+      "category": "resources",
+      "crc": 3446012979
+    },
+    {
+      "path": "resources/base/media/midas_qudao_icon_scan.png",
+      "bytes": 2251,
+      "compressed": 2251,
+      "category": "resources",
+      "crc": 2672885553
+    },
+    {
+      "path": "resources/base/media/midas_qudao_icon_unipay.png",
+      "bytes": 3083,
+      "compressed": 3083,
+      "category": "resources",
+      "crc": 1689738003
+    },
+    {
+      "path": "resources/base/media/midas_qudao_icon_wechat.png",
+      "bytes": 2531,
+      "compressed": 2531,
+      "category": "resources",
+      "crc": 3068096095
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_close.png",
+      "bytes": 1227,
+      "compressed": 1227,
+      "category": "resources",
+      "crc": 3675651612
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_left.png",
+      "bytes": 1389,
+      "compressed": 1389,
+      "category": "resources",
+      "crc": 3382644981
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_left_disabled.png",
+      "bytes": 1404,
+      "compressed": 1404,
+      "category": "resources",
+      "crc": 233289917
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_more.png",
+      "bytes": 1430,
+      "compressed": 1430,
+      "category": "resources",
+      "crc": 1877893965
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_qqbrowser.png",
+      "bytes": 2105,
+      "compressed": 2105,
+      "category": "resources",
+      "crc": 1433496558
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_refresh.png",
+      "bytes": 1717,
+      "compressed": 1717,
+      "category": "resources",
+      "crc": 439833185
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_right.png",
+      "bytes": 1419,
+      "compressed": 1419,
+      "category": "resources",
+      "crc": 1980758974
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_right_disabled.png",
+      "bytes": 1361,
+      "compressed": 1361,
+      "category": "resources",
+      "crc": 1035800601
+    },
+    {
+      "path": "resources/base/media/msdk_webview_btn_stop.png",
+      "bytes": 1240,
+      "compressed": 1240,
+      "category": "resources",
+      "crc": 2850465975
+    },
+    {
+      "path": "resources/base/media/msdk_webview_share_moment.png",
+      "bytes": 11582,
+      "compressed": 11582,
+      "category": "resources",
+      "crc": 131335744
+    },
+    {
+      "path": "resources/base/media/msdk_webview_share_otherbrowser.png",
+      "bytes": 9800,
+      "compressed": 9800,
+      "category": "resources",
+      "crc": 100002800
+    },
+    {
+      "path": "resources/base/media/msdk_webview_share_qq.png",
+      "bytes": 7076,
+      "compressed": 7076,
+      "category": "resources",
+      "crc": 4259767597
+    },
+    {
+      "path": "resources/base/media/msdk_webview_share_qzone.png",
+      "bytes": 7353,
+      "compressed": 7353,
+      "category": "resources",
+      "crc": 2761489654
+    },
+    {
+      "path": "resources/base/media/msdk_webview_share_wechat.png",
+      "bytes": 8562,
+      "compressed": 8562,
+      "category": "resources",
+      "crc": 4273156342
+    },
+    {
+      "path": "resources/base/media/permission_calendar.png",
+      "bytes": 2911,
+      "compressed": 2911,
+      "category": "resources",
+      "crc": 1594568938
+    },
+    {
+      "path": "resources/base/media/permission_camera.png",
+      "bytes": 3519,
+      "compressed": 3519,
+      "category": "resources",
+      "crc": 1708216584
+    },
+    {
+      "path": "resources/base/media/permission_device.png",
+      "bytes": 2431,
+      "compressed": 2431,
+      "category": "resources",
+      "crc": 2427642964
+    },
+    {
+      "path": "resources/base/media/permission_file.png",
+      "bytes": 2386,
+      "compressed": 2386,
+      "category": "resources",
+      "crc": 3130874264
+    },
+    {
+      "path": "resources/base/media/permission_location.png",
+      "bytes": 3702,
+      "compressed": 3702,
+      "category": "resources",
+      "crc": 3444223584
+    },
+    {
+      "path": "resources/base/media/permission_record.png",
+      "bytes": 3540,
+      "compressed": 3540,
+      "category": "resources",
+      "crc": 62126672
+    },
+    {
+      "path": "resources/base/media/permission_sms.png",
+      "bytes": 3403,
+      "compressed": 3403,
+      "category": "resources",
+      "crc": 301151728
+    },
+    {
+      "path": "resources/base/media/permissions_content.png",
+      "bytes": 11891,
+      "compressed": 11891,
+      "category": "resources",
+      "crc": 367105991
+    },
+    {
+      "path": "resources/base/media/permissions_glow.png",
+      "bytes": 18675,
+      "compressed": 18675,
+      "category": "resources",
+      "crc": 3136895279
+    },
+    {
+      "path": "resources/base/media/permissions_top.png",
+      "bytes": 8411,
+      "compressed": 8411,
+      "category": "resources",
+      "crc": 1357224321
+    },
+    {
+      "path": "resources/base/media/startIcon.png",
+      "bytes": 20093,
+      "compressed": 20093,
+      "category": "resources",
+      "crc": 3975085642
+    },
+    {
+      "path": "resources/base/media/startWindowIcon.png",
+      "bytes": 1675,
+      "compressed": 1675,
+      "category": "resources",
+      "crc": 3554105470
+    },
+    {
+      "path": "resources/base/media/startWindowIcon_black.png",
+      "bytes": 904,
+      "compressed": 904,
+      "category": "resources",
+      "crc": 481402250
+    },
+    {
+      "path": "resources/base/media/tv_light_image.png",
+      "bytes": 537,
+      "compressed": 537,
+      "category": "resources",
+      "crc": 1361177177
+    },
+    {
+      "path": "resources/base/media/tv_web_close.png",
+      "bytes": 1748,
+      "compressed": 1748,
+      "category": "resources",
+      "crc": 2475326479
+    },
+    {
+      "path": "resources/base/media/unipay_channel_discount_des_icon.png",
+      "bytes": 1360,
+      "compressed": 1360,
+      "category": "resources",
+      "crc": 2653861327
+    },
+    {
+      "path": "resources/base/media/unipay_channel_tips_arrow.png",
+      "bytes": 902,
+      "compressed": 902,
+      "category": "resources",
+      "crc": 3466506099
+    },
+    {
+      "path": "resources/base/media/unipay_footer_logo.png",
+      "bytes": 8202,
+      "compressed": 8202,
+      "category": "resources",
+      "crc": 2837474758
+    },
+    {
+      "path": "resources/base/media/unipay_icon_back_arr.png",
+      "bytes": 555,
+      "compressed": 555,
+      "category": "resources",
+      "crc": 3937613163
+    },
+    {
+      "path": "resources/base/media/unipay_icon_dialog_close.png",
+      "bytes": 676,
+      "compressed": 676,
+      "category": "resources",
+      "crc": 3523366613
+    },
+    {
+      "path": "resources/base/media/unipay_icon_return.png",
+      "bytes": 236,
+      "compressed": 236,
+      "category": "resources",
+      "crc": 897283374
+    },
+    {
+      "path": "resources/base/media/videosplash.mp4",
+      "bytes": 1054011,
+      "compressed": 1054011,
+      "category": "resources",
+      "crc": 2315337061
+    },
+    {
+      "path": "resources/base/profile/main_pages.json",
+      "bytes": 41,
+      "compressed": 41,
+      "category": "resources",
+      "crc": 3717692436
+    },
+    {
+      "path": "resources/rawfile/8400/asr_model.dla",
+      "bytes": 128977266,
+      "compressed": 128977266,
+      "category": "resources",
+      "crc": 3491134427
+    },
+    {
+      "path": "resources/rawfile/8400/libasr_backend_api.so",
+      "bytes": 3321608,
+      "compressed": 2273032,
+      "category": "resources",
+      "crc": 2820183277
+    },
+    {
+      "path": "resources/rawfile/9300/asr_model.dla",
+      "bytes": 125791363,
+      "compressed": 125791363,
+      "category": "resources",
+      "crc": 4053916774
+    },
+    {
+      "path": "resources/rawfile/9300/libasr_backend_api.so",
+      "bytes": 3321608,
+      "compressed": 2273032,
+      "category": "resources",
+      "crc": 4011767432
+    },
+    {
+      "path": "resources/rawfile/Data/Csb/0/4219829-1.csb",
+      "bytes": 20615840,
+      "compressed": 20615840,
+      "category": "resources",
+      "crc": 1361467987
+    },
+    {
+      "path": "resources/rawfile/Data/Csb/1/4219829-1.csb",
+      "bytes": 2114330,
+      "compressed": 2114330,
+      "category": "resources",
+      "crc": 729077669
+    },
+    {
+      "path": "resources/rawfile/Data/Managed/Metadata/global-metadata.dat",
+      "bytes": 57755728,
+      "compressed": 57755728,
+      "category": "resources",
+      "crc": 4250568892
+    },
+    {
+      "path": "resources/rawfile/Data/Managed/Resources/Newtonsoft.Json.dll-resources.dat",
+      "bytes": 900,
+      "compressed": 900,
+      "category": "resources",
+      "crc": 3250745184
+    },
+    {
+      "path": "resources/rawfile/Data/Managed/Resources/System.Data.dll-resources.dat",
+      "bytes": 93718,
+      "compressed": 93718,
+      "category": "resources",
+      "crc": 1713545251
+    },
+    {
+      "path": "resources/rawfile/Data/Managed/Resources/mscorlib.dll-resources.dat",
+      "bytes": 337563,
+      "compressed": 337563,
+      "category": "resources",
+      "crc": 3564484692
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/0/0.db",
+      "bytes": 19283968,
+      "compressed": 19283968,
+      "category": "resources",
+      "crc": 629961732
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/0/0_0.db",
+      "bytes": 542130176,
+      "compressed": 542130176,
+      "category": "resources",
+      "crc": 3377051325
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/114/114.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 2258021885
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/114/114_0.db",
+      "bytes": 327680,
+      "compressed": 327680,
+      "category": "resources",
+      "crc": 4041947854
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/20/20.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 714054869
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/20/20_0.db",
+      "bytes": 3784704,
+      "compressed": 3784704,
+      "category": "resources",
+      "crc": 2847460783
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100010500/300100010500.db",
+      "bytes": 212992,
+      "compressed": 212992,
+      "category": "resources",
+      "crc": 109689288
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100010500/300100010500_0.db",
+      "bytes": 5898240,
+      "compressed": 5898240,
+      "category": "resources",
+      "crc": 1290784573
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100010600/300100010600.db",
+      "bytes": 393216,
+      "compressed": 393216,
+      "category": "resources",
+      "crc": 2259274551
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100010600/300100010600_0.db",
+      "bytes": 25018368,
+      "compressed": 25018368,
+      "category": "resources",
+      "crc": 778359464
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100010700/300100010700.db",
+      "bytes": 360448,
+      "compressed": 360448,
+      "category": "resources",
+      "crc": 2695423945
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100010700/300100010700_0.db",
+      "bytes": 15220736,
+      "compressed": 15220736,
+      "category": "resources",
+      "crc": 2202546809
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100010900/300100010900.db",
+      "bytes": 458752,
+      "compressed": 458752,
+      "category": "resources",
+      "crc": 3444757907
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100010900/300100010900_0.db",
+      "bytes": 25346048,
+      "compressed": 25346048,
+      "category": "resources",
+      "crc": 3558692181
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011000/300100011000.db",
+      "bytes": 196608,
+      "compressed": 196608,
+      "category": "resources",
+      "crc": 3362633315
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011000/300100011000_0.db",
+      "bytes": 5160960,
+      "compressed": 5160960,
+      "category": "resources",
+      "crc": 4123245527
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011100/300100011100.db",
+      "bytes": 409600,
+      "compressed": 409600,
+      "category": "resources",
+      "crc": 4157558781
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011100/300100011100_0.db",
+      "bytes": 18694144,
+      "compressed": 18694144,
+      "category": "resources",
+      "crc": 1286478280
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011200/300100011200.db",
+      "bytes": 589824,
+      "compressed": 589824,
+      "category": "resources",
+      "crc": 3188836151
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011200/300100011200_0.db",
+      "bytes": 30375936,
+      "compressed": 30375936,
+      "category": "resources",
+      "crc": 2322456387
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011300/300100011300.db",
+      "bytes": 229376,
+      "compressed": 229376,
+      "category": "resources",
+      "crc": 136450649
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011300/300100011300_0.db",
+      "bytes": 9109504,
+      "compressed": 9109504,
+      "category": "resources",
+      "crc": 2151097484
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011400/300100011400.db",
+      "bytes": 229376,
+      "compressed": 229376,
+      "category": "resources",
+      "crc": 3188263894
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011400/300100011400_0.db",
+      "bytes": 9633792,
+      "compressed": 9633792,
+      "category": "resources",
+      "crc": 3108678637
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011600/300100011600.db",
+      "bytes": 360448,
+      "compressed": 360448,
+      "category": "resources",
+      "crc": 3835064018
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011600/300100011600_0.db",
+      "bytes": 13680640,
+      "compressed": 13680640,
+      "category": "resources",
+      "crc": 976948310
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011800/300100011800.db",
+      "bytes": 393216,
+      "compressed": 393216,
+      "category": "resources",
+      "crc": 1333852949
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100011800/300100011800_0.db",
+      "bytes": 18563072,
+      "compressed": 18563072,
+      "category": "resources",
+      "crc": 3124690952
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012000/300100012000.db",
+      "bytes": 212992,
+      "compressed": 212992,
+      "category": "resources",
+      "crc": 1127189977
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012000/300100012000_0.db",
+      "bytes": 7520256,
+      "compressed": 7520256,
+      "category": "resources",
+      "crc": 3567005432
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012100/300100012100.db",
+      "bytes": 245760,
+      "compressed": 245760,
+      "category": "resources",
+      "crc": 2526931846
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012100/300100012100_0.db",
+      "bytes": 7798784,
+      "compressed": 7798784,
+      "category": "resources",
+      "crc": 1908518958
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012300/300100012300.db",
+      "bytes": 851968,
+      "compressed": 851968,
+      "category": "resources",
+      "crc": 1659515820
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012300/300100012300_0.db",
+      "bytes": 43565056,
+      "compressed": 43565056,
+      "category": "resources",
+      "crc": 1768154885
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012400/300100012400.db",
+      "bytes": 344064,
+      "compressed": 344064,
+      "category": "resources",
+      "crc": 268682807
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012400/300100012400_0.db",
+      "bytes": 14041088,
+      "compressed": 14041088,
+      "category": "resources",
+      "crc": 2778772363
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012500/300100012500.db",
+      "bytes": 409600,
+      "compressed": 409600,
+      "category": "resources",
+      "crc": 431748399
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012500/300100012500_0.db",
+      "bytes": 21233664,
+      "compressed": 21233664,
+      "category": "resources",
+      "crc": 1285247990
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012600/300100012600.db",
+      "bytes": 311296,
+      "compressed": 311296,
+      "category": "resources",
+      "crc": 977122084
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012600/300100012600_0.db",
+      "bytes": 11485184,
+      "compressed": 11485184,
+      "category": "resources",
+      "crc": 2092650870
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012700/300100012700.db",
+      "bytes": 393216,
+      "compressed": 393216,
+      "category": "resources",
+      "crc": 4250567558
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012700/300100012700_0.db",
+      "bytes": 21676032,
+      "compressed": 21676032,
+      "category": "resources",
+      "crc": 1716049919
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012800/300100012800.db",
+      "bytes": 409600,
+      "compressed": 409600,
+      "category": "resources",
+      "crc": 926397466
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012800/300100012800_0.db",
+      "bytes": 22069248,
+      "compressed": 22069248,
+      "category": "resources",
+      "crc": 3351651498
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012900/300100012900.db",
+      "bytes": 262144,
+      "compressed": 262144,
+      "category": "resources",
+      "crc": 777897851
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100012900/300100012900_0.db",
+      "bytes": 7602176,
+      "compressed": 7602176,
+      "category": "resources",
+      "crc": 1148202288
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013000/300100013000.db",
+      "bytes": 376832,
+      "compressed": 376832,
+      "category": "resources",
+      "crc": 1934391163
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013000/300100013000_0.db",
+      "bytes": 16121856,
+      "compressed": 16121856,
+      "category": "resources",
+      "crc": 1269650883
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013100/300100013100.db",
+      "bytes": 524288,
+      "compressed": 524288,
+      "category": "resources",
+      "crc": 2374125258
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013100/300100013100_0.db",
+      "bytes": 25477120,
+      "compressed": 25477120,
+      "category": "resources",
+      "crc": 2647654581
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013200/300100013200.db",
+      "bytes": 393216,
+      "compressed": 393216,
+      "category": "resources",
+      "crc": 2745624088
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013200/300100013200_0.db",
+      "bytes": 15237120,
+      "compressed": 15237120,
+      "category": "resources",
+      "crc": 611797224
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013300/300100013300.db",
+      "bytes": 507904,
+      "compressed": 507904,
+      "category": "resources",
+      "crc": 3273518924
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013300/300100013300_0.db",
+      "bytes": 31457280,
+      "compressed": 31457280,
+      "category": "resources",
+      "crc": 2335069822
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013400/300100013400.db",
+      "bytes": 229376,
+      "compressed": 229376,
+      "category": "resources",
+      "crc": 1255109901
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013400/300100013400_0.db",
+      "bytes": 6389760,
+      "compressed": 6389760,
+      "category": "resources",
+      "crc": 3493638619
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013500/300100013500.db",
+      "bytes": 278528,
+      "compressed": 278528,
+      "category": "resources",
+      "crc": 2752585441
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013500/300100013500_0.db",
+      "bytes": 11173888,
+      "compressed": 11173888,
+      "category": "resources",
+      "crc": 2890659533
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013600/300100013600.db",
+      "bytes": 229376,
+      "compressed": 229376,
+      "category": "resources",
+      "crc": 706758825
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013600/300100013600_0.db",
+      "bytes": 8142848,
+      "compressed": 8142848,
+      "category": "resources",
+      "crc": 1279783525
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013700/300100013700.db",
+      "bytes": 327680,
+      "compressed": 327680,
+      "category": "resources",
+      "crc": 4075823196
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013700/300100013700_0.db",
+      "bytes": 27295744,
+      "compressed": 27295744,
+      "category": "resources",
+      "crc": 298374726
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013900/300100013900.db",
+      "bytes": 245760,
+      "compressed": 245760,
+      "category": "resources",
+      "crc": 312836727
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100013900/300100013900_0.db",
+      "bytes": 8208384,
+      "compressed": 8208384,
+      "category": "resources",
+      "crc": 1036339749
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014000/300100014000.db",
+      "bytes": 425984,
+      "compressed": 425984,
+      "category": "resources",
+      "crc": 1379449157
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014000/300100014000_0.db",
+      "bytes": 41648128,
+      "compressed": 41648128,
+      "category": "resources",
+      "crc": 2874292151
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014400/300100014400.db",
+      "bytes": 180224,
+      "compressed": 180224,
+      "category": "resources",
+      "crc": 2758899927
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014400/300100014400_0.db",
+      "bytes": 6537216,
+      "compressed": 6537216,
+      "category": "resources",
+      "crc": 4223642145
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014600/300100014600.db",
+      "bytes": 278528,
+      "compressed": 278528,
+      "category": "resources",
+      "crc": 3236883057
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014600/300100014600_0.db",
+      "bytes": 9814016,
+      "compressed": 9814016,
+      "category": "resources",
+      "crc": 701009383
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014800/300100014800.db",
+      "bytes": 278528,
+      "compressed": 278528,
+      "category": "resources",
+      "crc": 2959789835
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014800/300100014800_0.db",
+      "bytes": 7012352,
+      "compressed": 7012352,
+      "category": "resources",
+      "crc": 3581360649
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014900/300100014900.db",
+      "bytes": 180224,
+      "compressed": 180224,
+      "category": "resources",
+      "crc": 3577178303
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100014900/300100014900_0.db",
+      "bytes": 2949120,
+      "compressed": 2949120,
+      "category": "resources",
+      "crc": 3221919516
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015000/300100015000.db",
+      "bytes": 524288,
+      "compressed": 524288,
+      "category": "resources",
+      "crc": 1749212851
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015000/300100015000_0.db",
+      "bytes": 25493504,
+      "compressed": 25493504,
+      "category": "resources",
+      "crc": 2429785171
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015200/300100015200.db",
+      "bytes": 458752,
+      "compressed": 458752,
+      "category": "resources",
+      "crc": 396209487
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015200/300100015200_0.db",
+      "bytes": 29032448,
+      "compressed": 29032448,
+      "category": "resources",
+      "crc": 2331706510
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015300/300100015300.db",
+      "bytes": 360448,
+      "compressed": 360448,
+      "category": "resources",
+      "crc": 673080715
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015300/300100015300_0.db",
+      "bytes": 12517376,
+      "compressed": 12517376,
+      "category": "resources",
+      "crc": 2151676150
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015500/300100015500.db",
+      "bytes": 262144,
+      "compressed": 262144,
+      "category": "resources",
+      "crc": 504267811
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015500/300100015500_0.db",
+      "bytes": 12877824,
+      "compressed": 12877824,
+      "category": "resources",
+      "crc": 691828765
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015600/300100015600.db",
+      "bytes": 262144,
+      "compressed": 262144,
+      "category": "resources",
+      "crc": 2027660847
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015600/300100015600_0.db",
+      "bytes": 6438912,
+      "compressed": 6438912,
+      "category": "resources",
+      "crc": 1289572498
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015700/300100015700.db",
+      "bytes": 262144,
+      "compressed": 262144,
+      "category": "resources",
+      "crc": 3816465387
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015700/300100015700_0.db",
+      "bytes": 10338304,
+      "compressed": 10338304,
+      "category": "resources",
+      "crc": 1049705782
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015900/300100015900.db",
+      "bytes": 688128,
+      "compressed": 688128,
+      "category": "resources",
+      "crc": 2721448023
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100015900/300100015900_0.db",
+      "bytes": 45088768,
+      "compressed": 45088768,
+      "category": "resources",
+      "crc": 3926296555
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100016200/300100016200.db",
+      "bytes": 180224,
+      "compressed": 180224,
+      "category": "resources",
+      "crc": 1225377172
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100016200/300100016200_0.db",
+      "bytes": 6635520,
+      "compressed": 6635520,
+      "category": "resources",
+      "crc": 3248921588
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100016300/300100016300.db",
+      "bytes": 163840,
+      "compressed": 163840,
+      "category": "resources",
+      "crc": 760167374
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100016300/300100016300_0.db",
+      "bytes": 4849664,
+      "compressed": 4849664,
+      "category": "resources",
+      "crc": 3700877933
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100016600/300100016600.db",
+      "bytes": 327680,
+      "compressed": 327680,
+      "category": "resources",
+      "crc": 3250863890
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100016600/300100016600_0.db",
+      "bytes": 12910592,
+      "compressed": 12910592,
+      "category": "resources",
+      "crc": 822726858
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100017000/300100017000.db",
+      "bytes": 294912,
+      "compressed": 294912,
+      "category": "resources",
+      "crc": 3299438653
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100017000/300100017000_0.db",
+      "bytes": 7536640,
+      "compressed": 7536640,
+      "category": "resources",
+      "crc": 3147692075
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100017100/300100017100.db",
+      "bytes": 294912,
+      "compressed": 294912,
+      "category": "resources",
+      "crc": 1603826700
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100017100/300100017100_0.db",
+      "bytes": 15187968,
+      "compressed": 15187968,
+      "category": "resources",
+      "crc": 2518176863
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100017600/300100017600.db",
+      "bytes": 311296,
+      "compressed": 311296,
+      "category": "resources",
+      "crc": 574562021
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100017600/300100017600_0.db",
+      "bytes": 14254080,
+      "compressed": 14254080,
+      "category": "resources",
+      "crc": 3561319327
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100018200/300100018200.db",
+      "bytes": 344064,
+      "compressed": 344064,
+      "category": "resources",
+      "crc": 800461110
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100018200/300100018200_0.db",
+      "bytes": 16662528,
+      "compressed": 16662528,
+      "category": "resources",
+      "crc": 1998737140
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100018300/300100018300.db",
+      "bytes": 229376,
+      "compressed": 229376,
+      "category": "resources",
+      "crc": 2611028679
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100018300/300100018300_0.db",
+      "bytes": 6356992,
+      "compressed": 6356992,
+      "category": "resources",
+      "crc": 1452276702
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100018400/300100018400.db",
+      "bytes": 294912,
+      "compressed": 294912,
+      "category": "resources",
+      "crc": 1427793484
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100018400/300100018400_0.db",
+      "bytes": 16973824,
+      "compressed": 16973824,
+      "category": "resources",
+      "crc": 1021500352
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100018600/300100018600.db",
+      "bytes": 212992,
+      "compressed": 212992,
+      "category": "resources",
+      "crc": 1899776230
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100018600/300100018600_0.db",
+      "bytes": 5095424,
+      "compressed": 5095424,
+      "category": "resources",
+      "crc": 2779453759
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100022500/300100022500.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 1973407506
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100022500/300100022500_0.db",
+      "bytes": 1032192,
+      "compressed": 1032192,
+      "category": "resources",
+      "crc": 1600941326
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100050100/300100050100.db",
+      "bytes": 425984,
+      "compressed": 425984,
+      "category": "resources",
+      "crc": 2201691001
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100050100/300100050100_0.db",
+      "bytes": 13778944,
+      "compressed": 13778944,
+      "category": "resources",
+      "crc": 669002281
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100050200/300100050200.db",
+      "bytes": 311296,
+      "compressed": 311296,
+      "category": "resources",
+      "crc": 3787761717
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100050200/300100050200_0.db",
+      "bytes": 15417344,
+      "compressed": 15417344,
+      "category": "resources",
+      "crc": 20129250
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100050300/300100050300.db",
+      "bytes": 245760,
+      "compressed": 245760,
+      "category": "resources",
+      "crc": 719966361
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100050300/300100050300_0.db",
+      "bytes": 7028736,
+      "compressed": 7028736,
+      "category": "resources",
+      "crc": 2310065899
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100051800/300100051800.db",
+      "bytes": 458752,
+      "compressed": 458752,
+      "category": "resources",
+      "crc": 1286644571
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100051800/300100051800_0.db",
+      "bytes": 32669696,
+      "compressed": 32669696,
+      "category": "resources",
+      "crc": 3132637418
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100052300/300100052300.db",
+      "bytes": 425984,
+      "compressed": 425984,
+      "category": "resources",
+      "crc": 256065862
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100052300/300100052300_0.db",
+      "bytes": 25542656,
+      "compressed": 25542656,
+      "category": "resources",
+      "crc": 3280659909
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100052400/300100052400.db",
+      "bytes": 278528,
+      "compressed": 278528,
+      "category": "resources",
+      "crc": 1097030630
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100052400/300100052400_0.db",
+      "bytes": 9469952,
+      "compressed": 9469952,
+      "category": "resources",
+      "crc": 1900012854
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100053200/300100053200.db",
+      "bytes": 393216,
+      "compressed": 393216,
+      "category": "resources",
+      "crc": 1010959072
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100053200/300100053200_0.db",
+      "bytes": 13516800,
+      "compressed": 13516800,
+      "category": "resources",
+      "crc": 1804426713
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100053800/300100053800.db",
+      "bytes": 507904,
+      "compressed": 507904,
+      "category": "resources",
+      "crc": 203202121
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100053800/300100053800_0.db",
+      "bytes": 38240256,
+      "compressed": 38240256,
+      "category": "resources",
+      "crc": 2766395887
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100054200/300100054200.db",
+      "bytes": 360448,
+      "compressed": 360448,
+      "category": "resources",
+      "crc": 1715274998
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100054200/300100054200_0.db",
+      "bytes": 18841600,
+      "compressed": 18841600,
+      "category": "resources",
+      "crc": 303788148
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100054500/300100054500.db",
+      "bytes": 212992,
+      "compressed": 212992,
+      "category": "resources",
+      "crc": 4219718916
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100054500/300100054500_0.db",
+      "bytes": 6717440,
+      "compressed": 6717440,
+      "category": "resources",
+      "crc": 306186998
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100055800/300100055800.db",
+      "bytes": 163840,
+      "compressed": 163840,
+      "category": "resources",
+      "crc": 1185467529
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100055800/300100055800_0.db",
+      "bytes": 4194304,
+      "compressed": 4194304,
+      "category": "resources",
+      "crc": 2267158831
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100057700/300100057700.db",
+      "bytes": 344064,
+      "compressed": 344064,
+      "category": "resources",
+      "crc": 679105317
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300100057700/300100057700_0.db",
+      "bytes": 13877248,
+      "compressed": 13877248,
+      "category": "resources",
+      "crc": 3389999915
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300101840701/300101840701.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 1943812191
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300101840701/300101840701_0.db",
+      "bytes": 868352,
+      "compressed": 868352,
+      "category": "resources",
+      "crc": 2331730792
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300101840702/300101840702.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 2535365897
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/300101840702/300101840702_0.db",
+      "bytes": 835584,
+      "compressed": 835584,
+      "category": "resources",
+      "crc": 3760791508
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/3002/3002.db",
+      "bytes": 5865472,
+      "compressed": 5865472,
+      "category": "resources",
+      "crc": 2223504949
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/3002/3002_0.db",
+      "bytes": 565968896,
+      "compressed": 565968896,
+      "category": "resources",
+      "crc": 3256136413
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000065/305000000065.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 3779828777
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000065/305000000065_0.db",
+      "bytes": 147456,
+      "compressed": 147456,
+      "category": "resources",
+      "crc": 4020404663
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000071/305000000071.db",
+      "bytes": 196608,
+      "compressed": 196608,
+      "category": "resources",
+      "crc": 4146792625
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000071/305000000071_0.db",
+      "bytes": 3915776,
+      "compressed": 3915776,
+      "category": "resources",
+      "crc": 4191359693
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000081/305000000081.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 1429783607
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000081/305000000081_0.db",
+      "bytes": 327680,
+      "compressed": 327680,
+      "category": "resources",
+      "crc": 3476952681
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000145/305000000145.db",
+      "bytes": 196608,
+      "compressed": 196608,
+      "category": "resources",
+      "crc": 2615365963
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000145/305000000145_0.db",
+      "bytes": 8208384,
+      "compressed": 8208384,
+      "category": "resources",
+      "crc": 1870044733
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000164/305000000164.db",
+      "bytes": 147456,
+      "compressed": 147456,
+      "category": "resources",
+      "crc": 3514071067
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000164/305000000164_0.db",
+      "bytes": 3964928,
+      "compressed": 3964928,
+      "category": "resources",
+      "crc": 360735355
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000204/305000000204.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 2458930822
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000000204/305000000204_0.db",
+      "bytes": 2375680,
+      "compressed": 2375680,
+      "category": "resources",
+      "crc": 2879727500
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/3050000009003/3050000009003.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 3086717411
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/3050000009003/3050000009003_0.db",
+      "bytes": 835584,
+      "compressed": 835584,
+      "category": "resources",
+      "crc": 3715726989
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/3050000009010/3050000009010.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 919855422
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/3050000009010/3050000009010_0.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 167563515
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000001022/305000001022.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 2501057709
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000001022/305000001022_0.db",
+      "bytes": 147456,
+      "compressed": 147456,
+      "category": "resources",
+      "crc": 380463941
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000001044/305000001044.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 2387610397
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000001044/305000001044_0.db",
+      "bytes": 737280,
+      "compressed": 737280,
+      "category": "resources",
+      "crc": 838177751
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000001105/305000001105.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 3630391203
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000001105/305000001105_0.db",
+      "bytes": 409600,
+      "compressed": 409600,
+      "category": "resources",
+      "crc": 2437773012
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000001144/305000001144.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 3454064004
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000001144/305000001144_0.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 1401011885
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000002082/305000002082.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 3171541752
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000002082/305000002082_0.db",
+      "bytes": 278528,
+      "compressed": 278528,
+      "category": "resources",
+      "crc": 3936106589
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000008019/305000008019.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 885237532
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000008019/305000008019_0.db",
+      "bytes": 376832,
+      "compressed": 376832,
+      "category": "resources",
+      "crc": 1799819770
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000100158/305000100158.db",
+      "bytes": 147456,
+      "compressed": 147456,
+      "category": "resources",
+      "crc": 3127901512
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/305000100158/305000100158_0.db",
+      "bytes": 5521408,
+      "compressed": 5521408,
+      "category": "resources",
+      "crc": 2908879492
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320010/320010.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 27112045
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320010/320010_0.db",
+      "bytes": 655360,
+      "compressed": 655360,
+      "category": "resources",
+      "crc": 3600213245
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320054/320054.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 3217463783
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320054/320054_0.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 1463464033
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320071/320071.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 645440931
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320071/320071_0.db",
+      "bytes": 2031616,
+      "compressed": 2031616,
+      "category": "resources",
+      "crc": 2602841788
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320112/320112.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 465840192
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320112/320112_0.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 3230262748
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320128/320128.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 515292252
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320128/320128_0.db",
+      "bytes": 180224,
+      "compressed": 180224,
+      "category": "resources",
+      "crc": 3614468784
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320138/320138.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 765312730
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320138/320138_0.db",
+      "bytes": 131072,
+      "compressed": 131072,
+      "category": "resources",
+      "crc": 1981155086
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320139/320139.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 2217484523
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320139/320139_0.db",
+      "bytes": 2211840,
+      "compressed": 2211840,
+      "category": "resources",
+      "crc": 3350004727
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320146/320146.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 2891635392
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320146/320146_0.db",
+      "bytes": 229376,
+      "compressed": 229376,
+      "category": "resources",
+      "crc": 505892700
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320220/320220.db",
+      "bytes": 114688,
+      "compressed": 114688,
+      "category": "resources",
+      "crc": 1516140782
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/320220/320220_0.db",
+      "bytes": 1277952,
+      "compressed": 1277952,
+      "category": "resources",
+      "crc": 2247255651
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/5100/5100.db",
+      "bytes": 147456,
+      "compressed": 147456,
+      "category": "resources",
+      "crc": 819529204
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/5100/5100_0.db",
+      "bytes": 491520,
+      "compressed": 491520,
+      "category": "resources",
+      "crc": 1245932556
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/9/9.db",
+      "bytes": 11829248,
+      "compressed": 11829248,
+      "category": "resources",
+      "crc": 4036284689
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/9/9_0.db",
+      "bytes": 687177728,
+      "compressed": 687177728,
+      "category": "resources",
+      "crc": 3588007203
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/9900/9900.db",
+      "bytes": 1245184,
+      "compressed": 1245184,
+      "category": "resources",
+      "crc": 2678534997
+    },
+    {
+      "path": "resources/rawfile/Data/Package/builtin/9900/9900_0.db",
+      "bytes": 66469888,
+      "compressed": 66469888,
+      "category": "resources",
+      "crc": 3389226426
+    },
+    {
+      "path": "resources/rawfile/Data/Resources/unity_builtin_extra",
+      "bytes": 559288,
+      "compressed": 559288,
+      "category": "resources",
+      "crc": 3304783916
+    },
+    {
+      "path": "resources/rawfile/Data/RuntimeInitializeOnLoads.json",
+      "bytes": 3496,
+      "compressed": 3496,
+      "category": "resources",
+      "crc": 3149706801
+    },
+    {
+      "path": "resources/rawfile/Data/ScriptingAssemblies.json",
+      "bytes": 4770,
+      "compressed": 4770,
+      "category": "resources",
+      "crc": 1520895751
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/GameModeConfig.json",
+      "bytes": 2198,
+      "compressed": 2198,
+      "category": "resources",
+      "crc": 2771106797
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/GameModeConfigConstraint.json",
+      "bytes": 9972,
+      "compressed": 9972,
+      "category": "resources",
+      "crc": 1659625918
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/LivecastConfig.json",
+      "bytes": 123,
+      "compressed": 123,
+      "category": "resources",
+      "crc": 3037447031
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/OfflineRenderSetting.config",
+      "bytes": 803,
+      "compressed": 803,
+      "category": "resources",
+      "crc": 2052633184
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/Revision.txt",
+      "bytes": 7,
+      "compressed": 7,
+      "category": "resources",
+      "crc": 27113173
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/SVN.txt",
+      "bytes": 164,
+      "compressed": 164,
+      "category": "resources",
+      "crc": 3784335575
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/Version.txt",
+      "bytes": 62,
+      "compressed": 62,
+      "category": "resources",
+      "crc": 4185557043
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/Version_hok.txt",
+      "bytes": 76,
+      "compressed": 76,
+      "category": "resources",
+      "crc": 3912988743
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Config/rsp_name.txt",
+      "bytes": 18,
+      "compressed": 18,
+      "category": "resources",
+      "crc": 3663656666
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/DolphinGMMenu.ini",
+      "bytes": 25,
+      "compressed": 25,
+      "category": "resources",
+      "crc": 3265974235
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/DolphinProducts.ini",
+      "bytes": 5890,
+      "compressed": 5890,
+      "category": "resources",
+      "crc": 2892607633
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Blueprint/PlayerSpawn.gl",
+      "bytes": 19074,
+      "compressed": 19074,
+      "category": "resources",
+      "crc": 3264530963
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Blueprint/ShapeTrigger.gl",
+      "bytes": 7060,
+      "compressed": 7060,
+      "category": "resources",
+      "crc": 2263124142
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Blueprint/Spawner.gl",
+      "bytes": 13465,
+      "compressed": 13465,
+      "category": "resources",
+      "crc": 4256193280
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Level.lv",
+      "bytes": 1000,
+      "compressed": 1000,
+      "category": "resources",
+      "crc": 1054930623
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Level/Blueprint/Player_spawn.gl",
+      "bytes": 19074,
+      "compressed": 19074,
+      "category": "resources",
+      "crc": 3264530963
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Level/Blueprint/startup.gl",
+      "bytes": 36397,
+      "compressed": 36397,
+      "category": "resources",
+      "crc": 1205762651
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Level/Design/Artist.json",
+      "bytes": 3420,
+      "compressed": 3420,
+      "category": "resources",
+      "crc": 1878590748
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Level/Design/Design.json",
+      "bytes": 18213,
+      "compressed": 18213,
+      "category": "resources",
+      "crc": 636283849
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LevelTemplate/Level/Design/Design_core.bytessv",
+      "bytes": 12576,
+      "compressed": 12576,
+      "category": "resources",
+      "crc": 770824243
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/LightingConfig/LightmapConfig.txt",
+      "bytes": 94,
+      "compressed": 94,
+      "category": "resources",
+      "crc": 3029256596
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/OperatorAnalyze/OpeReport.py",
+      "bytes": 1164,
+      "compressed": 1164,
+      "category": "resources",
+      "crc": 1001346213
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/OperatorAnalyze/OpeReporter.py",
+      "bytes": 7244,
+      "compressed": 7244,
+      "category": "resources",
+      "crc": 2484212108
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/OperatorAnalyze/config.xml",
+      "bytes": 3549,
+      "compressed": 3549,
+      "category": "resources",
+      "crc": 2725111943
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/OperatorAnalyze/process.py",
+      "bytes": 574,
+      "compressed": 574,
+      "category": "resources",
+      "crc": 624448626
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/OperatorAnalyze/template.html",
+      "bytes": 29275,
+      "compressed": 29275,
+      "category": "resources",
+      "crc": 3738405000
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/PVPShare_Img_CodePictureAppend.jpg",
+      "bytes": 10450,
+      "compressed": 10450,
+      "category": "resources",
+      "crc": 2102448667
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/PVPShare_Img_CodePictureAppendWX.jpg",
+      "bytes": 22644,
+      "compressed": 22644,
+      "category": "resources",
+      "crc": 168006495
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/Panoramic.mp4",
+      "bytes": 3656030,
+      "compressed": 3656030,
+      "category": "resources",
+      "crc": 1844934275
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TempWeatherLayerConfig/layer0CustomLighitngSaver.txt",
+      "bytes": 3152,
+      "compressed": 3152,
+      "category": "resources",
+      "crc": 2088072002
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TempWeatherLayerConfig/layer0EnvironmentMapSaver.txt",
+      "bytes": 169,
+      "compressed": 169,
+      "category": "resources",
+      "crc": 1258500208
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TempWeatherLayerConfig/layer1CustomLighitngSaver.txt",
+      "bytes": 3261,
+      "compressed": 3261,
+      "category": "resources",
+      "crc": 885534766
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TempWeatherLayerConfig/layer1EnvironmentMapSaver.txt",
+      "bytes": 169,
+      "compressed": 169,
+      "category": "resources",
+      "crc": 1258500208
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TempWeatherLayerConfig/layer2CustomLighitngSaver.txt",
+      "bytes": 3257,
+      "compressed": 3257,
+      "category": "resources",
+      "crc": 2528391173
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TempWeatherLayerConfig/layer2EnvironmentMapSaver.txt",
+      "bytes": 169,
+      "compressed": 169,
+      "category": "resources",
+      "crc": 1258500208
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/LightingConfig.txt",
+      "bytes": 2745,
+      "compressed": 2745,
+      "category": "resources",
+      "crc": 4029729809
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/ModelConfig.txt",
+      "bytes": 117240,
+      "compressed": 117240,
+      "category": "resources",
+      "crc": 1802943604
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/PlacementConfig.txt",
+      "bytes": 44198,
+      "compressed": 44198,
+      "category": "resources",
+      "crc": 2800311056
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/PlacementFilter.txt",
+      "bytes": 106,
+      "compressed": 106,
+      "category": "resources",
+      "crc": 2964737048
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/basic.txt",
+      "bytes": 13056,
+      "compressed": 13056,
+      "category": "resources",
+      "crc": 3310742276
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/colossusruins.txt",
+      "bytes": 4608,
+      "compressed": 4608,
+      "category": "resources",
+      "crc": 2102539974
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/desert.txt",
+      "bytes": 13406,
+      "compressed": 13406,
+      "category": "resources",
+      "crc": 669431767
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/duhufu.txt",
+      "bytes": 10166,
+      "compressed": 10166,
+      "category": "resources",
+      "crc": 1331277676
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/lava.txt",
+      "bytes": 2512,
+      "compressed": 2512,
+      "category": "resources",
+      "crc": 1240170123
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/styleSets.txt",
+      "bytes": 125,
+      "compressed": 125,
+      "category": "resources",
+      "crc": 1645647695
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/thousandscaves.txt",
+      "bytes": 5328,
+      "compressed": 5328,
+      "category": "resources",
+      "crc": 1062677388
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/towerdefense.txt",
+      "bytes": 4276,
+      "compressed": 4276,
+      "category": "resources",
+      "crc": 512287497
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/vfx.txt",
+      "bytes": 260,
+      "compressed": 260,
+      "category": "resources",
+      "crc": 1621526164
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig/zhaixinglou.txt",
+      "bytes": 6389,
+      "compressed": 6389,
+      "category": "resources",
+      "crc": 1191855585
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/LightingConfig.txt",
+      "bytes": 2745,
+      "compressed": 2745,
+      "category": "resources",
+      "crc": 4029729809
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/ModelConfig.txt",
+      "bytes": 117240,
+      "compressed": 117240,
+      "category": "resources",
+      "crc": 1802943604
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/PlacementConfig.txt",
+      "bytes": 153367,
+      "compressed": 153367,
+      "category": "resources",
+      "crc": 4249131218
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/PlacementFilter.txt",
+      "bytes": 106,
+      "compressed": 106,
+      "category": "resources",
+      "crc": 2964737048
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/allData.txt",
+      "bytes": 566400,
+      "compressed": 566400,
+      "category": "resources",
+      "crc": 1322012642
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/basic.txt",
+      "bytes": 17386,
+      "compressed": 17386,
+      "category": "resources",
+      "crc": 3092538725
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/colossusruins.txt",
+      "bytes": 4608,
+      "compressed": 4608,
+      "category": "resources",
+      "crc": 2102539974
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/desert.txt",
+      "bytes": 11052,
+      "compressed": 11052,
+      "category": "resources",
+      "crc": 967637717
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/duhufu.txt",
+      "bytes": 10020,
+      "compressed": 10020,
+      "category": "resources",
+      "crc": 1213671
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/hyper.txt",
+      "bytes": 10128,
+      "compressed": 10128,
+      "category": "resources",
+      "crc": 2143314639
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/lava.txt",
+      "bytes": 3153,
+      "compressed": 3153,
+      "category": "resources",
+      "crc": 3540674898
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/styleSets.txt",
+      "bytes": 91,
+      "compressed": 91,
+      "category": "resources",
+      "crc": 3880783405
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/thousandscaves.txt",
+      "bytes": 5328,
+      "compressed": 5328,
+      "category": "resources",
+      "crc": 1062677388
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/towerdefense.txt",
+      "bytes": 4276,
+      "compressed": 4276,
+      "category": "resources",
+      "crc": 512287497
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/vfx.txt",
+      "bytes": 260,
+      "compressed": 260,
+      "category": "resources",
+      "crc": 1621526164
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/TileLevelConfig3/zhaixinglou.txt",
+      "bytes": 6086,
+      "compressed": 6086,
+      "category": "resources",
+      "crc": 4009178420
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/WeatherConfig/WeatherConfig.txt",
+      "bytes": 128,
+      "compressed": 128,
+      "category": "resources",
+      "crc": 4157093586
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/background.wav",
+      "bytes": 539946,
+      "compressed": 539946,
+      "category": "resources",
+      "crc": 2987847895
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/launcher_bg.png",
+      "bytes": 662780,
+      "compressed": 662780,
+      "category": "resources",
+      "crc": 66029678
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/so_download_bg.png",
+      "bytes": 476776,
+      "compressed": 476776,
+      "category": "resources",
+      "crc": 2859816053
+    },
+    {
+      "path": "resources/rawfile/Data/StreamingAssets/videosplash.mp4",
+      "bytes": 1054011,
+      "compressed": 1054011,
+      "category": "resources",
+      "crc": 2315337061
+    },
+    {
+      "path": "resources/rawfile/Data/boot.config",
+      "bytes": 159,
+      "compressed": 159,
+      "category": "resources",
+      "crc": 1783163944
+    },
+    {
+      "path": "resources/rawfile/Data/globalgamemanagers",
+      "bytes": 328448,
+      "compressed": 328448,
+      "category": "resources",
+      "crc": 1860296462
+    },
+    {
+      "path": "resources/rawfile/Data/globalgamemanagers.assets",
+      "bytes": 72368,
+      "compressed": 72368,
+      "category": "resources",
+      "crc": 416581592
+    },
+    {
+      "path": "resources/rawfile/Data/level0",
+      "bytes": 3384,
+      "compressed": 3384,
+      "category": "resources",
+      "crc": 4044016862
+    },
+    {
+      "path": "resources/rawfile/Data/level1",
+      "bytes": 1792,
+      "compressed": 1792,
+      "category": "resources",
+      "crc": 3926215132
+    },
+    {
+      "path": "resources/rawfile/Data/level2",
+      "bytes": 2032,
+      "compressed": 2032,
+      "category": "resources",
+      "crc": 1377745597
+    },
+    {
+      "path": "resources/rawfile/Data/level3",
+      "bytes": 1520,
+      "compressed": 1520,
+      "category": "resources",
+      "crc": 3231804289
+    },
+    {
+      "path": "resources/rawfile/Data/level4",
+      "bytes": 84188,
+      "compressed": 84188,
+      "category": "resources",
+      "crc": 1111967123
+    },
+    {
+      "path": "resources/rawfile/Data/level5",
+      "bytes": 1972,
+      "compressed": 1972,
+      "category": "resources",
+      "crc": 464849523
+    },
+    {
+      "path": "resources/rawfile/Data/level6",
+      "bytes": 1228,
+      "compressed": 1228,
+      "category": "resources",
+      "crc": 616450686
+    },
+    {
+      "path": "resources/rawfile/Data/level7",
+      "bytes": 1824,
+      "compressed": 1824,
+      "category": "resources",
+      "crc": 461557100
+    },
+    {
+      "path": "resources/rawfile/Data/resources.assets",
+      "bytes": 1796992,
+      "compressed": 1796992,
+      "category": "resources",
+      "crc": 4145495607
+    },
+    {
+      "path": "resources/rawfile/Data/resources.assets.resS",
+      "bytes": 2542384,
+      "compressed": 2542384,
+      "category": "resources",
+      "crc": 3425818301
+    },
+    {
+      "path": "resources/rawfile/Data/sharedassets0.assets",
+      "bytes": 421,
+      "compressed": 421,
+      "category": "resources",
+      "crc": 1110452526
+    },
+    {
+      "path": "resources/rawfile/Data/sharedassets1.assets",
+      "bytes": 337,
+      "compressed": 337,
+      "category": "resources",
+      "crc": 3058456877
+    },
+    {
+      "path": "resources/rawfile/Data/sharedassets2.assets",
+      "bytes": 337,
+      "compressed": 337,
+      "category": "resources",
+      "crc": 3058456877
+    },
+    {
+      "path": "resources/rawfile/Data/sharedassets3.assets",
+      "bytes": 277,
+      "compressed": 277,
+      "category": "resources",
+      "crc": 2852546239
+    },
+    {
+      "path": "resources/rawfile/Data/sharedassets4.assets",
+      "bytes": 289,
+      "compressed": 289,
+      "category": "resources",
+      "crc": 1785796368
+    },
+    {
+      "path": "resources/rawfile/Data/sharedassets5.assets",
+      "bytes": 277,
+      "compressed": 277,
+      "category": "resources",
+      "crc": 3352441174
+    },
+    {
+      "path": "resources/rawfile/Data/sharedassets6.assets",
+      "bytes": 277,
+      "compressed": 277,
+      "category": "resources",
+      "crc": 3095529219
+    },
+    {
+      "path": "resources/rawfile/Data/sharedassets7.assets",
+      "bytes": 349,
+      "compressed": 349,
+      "category": "resources",
+      "crc": 2454388141
+    },
+    {
+      "path": "resources/rawfile/Data/unity default resources",
+      "bytes": 1056272,
+      "compressed": 1056272,
+      "category": "resources",
+      "crc": 1485901416
+    },
+    {
+      "path": "resources/rawfile/GCloudSDKConfig.json",
+      "bytes": 223,
+      "compressed": 223,
+      "category": "resources",
+      "crc": 128563232
+    },
+    {
+      "path": "resources/rawfile/MSDKBuglyConfig.json",
+      "bytes": 692,
+      "compressed": 692,
+      "category": "resources",
+      "crc": 5788520
+    },
+    {
+      "path": "resources/rawfile/MSDKConfig.ini",
+      "bytes": 8268,
+      "compressed": 8268,
+      "category": "resources",
+      "crc": 2957823396
+    },
+    {
+      "path": "resources/rawfile/MSDKRetMsg.json",
+      "bytes": 1596,
+      "compressed": 1596,
+      "category": "resources",
+      "crc": 3298342422
+    },
+    {
+      "path": "resources/rawfile/QPIPMappingInfo.json",
+      "bytes": 463,
+      "compressed": 463,
+      "category": "resources",
+      "crc": 3873179320
+    },
+    {
+      "path": "resources/rawfile/SGameConfig.json",
+      "bytes": 297,
+      "compressed": 297,
+      "category": "resources",
+      "crc": 2780583912
+    },
+    {
+      "path": "resources/rawfile/config.json",
+      "bytes": 1573,
+      "compressed": 1573,
+      "category": "resources",
+      "crc": 797213929
+    },
+    {
+      "path": "resources/rawfile/ctc_fp16.mnn",
+      "bytes": 59864,
+      "compressed": 59864,
+      "category": "resources",
+      "crc": 2299121231
+    },
+    {
+      "path": "resources/rawfile/decoder_v4_small.nn",
+      "bytes": 2472220,
+      "compressed": 2472220,
+      "category": "resources",
+      "crc": 3725700923
+    },
+    {
+      "path": "resources/rawfile/dse_v1_1.nn",
+      "bytes": 810716,
+      "compressed": 810716,
+      "category": "resources",
+      "crc": 2520256779
+    },
+    {
+      "path": "resources/rawfile/dse_v1_2.nn",
+      "bytes": 810716,
+      "compressed": 810716,
+      "category": "resources",
+      "crc": 3800700723
+    },
+    {
+      "path": "resources/rawfile/dse_v1_3.nn",
+      "bytes": 829428,
+      "compressed": 829428,
+      "category": "resources",
+      "crc": 3812129941
+    },
+    {
+      "path": "resources/rawfile/dse_v1_4.nn",
+      "bytes": 852032,
+      "compressed": 852032,
+      "category": "resources",
+      "crc": 69813794
+    },
+    {
+      "path": "resources/rawfile/dse_v1_5.nn",
+      "bytes": 595456,
+      "compressed": 595456,
+      "category": "resources",
+      "crc": 1120172535
+    },
+    {
+      "path": "resources/rawfile/dse_v1_6.nn",
+      "bytes": 810476,
+      "compressed": 810476,
+      "category": "resources",
+      "crc": 1402926725
+    },
+    {
+      "path": "resources/rawfile/dse_v1_align.nn",
+      "bytes": 50212,
+      "compressed": 50212,
+      "category": "resources",
+      "crc": 1282454426
+    },
+    {
+      "path": "resources/rawfile/encoder_fp16.mnn",
+      "bytes": 1140588,
+      "compressed": 1140588,
+      "category": "resources",
+      "crc": 89041565
+    },
+    {
+      "path": "resources/rawfile/encoder_v4_small.nn",
+      "bytes": 2592572,
+      "compressed": 2592572,
+      "category": "resources",
+      "crc": 882941577
+    },
+    {
+      "path": "resources/rawfile/images/es_main_bg@3x.png",
+      "bytes": 225672,
+      "compressed": 225672,
+      "category": "resources",
+      "crc": 524665511
+    },
+    {
+      "path": "resources/rawfile/keywords.conf",
+      "bytes": 809,
+      "compressed": 809,
+      "category": "resources",
+      "crc": 1282440823
+    },
+    {
+      "path": "resources/rawfile/libgvoicensmodel.bin",
+      "bytes": 2312680,
+      "compressed": 2312680,
+      "category": "resources",
+      "crc": 3168281381
+    },
+    {
+      "path": "resources/rawfile/msdkpix/MSDKPIXBeacon",
+      "bytes": 11673,
+      "compressed": 11673,
+      "category": "resources",
+      "crc": 2363443664
+    },
+    {
+      "path": "resources/rawfile/msdkpix/MSDKPIXCore",
+      "bytes": 619037,
+      "compressed": 619037,
+      "category": "resources",
+      "crc": 1757552944
+    },
+    {
+      "path": "resources/rawfile/msdkpix/MSDKPIXLBS",
+      "bytes": 9904,
+      "compressed": 9904,
+      "category": "resources",
+      "crc": 2687715876
+    },
+    {
+      "path": "resources/rawfile/msdkpix/MSDKPIXQQ",
+      "bytes": 28283,
+      "compressed": 28283,
+      "category": "resources",
+      "crc": 4293533684
+    },
+    {
+      "path": "resources/rawfile/msdkpix/MSDKPIXWeChat",
+      "bytes": 24315,
+      "compressed": 24315,
+      "category": "resources",
+      "crc": 2211525823
+    },
+    {
+      "path": "resources/rawfile/msdkpix/MSDKPIXWebView",
+      "bytes": 11761,
+      "compressed": 11761,
+      "category": "resources",
+      "crc": 2395967428
+    },
+    {
+      "path": "resources/rawfile/msdkpix/MSDKPIXXG",
+      "bytes": 16072,
+      "compressed": 16072,
+      "category": "resources",
+      "crc": 3025487391
+    },
+    {
+      "path": "resources/rawfile/psr_dot_new.png",
+      "bytes": 1416,
+      "compressed": 1416,
+      "category": "resources",
+      "crc": 3749879191
+    },
+    {
+      "path": "resources/rawfile/psr_ic_expand_back.png",
+      "bytes": 1619,
+      "compressed": 1619,
+      "category": "resources",
+      "crc": 2925009639
+    },
+    {
+      "path": "resources/rawfile/psr_ic_expand_background.png",
+      "bytes": 14024,
+      "compressed": 14024,
+      "category": "resources",
+      "crc": 1291102537
+    },
+    {
+      "path": "resources/rawfile/psr_ic_expand_record.png",
+      "bytes": 5676,
+      "compressed": 5676,
+      "category": "resources",
+      "crc": 1687624284
+    },
+    {
+      "path": "resources/rawfile/psr_ic_expand_video.png",
+      "bytes": 4787,
+      "compressed": 4787,
+      "category": "resources",
+      "crc": 2620264667
+    },
+    {
+      "path": "resources/rawfile/psr_ic_record_front.png",
+      "bytes": 8354,
+      "compressed": 8354,
+      "category": "resources",
+      "crc": 3046083333
+    },
+    {
+      "path": "resources/rawfile/psr_ic_recording.png",
+      "bytes": 7581,
+      "compressed": 7581,
+      "category": "resources",
+      "crc": 1125402264
+    },
+    {
+      "path": "resources/rawfile/psr_ic_recording_no_enough.png",
+      "bytes": 5180,
+      "compressed": 5180,
+      "category": "resources",
+      "crc": 376030724
+    },
+    {
+      "path": "resources/rawfile/psr_record_normal_background.png",
+      "bytes": 1990,
+      "compressed": 1990,
+      "category": "resources",
+      "crc": 2970312146
+    },
+    {
+      "path": "resources/rawfile/psr_recording_background.png",
+      "bytes": 3912,
+      "compressed": 3912,
+      "category": "resources",
+      "crc": 3520981478
+    },
+    {
+      "path": "resources/rawfile/psr_rectangle_black_bg.png",
+      "bytes": 4006,
+      "compressed": 4006,
+      "category": "resources",
+      "crc": 2121549906
+    },
+    {
+      "path": "resources/rawfile/units.txt",
+      "bytes": 3285,
+      "compressed": 3285,
+      "category": "resources",
+      "crc": 2570174702
+    },
+    {
+      "path": "resources/rawfile/verifier",
+      "bytes": 161,
+      "compressed": 161,
+      "category": "resources",
+      "crc": 3163934312
+    },
+    {
+      "path": "resources/rawfile/vue2/assets/defaultSource.jpg",
+      "bytes": 42281,
+      "compressed": 42281,
+      "category": "resources",
+      "crc": 690968239
+    },
+    {
+      "path": "resources/rawfile/vue2/assets/hippyLogoWhite.png",
+      "bytes": 24639,
+      "compressed": 24639,
+      "category": "resources",
+      "crc": 2849182136
+    },
+    {
+      "path": "resources/rawfile/vue2/asyncComponentFromHttp.ohos.js",
+      "bytes": 2387,
+      "compressed": 2387,
+      "category": "resources",
+      "crc": 1322725282
+    },
+    {
+      "path": "resources/rawfile/vue2/asyncComponentFromLocal.ohos.js",
+      "bytes": 2453,
+      "compressed": 2453,
+      "category": "resources",
+      "crc": 1415024238
+    },
+    {
+      "path": "resources/rawfile/vue2/index.android.3.0.0.js",
+      "bytes": 477583,
+      "compressed": 477583,
+      "category": "resources",
+      "crc": 1622650762
+    },
+    {
+      "path": "resources/rawfile/vue2/index.ohos.js",
+      "bytes": 217423,
+      "compressed": 217423,
+      "category": "resources",
+      "crc": 3306337337
+    },
+    {
+      "path": "resources/rawfile/vue2/vendor-manifest.json",
+      "bytes": 1112,
+      "compressed": 1112,
+      "category": "resources",
+      "crc": 1638200951
+    },
+    {
+      "path": "resources/rawfile/vue2/vendor.android.3.0.0.js",
+      "bytes": 192161,
+      "compressed": 192161,
+      "category": "resources",
+      "crc": 235590475
+    },
+    {
+      "path": "resources/rawfile/vue2/vendor.ohos.js",
+      "bytes": 162690,
+      "compressed": 162690,
+      "category": "resources",
+      "crc": 1493528067
+    },
+    {
+      "path": "resources/resfile/NativeRes/Config.json",
+      "bytes": 233,
+      "compressed": 233,
+      "category": "resources",
+      "crc": 1292793495
+    },
+    {
+      "path": "resources/resfile/RecordDialog.ets.res",
+      "bytes": 9381,
+      "compressed": 9381,
+      "category": "resources",
+      "crc": 1453111455
+    },
+    {
+      "path": "resources/resfile/record_config.cfg",
+      "bytes": 181,
+      "compressed": 181,
+      "category": "resources",
+      "crc": 511582303
+    },
+    {
+      "path": "libs/arm64-v8a/libAkDelayWG.so",
+      "bytes": 1061456,
+      "compressed": 4808,
+      "category": "libs",
+      "crc": 597365408
+    },
+    {
+      "path": "libs/arm64-v8a/libAkSoundEngine.so",
+      "bytes": 3295112,
+      "compressed": 1308883,
+      "category": "libs",
+      "crc": 1823240047
+    },
+    {
+      "path": "libs/arm64-v8a/libCrashSight.so",
+      "bytes": 7356240,
+      "compressed": 2593633,
+      "category": "libs",
+      "crc": 3841182879
+    },
+    {
+      "path": "libs/arm64-v8a/libDWT.so",
+      "bytes": 5685264,
+      "compressed": 141740,
+      "category": "libs",
+      "crc": 2181507764
+    },
+    {
+      "path": "libs/arm64-v8a/libGCloudVoice.so",
+      "bytes": 5690320,
+      "compressed": 2515013,
+      "category": "libs",
+      "crc": 522467175
+    },
+    {
+      "path": "libs/arm64-v8a/libGVoicePlugin.so",
+      "bytes": 477128,
+      "compressed": 176339,
+      "category": "libs",
+      "crc": 573541260
+    },
+    {
+      "path": "libs/arm64-v8a/libGameCore.so",
+      "bytes": 97936720,
+      "compressed": 26066541,
+      "category": "libs",
+      "crc": 2524629931
+    },
+    {
+      "path": "libs/arm64-v8a/libLightProfiler.so",
+      "bytes": 117728,
+      "compressed": 56378,
+      "category": "libs",
+      "crc": 1232664981
+    },
+    {
+      "path": "libs/arm64-v8a/libMMCodecSdk.so",
+      "bytes": 318896,
+      "compressed": 116551,
+      "category": "libs",
+      "crc": 3821858499
+    },
+    {
+      "path": "libs/arm64-v8a/libMSDKPIXBeacon.so",
+      "bytes": 222824,
+      "compressed": 82577,
+      "category": "libs",
+      "crc": 3308560535
+    },
+    {
+      "path": "libs/arm64-v8a/libMSDKPIXCore.so",
+      "bytes": 2463352,
+      "compressed": 1067628,
+      "category": "libs",
+      "crc": 2080859131
+    },
+    {
+      "path": "libs/arm64-v8a/libMSDKPIXLBS.so",
+      "bytes": 214536,
+      "compressed": 79835,
+      "category": "libs",
+      "crc": 1021886148
+    },
+    {
+      "path": "libs/arm64-v8a/libMSDKPIXQQ.so",
+      "bytes": 220384,
+      "compressed": 81892,
+      "category": "libs",
+      "crc": 3494879887
+    },
+    {
+      "path": "libs/arm64-v8a/libMSDKPIXWeChat.so",
+      "bytes": 223656,
+      "compressed": 82539,
+      "category": "libs",
+      "crc": 2073101902
+    },
+    {
+      "path": "libs/arm64-v8a/libMSDKPIXWebView.so",
+      "bytes": 213992,
+      "compressed": 79853,
+      "category": "libs",
+      "crc": 2431440259
+    },
+    {
+      "path": "libs/arm64-v8a/libMSDKPIXXG.so",
+      "bytes": 224664,
+      "compressed": 82441,
+      "category": "libs",
+      "crc": 1398607536
+    },
+    {
+      "path": "libs/arm64-v8a/libMSDKUnityAdapter.so",
+      "bytes": 588424,
+      "compressed": 205616,
+      "category": "libs",
+      "crc": 2176108862
+    },
+    {
+      "path": "libs/arm64-v8a/libPcdnTegTransSdk.so",
+      "bytes": 4834456,
+      "compressed": 1830659,
+      "category": "libs",
+      "crc": 2659027729
+    },
+    {
+      "path": "libs/arm64-v8a/libPixUI_Unity.so",
+      "bytes": 6353136,
+      "compressed": 2650316,
+      "category": "libs",
+      "crc": 2230321864
+    },
+    {
+      "path": "libs/arm64-v8a/libPixVideo.so",
+      "bytes": 161008,
+      "compressed": 70302,
+      "category": "libs",
+      "crc": 4287153080
+    },
+    {
+      "path": "libs/arm64-v8a/libPixVideoCore.so",
+      "bytes": 4604320,
+      "compressed": 2190030,
+      "category": "libs",
+      "crc": 1566841099
+    },
+    {
+      "path": "libs/arm64-v8a/libPxAuthAPI.so",
+      "bytes": 414400,
+      "compressed": 144144,
+      "category": "libs",
+      "crc": 799134927
+    },
+    {
+      "path": "libs/arm64-v8a/libQtsFileSystemPlugin.so",
+      "bytes": 178232,
+      "compressed": 78757,
+      "category": "libs",
+      "crc": 2574502582
+    },
+    {
+      "path": "libs/arm64-v8a/libQtsResourcesVolumePlugin.so",
+      "bytes": 214496,
+      "compressed": 94670,
+      "category": "libs",
+      "crc": 2721930437
+    },
+    {
+      "path": "libs/arm64-v8a/libQtsVFS.so",
+      "bytes": 3336224,
+      "compressed": 1391008,
+      "category": "libs",
+      "crc": 764966393
+    },
+    {
+      "path": "libs/arm64-v8a/libQtskDB.so",
+      "bytes": 639272,
+      "compressed": 237895,
+      "category": "libs",
+      "crc": 1331308970
+    },
+    {
+      "path": "libs/arm64-v8a/libRoosterNN.so",
+      "bytes": 2686384,
+      "compressed": 1080971,
+      "category": "libs",
+      "crc": 2342726945
+    },
+    {
+      "path": "libs/arm64-v8a/libVideoEditUtil.so",
+      "bytes": 5050928,
+      "compressed": 2517315,
+      "category": "libs",
+      "crc": 1938999459
+    },
+    {
+      "path": "libs/arm64-v8a/libWGRecorder.so",
+      "bytes": 433824,
+      "compressed": 156780,
+      "category": "libs",
+      "crc": 1474420977
+    },
+    {
+      "path": "libs/arm64-v8a/libace.so",
+      "bytes": 1029392,
+      "compressed": 330394,
+      "category": "libs",
+      "crc": 1490330956
+    },
+    {
+      "path": "libs/arm64-v8a/libaki_jsbind.so",
+      "bytes": 187600,
+      "compressed": 69653,
+      "category": "libs",
+      "crc": 2057266383
+    },
+    {
+      "path": "libs/arm64-v8a/libapm.so",
+      "bytes": 2523288,
+      "compressed": 1080249,
+      "category": "libs",
+      "crc": 1696674606
+    },
+    {
+      "path": "libs/arm64-v8a/libapollo.so",
+      "bytes": 11356296,
+      "compressed": 5003171,
+      "category": "libs",
+      "crc": 2463644849
+    },
+    {
+      "path": "libs/arm64-v8a/libavcodec.so",
+      "bytes": 1544008,
+      "compressed": 727326,
+      "category": "libs",
+      "crc": 2958600373
+    },
+    {
+      "path": "libs/arm64-v8a/libavformat.so",
+      "bytes": 1597752,
+      "compressed": 809171,
+      "category": "libs",
+      "crc": 1820707703
+    },
+    {
+      "path": "libs/arm64-v8a/libavutil.so",
+      "bytes": 259928,
+      "compressed": 116768,
+      "category": "libs",
+      "crc": 1759418223
+    },
+    {
+      "path": "libs/arm64-v8a/libc++_shared.so",
+      "bytes": 1260632,
+      "compressed": 445769,
+      "category": "libs",
+      "crc": 2524305489
+    },
+    {
+      "path": "libs/arm64-v8a/libcimgui.so",
+      "bytes": 1195808,
+      "compressed": 564803,
+      "category": "libs",
+      "crc": 4093114179
+    },
+    {
+      "path": "libs/arm64-v8a/libcrosCurl.so",
+      "bytes": 2867376,
+      "compressed": 1428982,
+      "category": "libs",
+      "crc": 182652934
+    },
+    {
+      "path": "libs/arm64-v8a/libgalatea.so",
+      "bytes": 5016792,
+      "compressed": 2037025,
+      "category": "libs",
+      "crc": 1845990585
+    },
+    {
+      "path": "libs/arm64-v8a/libgamemaster.so",
+      "bytes": 808000,
+      "compressed": 458983,
+      "category": "libs",
+      "crc": 48143427
+    },
+    {
+      "path": "libs/arm64-v8a/libgcloud.so",
+      "bytes": 20720520,
+      "compressed": 7014652,
+      "category": "libs",
+      "crc": 137334788
+    },
+    {
+      "path": "libs/arm64-v8a/libgcloudcore.so",
+      "bytes": 1210992,
+      "compressed": 468279,
+      "category": "libs",
+      "crc": 641939522
+    },
+    {
+      "path": "libs/arm64-v8a/libgsdk.so",
+      "bytes": 3037768,
+      "compressed": 1148298,
+      "category": "libs",
+      "crc": 292786212
+    },
+    {
+      "path": "libs/arm64-v8a/libgzip.so",
+      "bytes": 49640,
+      "compressed": 21745,
+      "category": "libs",
+      "crc": 4132998428
+    },
+    {
+      "path": "libs/arm64-v8a/libhippy.so",
+      "bytes": 6708656,
+      "compressed": 2013882,
+      "category": "libs",
+      "crc": 2521772689
+    },
+    {
+      "path": "libs/arm64-v8a/libhttpdns.so",
+      "bytes": 1990880,
+      "compressed": 703892,
+      "category": "libs",
+      "crc": 1609381009
+    },
+    {
+      "path": "libs/arm64-v8a/libhxid.so",
+      "bytes": 13336,
+      "compressed": 5537,
+      "category": "libs",
+      "crc": 3524289015
+    },
+    {
+      "path": "libs/arm64-v8a/libil2cpp.so",
+      "bytes": 246324736,
+      "compressed": 89557599,
+      "category": "libs",
+      "crc": 3371792057
+    },
+    {
+      "path": "libs/arm64-v8a/libitloginsdk.so",
+      "bytes": 15736,
+      "compressed": 5841,
+      "category": "libs",
+      "crc": 3104271919
+    },
+    {
+      "path": "libs/arm64-v8a/libmarsxlog.so",
+      "bytes": 501496,
+      "compressed": 228227,
+      "category": "libs",
+      "crc": 195901100
+    },
+    {
+      "path": "libs/arm64-v8a/libmmkv.so",
+      "bytes": 648880,
+      "compressed": 246416,
+      "category": "libs",
+      "crc": 2732836814
+    },
+    {
+      "path": "libs/arm64-v8a/libohos.so",
+      "bytes": 2321016,
+      "compressed": 1014111,
+      "category": "libs",
+      "crc": 3070913987
+    },
+    {
+      "path": "libs/arm64-v8a/libpandora.so",
+      "bytes": 468424,
+      "compressed": 173796,
+      "category": "libs",
+      "crc": 836176156
+    },
+    {
+      "path": "libs/arm64-v8a/libpixuiCurl.so",
+      "bytes": 1046408,
+      "compressed": 508683,
+      "category": "libs",
+      "crc": 2448173781
+    },
+    {
+      "path": "libs/arm64-v8a/libplugincroscurl.so",
+      "bytes": 301496,
+      "compressed": 106151,
+      "category": "libs",
+      "crc": 3170568828
+    },
+    {
+      "path": "libs/arm64-v8a/libpuerts.so",
+      "bytes": 18467952,
+      "compressed": 7375857,
+      "category": "libs",
+      "crc": 2208458942
+    },
+    {
+      "path": "libs/arm64-v8a/libpxauth.so",
+      "bytes": 1023384,
+      "compressed": 512552,
+      "category": "libs",
+      "crc": 924644730
+    },
+    {
+      "path": "libs/arm64-v8a/libqimeihar.so",
+      "bytes": 3190536,
+      "compressed": 1838484,
+      "category": "libs",
+      "crc": 3108498396
+    },
+    {
+      "path": "libs/arm64-v8a/libsaf.so",
+      "bytes": 1756664,
+      "compressed": 735016,
+      "category": "libs",
+      "crc": 3327910509
+    },
+    {
+      "path": "libs/arm64-v8a/libscreenrecord.so",
+      "bytes": 202584,
+      "compressed": 79151,
+      "category": "libs",
+      "crc": 2411593864
+    },
+    {
+      "path": "libs/arm64-v8a/libselfadaption.so",
+      "bytes": 388856,
+      "compressed": 137758,
+      "category": "libs",
+      "crc": 1478070060
+    },
+    {
+      "path": "libs/arm64-v8a/libtdatamaster.so",
+      "bytes": 945200,
+      "compressed": 376589,
+      "category": "libs",
+      "crc": 2028279782
+    },
+    {
+      "path": "libs/arm64-v8a/libtersafe.so",
+      "bytes": 2757504,
+      "compressed": 1160585,
+      "category": "libs",
+      "crc": 1938955255
+    },
+    {
+      "path": "libs/arm64-v8a/libtgpa.so",
+      "bytes": 1019376,
+      "compressed": 333149,
+      "category": "libs",
+      "crc": 2382432805
+    },
+    {
+      "path": "libs/arm64-v8a/libtpnscipher.so",
+      "bytes": 70984,
+      "compressed": 33683,
+      "category": "libs",
+      "crc": 3408169108
+    },
+    {
+      "path": "libs/arm64-v8a/libtpnsmqttasync.so",
+      "bytes": 737864,
+      "compressed": 283479,
+      "category": "libs",
+      "crc": 3097379690
+    },
+    {
+      "path": "libs/arm64-v8a/libtvcoresdk.so",
+      "bytes": 5952,
+      "compressed": 2092,
+      "category": "libs",
+      "crc": 643883108
+    },
+    {
+      "path": "libs/arm64-v8a/libunity.so",
+      "bytes": 31407808,
+      "compressed": 13945582,
+      "category": "libs",
+      "crc": 3933607949
+    },
+    {
+      "path": "libs/arm64-v8a/libuppayment.so",
+      "bytes": 245024,
+      "compressed": 102760,
+      "category": "libs",
+      "crc": 1515194934
+    },
+    {
+      "path": "libs/arm64-v8a/libvideotexture.so",
+      "bytes": 57696,
+      "compressed": 25130,
+      "category": "libs",
+      "crc": 3472424704
+    },
+    {
+      "path": "mock/added/file_0.bin",
+      "bytes": 102400,
+      "compressed": 51200,
+      "category": "other",
+      "crc": 999
+    },
+    {
+      "path": "mock/added/file_1.bin",
+      "bytes": 204800,
+      "compressed": 102400,
+      "category": "other",
+      "crc": 1000
+    },
+    {
+      "path": "mock/added/file_2.bin",
+      "bytes": 307200,
+      "compressed": 153600,
+      "category": "other",
+      "crc": 1001
+    },
+    {
+      "path": "mock/added/file_3.bin",
+      "bytes": 409600,
+      "compressed": 204800,
+      "category": "other",
+      "crc": 1002
+    },
+    {
+      "path": "mock/added/file_4.bin",
+      "bytes": 512000,
+      "compressed": 256000,
+      "category": "other",
+      "crc": 1003
+    }
+  ],
+  "permissions": [
+    {
+      "name": "ohos.permission.GET_NETWORK_INFO",
+      "sensitive": true,
+      "reason": "$string:app_name",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.GET_WIFI_INFO",
+      "sensitive": true,
+      "reason": "$string:app_name",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.LOCATION",
+      "sensitive": true,
+      "reason": "$string:Permission_Location",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.MICROPHONE",
+      "sensitive": true,
+      "reason": "$string:Permission_Microphone",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.READ_CALENDAR",
+      "sensitive": true,
+      "reason": "$string:calendar_permission",
+      "usedScene": {
+        "abilities": [
+          "EntryAbility"
+        ],
+        "when": "inuse"
+      }
+    },
+    {
+      "name": "ohos.permission.WRITE_CALENDAR",
+      "sensitive": true,
+      "reason": "$string:Permission_WriteCalender",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.ACCELEROMETER",
+      "sensitive": false,
+      "reason": "$string:app_name",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.APP_TRACKING_CONSENT",
+      "sensitive": false,
+      "reason": "$string:Permission_APP_TRACKING_CONSENT",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.GET_BUNDLE_INFO",
+      "sensitive": false
+    },
+    {
+      "name": "ohos.permission.GYROSCOPE",
+      "sensitive": false,
+      "reason": "$string:app_name",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.INTERNET",
+      "sensitive": false,
+      "reason": "$string:app_name",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.KEEP_BACKGROUND_RUNNING",
+      "sensitive": false
+    },
+    {
+      "name": "ohos.permission.READ_PASTEBOARD",
+      "sensitive": false,
+      "reason": "$string:Permission_PASTEBOARD",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.STORE_PERSISTENT_DATA",
+      "sensitive": false,
+      "reason": "$string:app_name",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.VIBRATE",
+      "sensitive": false,
+      "reason": "$string:app_name",
+      "usedScene": {
+        "abilities": [
+          "SGameAbility"
+        ],
+        "when": "always"
+      }
+    },
+    {
+      "name": "ohos.permission.CAMERA",
+      "sensitive": true,
+      "reason": "$string:newcam"
+    },
+    {
+      "name": "ohos.permission.INTERNET",
+      "sensitive": false
+    }
+  ],
+  "resources": {
+    "images": {
+      "count": 157,
+      "bytes": 3343865,
+      "topLargest": [
+        {
+          "path": "resources/rawfile/Data/StreamingAssets/launcher_bg.png",
+          "bytes": 662780
+        },
+        {
+          "path": "resources/rawfile/Data/StreamingAssets/so_download_bg.png",
+          "bytes": 476776
+        },
+        {
+          "path": "resources/base/media/app_icon.png",
+          "bytes": 304541
+        },
+        {
+          "path": "resources/base/media/app_splash.png",
+          "bytes": 304541
+        },
+        {
+          "path": "resources/base/media/icon.png",
+          "bytes": 304541
+        },
+        {
+          "path": "resources/rawfile/images/es_main_bg@3x.png",
+          "bytes": 225672
+        },
+        {
+          "path": "resources/base/media/bugsubmit_icon.png",
+          "bytes": 146047
+        },
+        {
+          "path": "resources/base/media/bssg_ioa_icon.png",
+          "bytes": 113136
+        },
+        {
+          "path": "resources/base/media/background.png",
+          "bytes": 57364
+        },
+        {
+          "path": "resources/base/media/midas_alert_success_icon_bg_land.png",
+          "bytes": 49096
+        }
+      ]
+    },
+    "strings": {
+      "count": 0,
+      "locales": []
+    },
+    "media": {
+      "count": 4,
+      "bytes": 6303998
+    },
+    "rawResIndex": {
+      "bytes": 33512
+    }
+  },
+  "rawfile": {
+    "fileCount": 349,
+    "totalBytes": 3335543195,
+    "topLevelGroups": [
+      {
+        "path": "Data/Package",
+        "bytes": 2965602304,
+        "fileCount": 194,
+        "ratio": 0.8890912605915151
+      },
+      {
+        "path": "8400",
+        "bytes": 131250298,
+        "fileCount": 2,
+        "ratio": 0.03934900264423048
+      },
+      {
+        "path": "9300",
+        "bytes": 128064395,
+        "fileCount": 2,
+        "ratio": 0.03839386496087634
+      },
+      {
+        "path": "Data/Managed",
+        "bytes": 58187909,
+        "fileCount": 4,
+        "ratio": 0.01744480751657602
+      },
+      {
+        "path": "Data/Csb",
+        "bytes": 22730170,
+        "fileCount": 2,
+        "ratio": 0.006814533247260196
+      },
+      {
+        "path": "(root)",
+        "bytes": 13412872,
+        "fileCount": 33,
+        "ratio": 0.00402119571412116
+      },
+      {
+        "path": "Data/StreamingAssets",
+        "bytes": 7761120,
+        "fileCount": 70,
+        "ratio": 0.0023267934325161693
+      },
+      {
+        "path": "Data/resources.assets.resS",
+        "bytes": 2542384,
+        "fileCount": 1,
+        "ratio": 0.000762209886476976
+      },
+      {
+        "path": "Data/resources.assets",
+        "bytes": 1796992,
+        "fileCount": 1,
+        "ratio": 0.0005387404374477004
+      },
+      {
+        "path": "vue2",
+        "bytes": 1122729,
+        "fileCount": 9,
+        "ratio": 0.0003365955511183239
+      },
+      {
+        "path": "Data/unity default resources",
+        "bytes": 1056272,
+        "fileCount": 1,
+        "ratio": 0.00031667165983140564
+      },
+      {
+        "path": "msdkpix",
+        "bytes": 721045,
+        "fileCount": 7,
+        "ratio": 0.00021617018813632841
+      },
+      {
+        "path": "Data/Resources",
+        "bytes": 559288,
+        "fileCount": 1,
+        "ratio": 0.0001676752382755457
+      },
+      {
+        "path": "Data/globalgamemanagers",
+        "bytes": 328448,
+        "fileCount": 1,
+        "ratio": 0.00009846911906053131
+      },
+      {
+        "path": "images",
+        "bytes": 225672,
+        "fileCount": 1,
+        "ratio": 0.00006765674638490179
+      },
+      {
+        "path": "Data/level4",
+        "bytes": 84188,
+        "fileCount": 1,
+        "ratio": 0.00002523966714812698
+      },
+      {
+        "path": "Data/globalgamemanagers.assets",
+        "bytes": 72368,
+        "fileCount": 1,
+        "ratio": 0.000021696016441483978
+      },
+      {
+        "path": "Data/ScriptingAssemblies.json",
+        "bytes": 4770,
+        "fileCount": 1,
+        "ratio": 0.000001430051934914307
+      },
+      {
+        "path": "Data/RuntimeInitializeOnLoads.json",
+        "bytes": 3496,
+        "fileCount": 1,
+        "ratio": 0.0000010481051497820582
+      },
+      {
+        "path": "Data/level0",
+        "bytes": 3384,
+        "fileCount": 1,
+        "ratio": 0.0000010145274104297725
+      },
+      {
+        "path": "Data/level2",
+        "bytes": 2032,
+        "fileCount": 1,
+        "ratio": 6.091961282486105e-7
+      },
+      {
+        "path": "Data/level5",
+        "bytes": 1972,
+        "fileCount": 1,
+        "ratio": 5.912080535956004e-7
+      },
+      {
+        "path": "Data/level7",
+        "bytes": 1824,
+        "fileCount": 1,
+        "ratio": 5.468374694515087e-7
+      },
+      {
+        "path": "Data/level1",
+        "bytes": 1792,
+        "fileCount": 1,
+        "ratio": 5.372438296365699e-7
+      },
+      {
+        "path": "Data/level3",
+        "bytes": 1520,
+        "fileCount": 1,
+        "ratio": 4.5569789120959053e-7
+      },
+      {
+        "path": "Data/level6",
+        "bytes": 1228,
+        "fileCount": 1,
+        "ratio": 3.6815592789827445e-7
+      },
+      {
+        "path": "Data/sharedassets0.assets",
+        "bytes": 421,
+        "fileCount": 1,
+        "ratio": 1.262163238152879e-7
+      },
+      {
+        "path": "Data/sharedassets7.assets",
+        "bytes": 349,
+        "fileCount": 1,
+        "ratio": 1.0463063423167572e-7
+      },
+      {
+        "path": "Data/sharedassets1.assets",
+        "bytes": 337,
+        "fileCount": 1,
+        "ratio": 1.0103301930107368e-7
+      },
+      {
+        "path": "Data/sharedassets2.assets",
+        "bytes": 337,
+        "fileCount": 1,
+        "ratio": 1.0103301930107368e-7
+      },
+      {
+        "path": "Data/sharedassets4.assets",
+        "bytes": 289,
+        "fileCount": 1,
+        "ratio": 8.664255957866557e-8
+      },
+      {
+        "path": "Data/sharedassets3.assets",
+        "bytes": 277,
+        "fileCount": 1,
+        "ratio": 8.304494464806354e-8
+      },
+      {
+        "path": "Data/sharedassets5.assets",
+        "bytes": 277,
+        "fileCount": 1,
+        "ratio": 8.304494464806354e-8
+      },
+      {
+        "path": "Data/sharedassets6.assets",
+        "bytes": 277,
+        "fileCount": 1,
+        "ratio": 8.304494464806354e-8
+      },
+      {
+        "path": "Data/boot.config",
+        "bytes": 159,
+        "fileCount": 1,
+        "ratio": 4.7668397830476905e-8
+      }
+    ],
+    "byExtension": [
+      {
+        "ext": ".db",
+        "bytes": 2965602304,
+        "fileCount": 194,
+        "ratio": 0.8890912605915151
+      },
+      {
+        "ext": ".dla",
+        "bytes": 254768629,
+        "fileCount": 2,
+        "ratio": 0.07637995196161745
+      },
+      {
+        "ext": ".dat",
+        "bytes": 58187909,
+        "fileCount": 4,
+        "ratio": 0.01744480751657602
+      },
+      {
+        "ext": ".csb",
+        "bytes": 22730170,
+        "fileCount": 2,
+        "ratio": 0.006814533247260196
+      },
+      {
+        "ext": ".nn",
+        "bytes": 9823828,
+        "fileCount": 9,
+        "ratio": 0.0029451958573721904
+      },
+      {
+        "ext": ".mp4",
+        "bytes": 4710041,
+        "fileCount": 2,
+        "ratio": 0.00141207615211231
+      },
+      {
+        "ext": ".so",
+        "bytes": 4546064,
+        "fileCount": 2,
+        "ratio": 0.0013629156434893657
+      },
+      {
+        "ext": "(none)",
+        "bytes": 2763154,
+        "fileCount": 19,
+        "ratio": 0.0008283970071627269
+      },
+      {
+        "ext": ".ress",
+        "bytes": 2542384,
+        "fileCount": 1,
+        "ratio": 0.000762209886476976
+      },
+      {
+        "ext": ".bin",
+        "bytes": 2312680,
+        "fileCount": 1,
+        "ratio": 0.0006933443414753919
+      },
+      {
+        "ext": ".assets",
+        "bytes": 1871924,
+        "fileCount": 10,
+        "ratio": 0.0005612051442793563
+      },
+      {
+        "ext": ".png",
+        "bytes": 1448412,
+        "fileCount": 15,
+        "ratio": 0.0004342357197385957
+      },
+      {
+        "ext": ".mnn",
+        "bytes": 1200452,
+        "fileCount": 2,
+        "ratio": 0.00035989700322258905
+      },
+      {
+        "ext": ".txt",
+        "bytes": 1150672,
+        "fileCount": 44,
+        "ratio": 0.00034497289728547496
+      },
+      {
+        "ext": ".js",
+        "bytes": 1054697,
+        "fileCount": 6,
+        "ratio": 0.0003161994728717641
+      },
+      {
+        "ext": ".wav",
+        "bytes": 539946,
+        "fileCount": 1,
+        "ratio": 0.00016187648260990365
+      },
+      {
+        "ext": ".gl",
+        "bytes": 95070,
+        "fileCount": 5,
+        "ratio": 0.000028502104287694585
+      },
+      {
+        "ext": ".jpg",
+        "bytes": 75375,
+        "fileCount": 3,
+        "ratio": 0.000022597518782844005
+      },
+      {
+        "ext": ".json",
+        "bytes": 48148,
+        "fileCount": 14,
+        "ratio": 0.000014434830306552213
+      },
+      {
+        "ext": ".html",
+        "bytes": 29275,
+        "fileCount": 1,
+        "ratio": 0.000008776681424447871
+      },
+      {
+        "ext": ".ini",
+        "bytes": 14183,
+        "fileCount": 3,
+        "ratio": 0.000004252081046727383
+      },
+      {
+        "ext": ".bytessv",
+        "bytes": 12576,
+        "fileCount": 1,
+        "ratio": 0.000003770300447270928
+      },
+      {
+        "ext": ".py",
+        "bytes": 8982,
+        "fileCount": 3,
+        "ratio": 0.00000269281477555562
+      },
+      {
+        "ext": ".xml",
+        "bytes": 3549,
+        "fileCount": 1,
+        "ratio": 0.0000010639946157255506
+      },
+      {
+        "ext": ".lv",
+        "bytes": 1000,
+        "fileCount": 1,
+        "ratio": 2.9980124421683587e-7
+      },
+      {
+        "ext": ".config",
+        "bytes": 962,
+        "fileCount": 2,
+        "ratio": 2.884087969365961e-7
+      },
+      {
+        "ext": ".conf",
+        "bytes": 809,
+        "fileCount": 1,
+        "ratio": 2.425392065714202e-7
+      }
+    ],
+    "categories": [
+      {
+        "category": "config-db",
+        "bytes": 2965602304,
+        "fileCount": 194,
+        "ratio": 0.8890912605915151
+      },
+      {
+        "category": "ai-model",
+        "bytes": 265792909,
+        "fileCount": 13,
+        "ratio": 0.07968504482221224
+      },
+      {
+        "category": "il2cpp-metadata",
+        "bytes": 57755728,
+        "fileCount": 1,
+        "ratio": 0.017315239115049147
+      },
+      {
+        "category": "other",
+        "bytes": 34454664,
+        "fileCount": 36,
+        "ratio": 0.010329551136273023
+      },
+      {
+        "category": "streaming-asset",
+        "bytes": 7761120,
+        "fileCount": 70,
+        "ratio": 0.0023267934325161693
+      },
+      {
+        "category": "data",
+        "bytes": 2770636,
+        "fileCount": 15,
+        "ratio": 0.0008306401200719573
+      },
+      {
+        "category": "script",
+        "bytes": 1054697,
+        "fileCount": 6,
+        "ratio": 0.0003161994728717641
+      },
+      {
+        "category": "image",
+        "bytes": 351137,
+        "fileCount": 14,
+        "ratio": 0.0001052713094905671
+      }
+    ],
+    "topFiles": [
+      {
+        "path": "Data/Package/builtin/9/9_0.db",
+        "bytes": 687177728,
+        "ratio": 0.2060167378524984,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/3002/3002_0.db",
+        "bytes": 565968896,
+        "ratio": 0.169678179208829,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/0/0_0.db",
+        "bytes": 542130176,
+        "ratio": 0.1625313012922922,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "8400/asr_model.dla",
+        "bytes": 128977266,
+        "ratio": 0.0386675448224858,
+        "ext": ".dla",
+        "category": "ai-model"
+      },
+      {
+        "path": "9300/asr_model.dla",
+        "bytes": 125791363,
+        "ratio": 0.037712407139131654,
+        "ext": ".dla",
+        "category": "ai-model"
+      },
+      {
+        "path": "Data/Package/builtin/9900/9900_0.db",
+        "bytes": 66469888,
+        "ratio": 0.01992775512535373,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Managed/Metadata/global-metadata.dat",
+        "bytes": 57755728,
+        "ratio": 0.017315239115049147,
+        "ext": ".dat",
+        "category": "il2cpp-metadata"
+      },
+      {
+        "path": "Data/Package/builtin/300100015900/300100015900_0.db",
+        "bytes": 45088768,
+        "ratio": 0.013517668746604254,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100012300/300100012300_0.db",
+        "bytes": 43565056,
+        "ratio": 0.01306085799317613,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100014000/300100014000_0.db",
+        "bytes": 41648128,
+        "ratio": 0.01248616059370204,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100053800/300100053800_0.db",
+        "bytes": 38240256,
+        "ratio": 0.011464476327970324,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100051800/300100051800_0.db",
+        "bytes": 32669696,
+        "ratio": 0.009794415508985787,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100013300/300100013300_0.db",
+        "bytes": 31457280,
+        "ratio": 0.009430931683677387,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100011200/300100011200_0.db",
+        "bytes": 30375936,
+        "ratio": 0.009106743407050977,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100015200/300100015200_0.db",
+        "bytes": 29032448,
+        "ratio": 0.008703964033060589,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100013700/300100013700_0.db",
+        "bytes": 27295744,
+        "ratio": 0.008183298013024233,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100052300/300100052300_0.db",
+        "bytes": 25542656,
+        "ratio": 0.0076577200494026285,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100015000/300100015000_0.db",
+        "bytes": 25493504,
+        "ratio": 0.007642984218646882,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100013100/300100013100_0.db",
+        "bytes": 25477120,
+        "ratio": 0.007638072275061633,
+        "ext": ".db",
+        "category": "config-db"
+      },
+      {
+        "path": "Data/Package/builtin/300100010900/300100010900_0.db",
+        "bytes": 25346048,
+        "ratio": 0.007598776726379645,
+        "ext": ".db",
+        "category": "config-db"
+      }
+    ],
+    "packages": [
+      {
+        "packageId": "9",
+        "bytes": 699006976,
+        "fileCount": 2
+      },
+      {
+        "packageId": "3002",
+        "bytes": 571834368,
+        "fileCount": 2
+      },
+      {
+        "packageId": "0",
+        "bytes": 561414144,
+        "fileCount": 2
+      },
+      {
+        "packageId": "9900",
+        "bytes": 67715072,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100015900",
+        "bytes": 45776896,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100012300",
+        "bytes": 44417024,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100014000",
+        "bytes": 42074112,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100053800",
+        "bytes": 38748160,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100051800",
+        "bytes": 33128448,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100013300",
+        "bytes": 31965184,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100011200",
+        "bytes": 30965760,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100015200",
+        "bytes": 29491200,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100013700",
+        "bytes": 27623424,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100015000",
+        "bytes": 26017792,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100013100",
+        "bytes": 26001408,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100052300",
+        "bytes": 25968640,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100010900",
+        "bytes": 25804800,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100010600",
+        "bytes": 25411584,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100012800",
+        "bytes": 22478848,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100012700",
+        "bytes": 22069248,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100012500",
+        "bytes": 21643264,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100054200",
+        "bytes": 19202048,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100011100",
+        "bytes": 19103744,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100011800",
+        "bytes": 18956288,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100018400",
+        "bytes": 17268736,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100018200",
+        "bytes": 17006592,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100013000",
+        "bytes": 16498688,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100050200",
+        "bytes": 15728640,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100013200",
+        "bytes": 15630336,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100010700",
+        "bytes": 15581184,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100017100",
+        "bytes": 15482880,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100017600",
+        "bytes": 14565376,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100012400",
+        "bytes": 14385152,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100057700",
+        "bytes": 14221312,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100050100",
+        "bytes": 14204928,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100011600",
+        "bytes": 14041088,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100053200",
+        "bytes": 13910016,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100016600",
+        "bytes": 13238272,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100015500",
+        "bytes": 13139968,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100015300",
+        "bytes": 12877824,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100012600",
+        "bytes": 11796480,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100013500",
+        "bytes": 11452416,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100015700",
+        "bytes": 10600448,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100014600",
+        "bytes": 10092544,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100011400",
+        "bytes": 9863168,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100052400",
+        "bytes": 9748480,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100011300",
+        "bytes": 9338880,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100013900",
+        "bytes": 8454144,
+        "fileCount": 2
+      },
+      {
+        "packageId": "305000000145",
+        "bytes": 8404992,
+        "fileCount": 2
+      },
+      {
+        "packageId": "300100013600",
+        "bytes": 8372224,
+        "fileCount": 2
+      }
+    ]
+  },
+  "nativeLibs": {
+    "architectures": [
+      "arm64-v8a"
+    ],
+    "libs": [
+      {
+        "arch": "arm64-v8a",
+        "name": "libace.so",
+        "bytes": 1029392
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libAkDelayWG.so",
+        "bytes": 12880
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libaki_jsbind.so",
+        "bytes": 187600
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libAkSoundEngine.so",
+        "bytes": 3295112
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libapm.so",
+        "bytes": 2523288
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libapollo.so",
+        "bytes": 11356296
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libavcodec.so",
+        "bytes": 1544008
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libavformat.so",
+        "bytes": 1597752
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libavutil.so",
+        "bytes": 259928
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libc++_shared.so",
+        "bytes": 1260632
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libcimgui.so",
+        "bytes": 1195808
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libCrashSight.so",
+        "bytes": 7356240
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libcrosCurl.so",
+        "bytes": 2867376
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libDWT.so",
+        "bytes": 5685264
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libgalatea.so",
+        "bytes": 5016792
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libGameCore.so",
+        "bytes": 97936720
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libgamemaster.so",
+        "bytes": 808000
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libgcloud.so",
+        "bytes": 20720520
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libgcloudcore.so",
+        "bytes": 1210992
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libGCloudVoice.so",
+        "bytes": 5690320
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libgsdk.so",
+        "bytes": 3037768
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libGVoicePlugin.so",
+        "bytes": 477128
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libgzip.so",
+        "bytes": 49640
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libhippy.so",
+        "bytes": 6708656
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libhttpdns.so",
+        "bytes": 1990880
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libhxid.so",
+        "bytes": 13336
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libil2cpp.so",
+        "bytes": 246324736
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libitloginsdk.so",
+        "bytes": 15736
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libLightProfiler.so",
+        "bytes": 117728
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libmarsxlog.so",
+        "bytes": 501496
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMMCodecSdk.so",
+        "bytes": 318896
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libmmkv.so",
+        "bytes": 648880
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMSDKPIXBeacon.so",
+        "bytes": 222824
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMSDKPIXCore.so",
+        "bytes": 2463352
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMSDKPIXLBS.so",
+        "bytes": 214536
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMSDKPIXQQ.so",
+        "bytes": 220384
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMSDKPIXWebView.so",
+        "bytes": 213992
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMSDKPIXWeChat.so",
+        "bytes": 223656
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMSDKPIXXG.so",
+        "bytes": 224664
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libMSDKUnityAdapter.so",
+        "bytes": 588424
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libohos.so",
+        "bytes": 2321016
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libpandora.so",
+        "bytes": 468424
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libPcdnTegTransSdk.so",
+        "bytes": 4834456
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libPixUI_Unity.so",
+        "bytes": 6353136
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libpixuiCurl.so",
+        "bytes": 1046408
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libPixVideo.so",
+        "bytes": 161008
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libPixVideoCore.so",
+        "bytes": 4604320
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libplugincroscurl.so",
+        "bytes": 301496
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libpuerts.so",
+        "bytes": 18467952
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libpxauth.so",
+        "bytes": 1023384
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libPxAuthAPI.so",
+        "bytes": 414400
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libqimeihar.so",
+        "bytes": 3190536
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libQtsFileSystemPlugin.so",
+        "bytes": 178232
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libQtskDB.so",
+        "bytes": 639272
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libQtsResourcesVolumePlugin.so",
+        "bytes": 214496
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libQtsVFS.so",
+        "bytes": 3336224
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libRoosterNN.so",
+        "bytes": 2686384
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libsaf.so",
+        "bytes": 1756664
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libscreenrecord.so",
+        "bytes": 202584
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libselfadaption.so",
+        "bytes": 388856
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libtdatamaster.so",
+        "bytes": 945200
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libtersafe.so",
+        "bytes": 2757504
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libtgpa.so",
+        "bytes": 1019376
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libtpnscipher.so",
+        "bytes": 70984
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libtpnsmqttasync.so",
+        "bytes": 737864
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libtvcoresdk.so",
+        "bytes": 5952
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libunity.so",
+        "bytes": 31407808
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libuppayment.so",
+        "bytes": 245024
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libVideoEditUtil.so",
+        "bytes": 5050928
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libvideotexture.so",
+        "bytes": 57696
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libWGRecorder.so",
+        "bytes": 433824
+      },
+      {
+        "arch": "arm64-v8a",
+        "name": "libnew.so",
+        "bytes": 2097152
+      }
+    ],
+    "totalBytes": 533550192
+  },
+  "abc": {
+    "extraAbcFiles": [],
+    "modulesAbc": {
+      "bytes": 8592088,
+      "hasSourceMap": false
+    }
+  },
+  "signature": {
+    "present": false,
+    "subject": "CN=A-mod"
+  },
+  "dependencies": {
+    "hsp": [],
+    "har": []
+  }
+}

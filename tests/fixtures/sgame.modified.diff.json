@@ -1,0 +1,1926 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-05-09T06:24:40.660Z",
+  "toolVersion": "0.1.0",
+  "left": {
+    "meta": {
+      "file": "C:\\Users\\windye\\Downloads\\SGame_OpenHarmony_smcs_test_Forcelog_11.4.1.1_r4219829_E3919849_LightProfiler_v8_il2cpp_Test_tg.shell.hap",
+      "fileSize": 3537889161,
+      "sha256": "37c236e98724ad84019162ee1c0876174e26037ce15644a9cfccd4db45e91d97",
+      "analyzedAt": "2026-05-09T06:24:23.656Z",
+      "toolVersion": "0.1.0"
+    },
+    "basic": {
+      "bundleName": "com.tencent.tmgp.sgametest",
+      "bundleType": "app",
+      "versionCode": 1104010101,
+      "versionName": "11.4.1.1",
+      "moduleName": "entry",
+      "moduleType": "entry",
+      "deviceTypes": [
+        "phone",
+        "tablet",
+        "2in1"
+      ],
+      "targetAPIVersion": 50000012,
+      "minAPIVersion": 50000012,
+      "abilities": [
+        {
+          "name": "SGameAbility",
+          "visible": true
+        }
+      ],
+      "rawModuleJson": {
+        "app": {
+          "iconId": 16777217,
+          "minAPIVersion": 50000012,
+          "icon": "$media:app_icon",
+          "label": "$string:app_name",
+          "bundleType": "app",
+          "versionName": "11.4.1.1",
+          "versionCode": 1104010101,
+          "appEnvironments": [],
+          "compileSdkType": "HarmonyOS",
+          "labelId": 16777216,
+          "compileSdkVersion": "5.0.0.71",
+          "targetAPIVersion": 50000012,
+          "vendor": "Tencent",
+          "bundleName": "com.tencent.tmgp.sgametest",
+          "distributedNotificationEnabled": true,
+          "apiReleaseType": "Release"
+        },
+        "module": {
+          "virtualMachine": "ark12.0.2.0",
+          "mainElement": "SGameAbility",
+          "metadata": [
+            {
+              "name": "client_id",
+              "value": "111573583"
+            },
+            {
+              "name": "app_id",
+              "value": "5765880207855382439"
+            },
+            {
+              "name": "ArkTSPartialUpdate",
+              "value": "true"
+            },
+            {
+              "name": "partialUpdateStrictCheck",
+              "value": "warn"
+            },
+            {
+              "name": "ITLoginAppID",
+              "value": "smoba"
+            },
+            {
+              "name": "ITLoginAppKey",
+              "value": "f5d185b0508258ecbdd646d51a56dca2"
+            },
+            {
+              "name": "UseTsHar",
+              "value": "true"
+            },
+            {
+              "name": "half_leading",
+              "value": "true"
+            }
+          ],
+          "installationFree": false,
+          "deliveryWithInstall": true,
+          "requestPermissions": [
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.INTERNET"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.VIBRATE"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.GET_NETWORK_INFO"
+            },
+            {
+              "reason": "$string:Permission_Location",
+              "reasonId": 16777224,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.LOCATION"
+            },
+            {
+              "reason": "$string:Permission_ApproximatelyLocation",
+              "reasonId": 16777223,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.APPROXIMATELY_LOCATION"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.ACCELEROMETER"
+            },
+            {
+              "reason": "$string:Permission_Microphone",
+              "reasonId": 16777225,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.MICROPHONE"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.GET_WIFI_INFO"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.STORE_PERSISTENT_DATA"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.GYROSCOPE"
+            },
+            {
+              "reason": "$string:Permission_WriteCalender",
+              "reasonId": 16777228,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.WRITE_CALENDAR"
+            },
+            {
+              "reason": "$string:Permission_PASTEBOARD",
+              "reasonId": 16777226,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.READ_PASTEBOARD"
+            },
+            {
+              "reason": "$string:Permission_APP_TRACKING_CONSENT",
+              "reasonId": 16777222,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.APP_TRACKING_CONSENT"
+            },
+            {
+              "reason": "$string:calendar_permission",
+              "reasonId": 16777253,
+              "usedScene": {
+                "abilities": [
+                  "EntryAbility"
+                ],
+                "when": "inuse"
+              },
+              "name": "ohos.permission.READ_CALENDAR"
+            },
+            {
+              "name": "ohos.permission.KEEP_BACKGROUND_RUNNING"
+            },
+            {
+              "name": "ohos.permission.GET_BUNDLE_INFO"
+            }
+          ],
+          "description": "$string:module_desc",
+          "querySchemes": [
+            "weixin",
+            "wxopensdk",
+            "https",
+            "qqopenapi",
+            "uppaywallet",
+            "uppaysdk",
+            "snssdk1128",
+            "bilibili",
+            "smobagamehelper",
+            "xhsdiscover",
+            "kwai"
+          ],
+          "compileMode": "esmodule",
+          "type": "entry",
+          "dependencies": [],
+          "abilities": [
+            {
+              "iconId": 16777235,
+              "orientation": "auto_rotation_landscape",
+              "startWindowIconId": 16777249,
+              "visible": true,
+              "backgroundModes": [
+                "audioRecording",
+                "audioPlayback"
+              ],
+              "icon": "$media:icon",
+              "startWindowIcon": "$media:startWindowIcon_black",
+              "startWindowBackgroundId": 16777231,
+              "description": "$string:EntryAbility_desc",
+              "label": "$string:EntryAbility_label",
+              "skills": [
+                {
+                  "entities": [
+                    "entity.system.home"
+                  ],
+                  "actions": [
+                    "action.system.home",
+                    "wxentity.action.open"
+                  ]
+                },
+                {
+                  "uris": [
+                    {
+                      "scheme": "tpns",
+                      "host": "com.tencent.tmgp.sgame.hw"
+                    },
+                    {
+                      "scheme": "stpns",
+                      "host": "com.tencent.tmgp.sgame.hw"
+                    }
+                  ],
+                  "actions": [
+                    ""
+                  ]
+                },
+                {
+                  "uris": [
+                    {
+                      "scheme": "tencent1104466820",
+                      "host": "www.sgame.com"
+                    },
+                    {
+                      "scheme": "gwallet100703379"
+                    },
+                    {
+                      "scheme": "tencentmsdk1104466820"
+                    },
+                    {
+                      "scheme": "smoba"
+                    },
+                    {
+                      "scheme": "smopa1104466820"
+                    },
+                    {
+                      "scheme": "itogin3-com_tencent_tmgp_sgame_hw"
+                    },
+                    {
+                      "scheme": "kwaisdk",
+                      "host": "router"
+                    },
+                    {
+                      "scheme": "midaspay"
+                    }
+                  ],
+                  "actions": [
+                    "action.uppay.open"
+                  ]
+                },
+                {
+                  "uris": [
+                    {
+                      "pathRegex": "\\b(auth|share)\\b",
+                      "scheme": "qqopenapi",
+                      "host": "1104466820"
+                    }
+                  ],
+                  "entities": [
+                    "entity.system.browser",
+                    "entity.system.home"
+                  ],
+                  "actions": [
+                    "ohos.want.action.viewData",
+                    "action.system.home"
+                  ]
+                }
+              ],
+              "srcEntry": "./ets/ability/SGameAbility.ets",
+              "descriptionId": 16777220,
+              "labelId": 16777221,
+              "startWindowBackground": "$color:start_window_background_black",
+              "name": "SGameAbility",
+              "supportWindowMode": [
+                "fullscreen"
+              ]
+            }
+          ],
+          "deviceTypes": [
+            "phone",
+            "tablet",
+            "2in1"
+          ],
+          "pages": "$profile:main_pages",
+          "descriptionId": 16777229,
+          "name": "entry",
+          "compressNativeLibs": true,
+          "packageName": "entry"
+        }
+      },
+      "rawPackInfo": {
+        "summary": {
+          "app": {
+            "bundleName": "com.tencent.tmgp.sgametest",
+            "bundleType": "app",
+            "version": {
+              "code": 1104010101,
+              "name": "11.4.1.1"
+            }
+          },
+          "modules": [
+            {
+              "mainAbility": "SGameAbility",
+              "deviceType": [
+                "phone",
+                "tablet",
+                "2in1"
+              ],
+              "abilities": [
+                {
+                  "name": "SGameAbility",
+                  "label": "$string:EntryAbility_label",
+                  "visible": true
+                }
+              ],
+              "distro": {
+                "moduleType": "entry",
+                "installationFree": false,
+                "deliveryWithInstall": true,
+                "moduleName": "entry"
+              },
+              "apiVersion": {
+                "compatible": 12,
+                "releaseType": "Release",
+                "target": 12
+              }
+            }
+          ]
+        },
+        "packages": [
+          {
+            "deviceType": [
+              "phone",
+              "tablet",
+              "2in1"
+            ],
+            "moduleType": "entry",
+            "deliveryWithInstall": true,
+            "name": "entry-default"
+          }
+        ]
+      }
+    }
+  },
+  "right": {
+    "meta": {
+      "file": "C:\\Users\\windye\\Downloads\\SGame_OpenHarmony_smcs_test_Forcelog_11.4.1.1_r4219829_E3919849_LightProfiler_v8_il2cpp_Test_tg.shell.mock-mod.hap",
+      "fileSize": 3537889161,
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "analyzedAt": "2026-05-09T06:24:23.656Z",
+      "toolVersion": "0.1.0"
+    },
+    "basic": {
+      "bundleName": "com.tencent.tmgp.sgametest",
+      "bundleType": "app",
+      "versionCode": 1104010102,
+      "versionName": "11.4.1.1.test",
+      "moduleName": "entry",
+      "moduleType": "entry",
+      "deviceTypes": [
+        "phone",
+        "tablet",
+        "2in1"
+      ],
+      "targetAPIVersion": 50000012,
+      "minAPIVersion": 50000012,
+      "abilities": [
+        {
+          "name": "SGameAbility",
+          "visible": true
+        }
+      ],
+      "rawModuleJson": {
+        "app": {
+          "iconId": 16777217,
+          "minAPIVersion": 50000012,
+          "icon": "$media:app_icon",
+          "label": "$string:app_name",
+          "bundleType": "app",
+          "versionName": "11.4.1.1",
+          "versionCode": 1104010101,
+          "appEnvironments": [],
+          "compileSdkType": "HarmonyOS",
+          "labelId": 16777216,
+          "compileSdkVersion": "5.0.0.71",
+          "targetAPIVersion": 50000012,
+          "vendor": "Tencent",
+          "bundleName": "com.tencent.tmgp.sgametest",
+          "distributedNotificationEnabled": true,
+          "apiReleaseType": "Release"
+        },
+        "module": {
+          "virtualMachine": "ark12.0.2.0",
+          "mainElement": "SGameAbility",
+          "metadata": [
+            {
+              "name": "client_id",
+              "value": "111573583"
+            },
+            {
+              "name": "app_id",
+              "value": "5765880207855382439"
+            },
+            {
+              "name": "ArkTSPartialUpdate",
+              "value": "true"
+            },
+            {
+              "name": "partialUpdateStrictCheck",
+              "value": "warn"
+            },
+            {
+              "name": "ITLoginAppID",
+              "value": "smoba"
+            },
+            {
+              "name": "ITLoginAppKey",
+              "value": "f5d185b0508258ecbdd646d51a56dca2"
+            },
+            {
+              "name": "UseTsHar",
+              "value": "true"
+            },
+            {
+              "name": "half_leading",
+              "value": "true"
+            }
+          ],
+          "installationFree": false,
+          "deliveryWithInstall": true,
+          "requestPermissions": [
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.INTERNET"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.VIBRATE"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.GET_NETWORK_INFO"
+            },
+            {
+              "reason": "$string:Permission_Location",
+              "reasonId": 16777224,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.LOCATION"
+            },
+            {
+              "reason": "$string:Permission_ApproximatelyLocation",
+              "reasonId": 16777223,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.APPROXIMATELY_LOCATION"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.ACCELEROMETER"
+            },
+            {
+              "reason": "$string:Permission_Microphone",
+              "reasonId": 16777225,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.MICROPHONE"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.GET_WIFI_INFO"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.STORE_PERSISTENT_DATA"
+            },
+            {
+              "reason": "$string:app_name",
+              "reasonId": 16777216,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.GYROSCOPE"
+            },
+            {
+              "reason": "$string:Permission_WriteCalender",
+              "reasonId": 16777228,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.WRITE_CALENDAR"
+            },
+            {
+              "reason": "$string:Permission_PASTEBOARD",
+              "reasonId": 16777226,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.READ_PASTEBOARD"
+            },
+            {
+              "reason": "$string:Permission_APP_TRACKING_CONSENT",
+              "reasonId": 16777222,
+              "usedScene": {
+                "abilities": [
+                  "SGameAbility"
+                ],
+                "when": "always"
+              },
+              "name": "ohos.permission.APP_TRACKING_CONSENT"
+            },
+            {
+              "reason": "$string:calendar_permission",
+              "reasonId": 16777253,
+              "usedScene": {
+                "abilities": [
+                  "EntryAbility"
+                ],
+                "when": "inuse"
+              },
+              "name": "ohos.permission.READ_CALENDAR"
+            },
+            {
+              "name": "ohos.permission.KEEP_BACKGROUND_RUNNING"
+            },
+            {
+              "name": "ohos.permission.GET_BUNDLE_INFO"
+            }
+          ],
+          "description": "$string:module_desc",
+          "querySchemes": [
+            "weixin",
+            "wxopensdk",
+            "https",
+            "qqopenapi",
+            "uppaywallet",
+            "uppaysdk",
+            "snssdk1128",
+            "bilibili",
+            "smobagamehelper",
+            "xhsdiscover",
+            "kwai"
+          ],
+          "compileMode": "esmodule",
+          "type": "entry",
+          "dependencies": [],
+          "abilities": [
+            {
+              "iconId": 16777235,
+              "orientation": "auto_rotation_landscape",
+              "startWindowIconId": 16777249,
+              "visible": true,
+              "backgroundModes": [
+                "audioRecording",
+                "audioPlayback"
+              ],
+              "icon": "$media:icon",
+              "startWindowIcon": "$media:startWindowIcon_black",
+              "startWindowBackgroundId": 16777231,
+              "description": "$string:EntryAbility_desc",
+              "label": "$string:EntryAbility_label",
+              "skills": [
+                {
+                  "entities": [
+                    "entity.system.home"
+                  ],
+                  "actions": [
+                    "action.system.home",
+                    "wxentity.action.open"
+                  ]
+                },
+                {
+                  "uris": [
+                    {
+                      "scheme": "tpns",
+                      "host": "com.tencent.tmgp.sgame.hw"
+                    },
+                    {
+                      "scheme": "stpns",
+                      "host": "com.tencent.tmgp.sgame.hw"
+                    }
+                  ],
+                  "actions": [
+                    ""
+                  ]
+                },
+                {
+                  "uris": [
+                    {
+                      "scheme": "tencent1104466820",
+                      "host": "www.sgame.com"
+                    },
+                    {
+                      "scheme": "gwallet100703379"
+                    },
+                    {
+                      "scheme": "tencentmsdk1104466820"
+                    },
+                    {
+                      "scheme": "smoba"
+                    },
+                    {
+                      "scheme": "smopa1104466820"
+                    },
+                    {
+                      "scheme": "itogin3-com_tencent_tmgp_sgame_hw"
+                    },
+                    {
+                      "scheme": "kwaisdk",
+                      "host": "router"
+                    },
+                    {
+                      "scheme": "midaspay"
+                    }
+                  ],
+                  "actions": [
+                    "action.uppay.open"
+                  ]
+                },
+                {
+                  "uris": [
+                    {
+                      "pathRegex": "\\b(auth|share)\\b",
+                      "scheme": "qqopenapi",
+                      "host": "1104466820"
+                    }
+                  ],
+                  "entities": [
+                    "entity.system.browser",
+                    "entity.system.home"
+                  ],
+                  "actions": [
+                    "ohos.want.action.viewData",
+                    "action.system.home"
+                  ]
+                }
+              ],
+              "srcEntry": "./ets/ability/SGameAbility.ets",
+              "descriptionId": 16777220,
+              "labelId": 16777221,
+              "startWindowBackground": "$color:start_window_background_black",
+              "name": "SGameAbility",
+              "supportWindowMode": [
+                "fullscreen"
+              ]
+            }
+          ],
+          "deviceTypes": [
+            "phone",
+            "tablet",
+            "2in1"
+          ],
+          "pages": "$profile:main_pages",
+          "descriptionId": 16777229,
+          "name": "entry",
+          "compressNativeLibs": true,
+          "packageName": "entry"
+        }
+      },
+      "rawPackInfo": {
+        "summary": {
+          "app": {
+            "bundleName": "com.tencent.tmgp.sgametest",
+            "bundleType": "app",
+            "version": {
+              "code": 1104010101,
+              "name": "11.4.1.1"
+            }
+          },
+          "modules": [
+            {
+              "mainAbility": "SGameAbility",
+              "deviceType": [
+                "phone",
+                "tablet",
+                "2in1"
+              ],
+              "abilities": [
+                {
+                  "name": "SGameAbility",
+                  "label": "$string:EntryAbility_label",
+                  "visible": true
+                }
+              ],
+              "distro": {
+                "moduleType": "entry",
+                "installationFree": false,
+                "deliveryWithInstall": true,
+                "moduleName": "entry"
+              },
+              "apiVersion": {
+                "compatible": 12,
+                "releaseType": "Release",
+                "target": 12
+              }
+            }
+          ]
+        },
+        "packages": [
+          {
+            "deviceType": [
+              "phone",
+              "tablet",
+              "2in1"
+            ],
+            "moduleType": "entry",
+            "deliveryWithInstall": true,
+            "name": "entry-default"
+          }
+        ]
+      }
+    }
+  },
+  "summary": {
+    "totalSizeDelta": 41943040,
+    "compressedDelta": 0,
+    "fileCountDelta": 3,
+    "filesAdded": 5,
+    "filesRemoved": 5,
+    "filesChanged": 3,
+    "permissionsAdded": 1,
+    "permissionsRemoved": 1,
+    "versionLine": "11.4.1.1 (1104010101) → 11.4.1.1.test (1104010102)",
+    "identical": false
+  },
+  "basic": {
+    "changed": [
+      {
+        "field": "versionCode",
+        "from": 1104010101,
+        "to": 1104010102
+      },
+      {
+        "field": "versionName",
+        "from": "11.4.1.1",
+        "to": "11.4.1.1.test"
+      }
+    ]
+  },
+  "size": {
+    "total": {
+      "from": 3878530823,
+      "to": 3920473863,
+      "delta": 41943040,
+      "ratio": 0.010814156677903497
+    },
+    "compressed": {
+      "from": 3537889161,
+      "to": 3537889161,
+      "delta": 0,
+      "ratio": 0
+    },
+    "fileCount": {
+      "from": 570,
+      "to": 573,
+      "delta": 3,
+      "ratio": 0.005263157894736842
+    },
+    "breakdown": [
+      {
+        "category": "libs",
+        "fromBytes": 531453040,
+        "toBytes": 583881840,
+        "delta": 52428800,
+        "ratio": 0.0986518018600477
+      },
+      {
+        "category": "resources",
+        "fromBytes": 3338427201,
+        "toBytes": 3327941441,
+        "delta": -10485760,
+        "ratio": -0.0031409281582833594
+      },
+      {
+        "category": "ets",
+        "fromBytes": 8592088,
+        "toBytes": 8592088,
+        "delta": 0,
+        "ratio": 0
+      },
+      {
+        "category": "config",
+        "fromBytes": 58494,
+        "toBytes": 58494,
+        "delta": 0,
+        "ratio": 0
+      }
+    ]
+  },
+  "files": {
+    "added": [
+      {
+        "path": "mock/added/file_4.bin",
+        "bytes": 512000,
+        "category": "other"
+      },
+      {
+        "path": "mock/added/file_3.bin",
+        "bytes": 409600,
+        "category": "other"
+      },
+      {
+        "path": "mock/added/file_2.bin",
+        "bytes": 307200,
+        "category": "other"
+      },
+      {
+        "path": "mock/added/file_1.bin",
+        "bytes": 204800,
+        "category": "other"
+      },
+      {
+        "path": "mock/added/file_0.bin",
+        "bytes": 102400,
+        "category": "other"
+      }
+    ],
+    "removed": [
+      {
+        "path": "resources/base/media/bssg_bg_permission_dialog.png",
+        "bytes": 15909,
+        "category": "resources"
+      },
+      {
+        "path": "resources/base/media/bssg_bth_delete.png",
+        "bytes": 2650,
+        "category": "resources"
+      },
+      {
+        "path": "resources/base/media/bssg_bg_toggle_selected.png",
+        "bytes": 1581,
+        "category": "resources"
+      },
+      {
+        "path": "resources/base/media/bssg_bg_toggle_disabled.png",
+        "bytes": 510,
+        "category": "resources"
+      },
+      {
+        "path": "resources/base/media/bssg_bg_toggle.png",
+        "bytes": 161,
+        "category": "resources"
+      }
+    ],
+    "changed": [
+      {
+        "path": "resources/rawfile/8400/libasr_backend_api.so",
+        "fromBytes": 2273032,
+        "toBytes": 3321608,
+        "delta": 1048576,
+        "category": "resources"
+      },
+      {
+        "path": "resources/rawfile/9300/libasr_backend_api.so",
+        "fromBytes": 2273032,
+        "toBytes": 3321608,
+        "delta": 1048576,
+        "category": "resources"
+      },
+      {
+        "path": "libs/arm64-v8a/libAkDelayWG.so",
+        "fromBytes": 12880,
+        "toBytes": 1061456,
+        "delta": 1048576,
+        "category": "libs"
+      }
+    ],
+    "totals": {
+      "added": 5,
+      "removed": 5,
+      "changed": 3,
+      "unchanged": 562
+    }
+  },
+  "permissions": {
+    "added": [
+      {
+        "name": "ohos.permission.CAMERA",
+        "sensitive": true,
+        "reason": "$string:newcam"
+      }
+    ],
+    "removed": [
+      {
+        "name": "ohos.permission.APPROXIMATELY_LOCATION",
+        "sensitive": true,
+        "reason": "$string:Permission_ApproximatelyLocation",
+        "usedScene": {
+          "abilities": [
+            "SGameAbility"
+          ],
+          "when": "always"
+        }
+      }
+    ],
+    "unchanged": 16
+  },
+  "resources": {
+    "images": {
+      "count": {
+        "from": 157,
+        "to": 157,
+        "delta": 0,
+        "ratio": 0
+      },
+      "bytes": {
+        "from": 3343865,
+        "to": 3343865,
+        "delta": 0,
+        "ratio": 0
+      }
+    },
+    "strings": {
+      "count": {
+        "from": 0,
+        "to": 0,
+        "delta": 0,
+        "ratio": 0
+      },
+      "localesAdded": [],
+      "localesRemoved": []
+    },
+    "media": {
+      "count": {
+        "from": 4,
+        "to": 4,
+        "delta": 0,
+        "ratio": 0
+      },
+      "bytes": {
+        "from": 6303998,
+        "to": 6303998,
+        "delta": 0,
+        "ratio": 0
+      }
+    }
+  },
+  "rawfile": {
+    "fileCount": {
+      "from": 349,
+      "to": 349,
+      "delta": 0,
+      "ratio": 0
+    },
+    "totalBytes": {
+      "from": 3335543195,
+      "to": 3335543195,
+      "delta": 0,
+      "ratio": 0
+    },
+    "topLevelGroups": [
+      {
+        "path": "Data/Package",
+        "fromBytes": 2965602304,
+        "toBytes": 2965602304,
+        "delta": 0,
+        "fromCount": 194,
+        "toCount": 194
+      },
+      {
+        "path": "8400",
+        "fromBytes": 131250298,
+        "toBytes": 131250298,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "path": "9300",
+        "fromBytes": 128064395,
+        "toBytes": 128064395,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "path": "Data/Managed",
+        "fromBytes": 58187909,
+        "toBytes": 58187909,
+        "delta": 0,
+        "fromCount": 4,
+        "toCount": 4
+      },
+      {
+        "path": "Data/Csb",
+        "fromBytes": 22730170,
+        "toBytes": 22730170,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "path": "(root)",
+        "fromBytes": 13412872,
+        "toBytes": 13412872,
+        "delta": 0,
+        "fromCount": 33,
+        "toCount": 33
+      },
+      {
+        "path": "Data/StreamingAssets",
+        "fromBytes": 7761120,
+        "toBytes": 7761120,
+        "delta": 0,
+        "fromCount": 70,
+        "toCount": 70
+      },
+      {
+        "path": "Data/resources.assets.resS",
+        "fromBytes": 2542384,
+        "toBytes": 2542384,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/resources.assets",
+        "fromBytes": 1796992,
+        "toBytes": 1796992,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "vue2",
+        "fromBytes": 1122729,
+        "toBytes": 1122729,
+        "delta": 0,
+        "fromCount": 9,
+        "toCount": 9
+      },
+      {
+        "path": "Data/unity default resources",
+        "fromBytes": 1056272,
+        "toBytes": 1056272,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "msdkpix",
+        "fromBytes": 721045,
+        "toBytes": 721045,
+        "delta": 0,
+        "fromCount": 7,
+        "toCount": 7
+      },
+      {
+        "path": "Data/Resources",
+        "fromBytes": 559288,
+        "toBytes": 559288,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/globalgamemanagers",
+        "fromBytes": 328448,
+        "toBytes": 328448,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "images",
+        "fromBytes": 225672,
+        "toBytes": 225672,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/level4",
+        "fromBytes": 84188,
+        "toBytes": 84188,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/globalgamemanagers.assets",
+        "fromBytes": 72368,
+        "toBytes": 72368,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/ScriptingAssemblies.json",
+        "fromBytes": 4770,
+        "toBytes": 4770,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/RuntimeInitializeOnLoads.json",
+        "fromBytes": 3496,
+        "toBytes": 3496,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/level0",
+        "fromBytes": 3384,
+        "toBytes": 3384,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/level2",
+        "fromBytes": 2032,
+        "toBytes": 2032,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/level5",
+        "fromBytes": 1972,
+        "toBytes": 1972,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/level7",
+        "fromBytes": 1824,
+        "toBytes": 1824,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/level1",
+        "fromBytes": 1792,
+        "toBytes": 1792,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/level3",
+        "fromBytes": 1520,
+        "toBytes": 1520,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/level6",
+        "fromBytes": 1228,
+        "toBytes": 1228,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/sharedassets0.assets",
+        "fromBytes": 421,
+        "toBytes": 421,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/sharedassets7.assets",
+        "fromBytes": 349,
+        "toBytes": 349,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/sharedassets1.assets",
+        "fromBytes": 337,
+        "toBytes": 337,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/sharedassets2.assets",
+        "fromBytes": 337,
+        "toBytes": 337,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/sharedassets4.assets",
+        "fromBytes": 289,
+        "toBytes": 289,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/sharedassets3.assets",
+        "fromBytes": 277,
+        "toBytes": 277,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/sharedassets5.assets",
+        "fromBytes": 277,
+        "toBytes": 277,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/sharedassets6.assets",
+        "fromBytes": 277,
+        "toBytes": 277,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "path": "Data/boot.config",
+        "fromBytes": 159,
+        "toBytes": 159,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      }
+    ],
+    "categories": [
+      {
+        "category": "config-db",
+        "fromBytes": 2965602304,
+        "toBytes": 2965602304,
+        "delta": 0,
+        "fromCount": 194,
+        "toCount": 194
+      },
+      {
+        "category": "ai-model",
+        "fromBytes": 265792909,
+        "toBytes": 265792909,
+        "delta": 0,
+        "fromCount": 13,
+        "toCount": 13
+      },
+      {
+        "category": "il2cpp-metadata",
+        "fromBytes": 57755728,
+        "toBytes": 57755728,
+        "delta": 0,
+        "fromCount": 1,
+        "toCount": 1
+      },
+      {
+        "category": "other",
+        "fromBytes": 34454664,
+        "toBytes": 34454664,
+        "delta": 0,
+        "fromCount": 36,
+        "toCount": 36
+      },
+      {
+        "category": "streaming-asset",
+        "fromBytes": 7761120,
+        "toBytes": 7761120,
+        "delta": 0,
+        "fromCount": 70,
+        "toCount": 70
+      },
+      {
+        "category": "data",
+        "fromBytes": 2770636,
+        "toBytes": 2770636,
+        "delta": 0,
+        "fromCount": 15,
+        "toCount": 15
+      },
+      {
+        "category": "script",
+        "fromBytes": 1054697,
+        "toBytes": 1054697,
+        "delta": 0,
+        "fromCount": 6,
+        "toCount": 6
+      },
+      {
+        "category": "image",
+        "fromBytes": 351137,
+        "toBytes": 351137,
+        "delta": 0,
+        "fromCount": 14,
+        "toCount": 14
+      }
+    ],
+    "packages": [
+      {
+        "packageId": "9",
+        "fromBytes": 699006976,
+        "toBytes": 699006976,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "3002",
+        "fromBytes": 571834368,
+        "toBytes": 571834368,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "0",
+        "fromBytes": 561414144,
+        "toBytes": 561414144,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "9900",
+        "fromBytes": 67715072,
+        "toBytes": 67715072,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100015900",
+        "fromBytes": 45776896,
+        "toBytes": 45776896,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100012300",
+        "fromBytes": 44417024,
+        "toBytes": 44417024,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100014000",
+        "fromBytes": 42074112,
+        "toBytes": 42074112,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100053800",
+        "fromBytes": 38748160,
+        "toBytes": 38748160,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100051800",
+        "fromBytes": 33128448,
+        "toBytes": 33128448,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100013300",
+        "fromBytes": 31965184,
+        "toBytes": 31965184,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100011200",
+        "fromBytes": 30965760,
+        "toBytes": 30965760,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100015200",
+        "fromBytes": 29491200,
+        "toBytes": 29491200,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100013700",
+        "fromBytes": 27623424,
+        "toBytes": 27623424,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100015000",
+        "fromBytes": 26017792,
+        "toBytes": 26017792,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100013100",
+        "fromBytes": 26001408,
+        "toBytes": 26001408,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100052300",
+        "fromBytes": 25968640,
+        "toBytes": 25968640,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100010900",
+        "fromBytes": 25804800,
+        "toBytes": 25804800,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100010600",
+        "fromBytes": 25411584,
+        "toBytes": 25411584,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100012800",
+        "fromBytes": 22478848,
+        "toBytes": 22478848,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100012700",
+        "fromBytes": 22069248,
+        "toBytes": 22069248,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100012500",
+        "fromBytes": 21643264,
+        "toBytes": 21643264,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100054200",
+        "fromBytes": 19202048,
+        "toBytes": 19202048,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100011100",
+        "fromBytes": 19103744,
+        "toBytes": 19103744,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100011800",
+        "fromBytes": 18956288,
+        "toBytes": 18956288,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100018400",
+        "fromBytes": 17268736,
+        "toBytes": 17268736,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100018200",
+        "fromBytes": 17006592,
+        "toBytes": 17006592,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100013000",
+        "fromBytes": 16498688,
+        "toBytes": 16498688,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100050200",
+        "fromBytes": 15728640,
+        "toBytes": 15728640,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100013200",
+        "fromBytes": 15630336,
+        "toBytes": 15630336,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100010700",
+        "fromBytes": 15581184,
+        "toBytes": 15581184,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100017100",
+        "fromBytes": 15482880,
+        "toBytes": 15482880,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100017600",
+        "fromBytes": 14565376,
+        "toBytes": 14565376,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100012400",
+        "fromBytes": 14385152,
+        "toBytes": 14385152,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100057700",
+        "fromBytes": 14221312,
+        "toBytes": 14221312,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100050100",
+        "fromBytes": 14204928,
+        "toBytes": 14204928,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100011600",
+        "fromBytes": 14041088,
+        "toBytes": 14041088,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100053200",
+        "fromBytes": 13910016,
+        "toBytes": 13910016,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100016600",
+        "fromBytes": 13238272,
+        "toBytes": 13238272,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100015500",
+        "fromBytes": 13139968,
+        "toBytes": 13139968,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100015300",
+        "fromBytes": 12877824,
+        "toBytes": 12877824,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100012600",
+        "fromBytes": 11796480,
+        "toBytes": 11796480,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100013500",
+        "fromBytes": 11452416,
+        "toBytes": 11452416,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100015700",
+        "fromBytes": 10600448,
+        "toBytes": 10600448,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100014600",
+        "fromBytes": 10092544,
+        "toBytes": 10092544,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100011400",
+        "fromBytes": 9863168,
+        "toBytes": 9863168,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100052400",
+        "fromBytes": 9748480,
+        "toBytes": 9748480,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100011300",
+        "fromBytes": 9338880,
+        "toBytes": 9338880,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100013900",
+        "fromBytes": 8454144,
+        "toBytes": 8454144,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "305000000145",
+        "fromBytes": 8404992,
+        "toBytes": 8404992,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      },
+      {
+        "packageId": "300100013600",
+        "fromBytes": 8372224,
+        "toBytes": 8372224,
+        "delta": 0,
+        "fromCount": 2,
+        "toCount": 2
+      }
+    ]
+  },
+  "nativeLibs": {
+    "architectures": {
+      "added": [],
+      "removed": []
+    },
+    "totalBytes": {
+      "from": 531453040,
+      "to": 533550192,
+      "delta": 2097152,
+      "ratio": 0.0039460720744019075
+    },
+    "added": [
+      {
+        "arch": "arm64-v8a",
+        "name": "libnew.so",
+        "bytes": 2097152
+      }
+    ],
+    "removed": [],
+    "changed": []
+  },
+  "abc": {
+    "modulesAbc": {
+      "fromBytes": 8592088,
+      "toBytes": 8592088,
+      "delta": 0,
+      "sourceMapChanged": false
+    },
+    "extra": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "signature": {
+    "fromPresent": false,
+    "toPresent": false,
+    "presentChanged": false,
+    "fields": [
+      {
+        "field": "subject",
+        "to": "CN=A-mod",
+        "changed": true
+      },
+      {
+        "field": "issuer",
+        "changed": false
+      },
+      {
+        "field": "notBefore",
+        "changed": false
+      },
+      {
+        "field": "notAfter",
+        "changed": false
+      }
+    ]
+  },
+  "dependencies": {
+    "hsp": {
+      "added": [],
+      "removed": []
+    },
+    "har": {
+      "added": [],
+      "removed": []
+    }
+  },
+  "warnings": []
+}

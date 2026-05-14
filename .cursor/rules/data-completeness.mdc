@@ -1,0 +1,57 @@
+---
+description: 分析数据全量保留 + viewer 分页展示（项目级硬性约定）
+alwaysApply: true
+---
+
+# Analyzer 输出与 Viewer 展示的数据完整性约定
+
+## 核心约定（不要妥协）
+
+1. **Analyzer 默认输出全量**：所有 analyzer 产出的列表 / 集合 / 字符串池等数据必须**默认无截断**写入 JSON 报告。
+2. **截断阈值默认 0 = 不限**：`AnalyzeOptions` 中所有 `maxXxxLimit / maxXxxPerLib` 类参数的**默认值必须是 0**（表示不限）。这些参数仅作为 CLI 用户在 JSON 体积失控时的"显式压缩开关"保留。
+3. **Viewer 用分页展示**：所有可能很长的列表（符号、字符串、节区、文件、依赖、类名等）都用 `paginated()` / `paginatedTable()` helper 分页，而不是 `slice(0, N)` 硬截断。
+4. **页大小**：表格 `pageSize: 50`，字符串紧凑列表 `pageSize: 100`。
+
+## 反例 vs 正例
+
+```typescript
+// ❌ BAD：analyzer 阶段截断，差异计算丢精度
+const symbols = allSymbols.slice(0, 2000);
+return { symbols };
+```
+
+```typescript
+// ✅ GOOD：全量保留，让 differ / viewer 各自处理
+return { symbols: allSymbols };
+```
+
+```typescript
+// ❌ BAD：viewer 截断 + "已截断展示前 N" 后缀
+const preview = items.slice(0, 50);
+table(headers, preview, columnClasses);
+```
+
+```typescript
+// ✅ GOOD：viewer 分页
+paginatedTable(headers, items.map(toRow), columnClasses, { pageSize: 50 });
+```
+
+```typescript
+// ❌ BAD：默认值非 0
+maxSymbolsPerLib: number; // 默认 2000
+
+// ✅ GOOD：默认 0，文档说明"0 = 不限"
+maxSymbolsPerLib?: number; // 默认 0（不限）；仅在 JSON 体积失控时显式传非 0
+```
+
+## Differ 必须吃全量
+
+Differ 的 added/removed/changed 计算依赖 analyzer 输出的全量数据；任何 analyzer 阶段截断都会让"小符号 / imported 符号 / 末尾条目"的增删被错误判定。
+
+## 文档同步
+
+新增 analyzer 时，在其文档注释里写明"全量输出，不截断"，并在 `HapXxxInfo.maxXxxLimit` 字段注释里写明"0 = 未截断"。
+
+## 受约束的 helper
+
+- `src/viewer/helpers.ts` 中的 `paginated<T>()` 和 `paginatedTable()` 是项目里**唯一允许的"长列表展示"方式**。直接 `slice(0, N)` + `table()` 渲染 100+ 行列表的写法应被替换。

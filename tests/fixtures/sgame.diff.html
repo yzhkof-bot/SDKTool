@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KingSDK Hap Diff Report</title>
+    <style>
+/* ============================================================
+ * KingSDK Hap Report Viewer - styles
+ * 设计：紧凑信息密度、卡片化、亮/暗双主题（跟随系统）。
+ * 不依赖任何外部 CSS 框架，全部内联到 templates/report.template.html
+ * ============================================================ */
+
+:root {
+  --color-bg: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-surface-elev: #fbfcff;
+  --color-border: #e2e6ef;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-primary: #5b8cff;
+  --color-primary-bg: rgba(91, 140, 255, 0.12);
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #6b7280;
+  --color-code-bg: #f1f3f9;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+
+  --font-mono: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0d1117;
+    --color-surface: #161b22;
+    --color-surface-elev: #1c232c;
+    --color-border: #30363d;
+    --color-text: #e6edf3;
+    --color-text-muted: #8b949e;
+    --color-primary: #79a4ff;
+    --color-primary-bg: rgba(121, 164, 255, 0.18);
+    --color-code-bg: #1a1f27;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+code,
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* -------------------- 主框架 -------------------- */
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 0 20px 16px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 12px;
+}
+
+.sidebar-header .title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.sidebar-header .subtitle {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background 0.12s ease;
+}
+
+.nav-item:hover {
+  background: var(--color-primary-bg);
+  text-decoration: none;
+}
+
+.nav-item.active {
+  background: var(--color-primary-bg);
+  border-left-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.nav-item .count {
+  background: var(--color-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.nav-item.active .count {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.main {
+  padding: 28px 32px;
+  max-width: 1400px;
+  width: 100%;
+}
+
+.section {
+  display: none;
+}
+.section.active {
+  display: block;
+}
+
+/* -------------------- 顶部 meta 面包屑 -------------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.topbar .meta-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.topbar .meta-chip code {
+  background: var(--color-code-bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+/* -------------------- 卡片 / 网格 -------------------- */
+h2.section-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.card .card-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.card .card-value {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.card .card-sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+}
+
+.panel-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* -------------------- Key-Value 列表 -------------------- */
+dl.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 16px;
+  row-gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+
+dl.kv dt {
+  color: var(--color-text-muted);
+}
+
+dl.kv dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+/* -------------------- 表格 -------------------- */
+table.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.tbl th,
+table.tbl td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+table.tbl th {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-elev);
+}
+
+table.tbl tr:last-child td {
+  border-bottom: none;
+}
+
+table.tbl td.num,
+table.tbl th.num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  width: 1%; /* 让 num 列收缩到内容自然宽度，把多余空间留给 path */
+}
+
+table.tbl td.path,
+table.tbl th.path {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+table.tbl td.bar-col,
+table.tbl th.bar-col {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* -------------------- 比例条 -------------------- */
+.bar {
+  width: 100px;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.bar > .fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+/* -------------------- Stacked Breakdown -------------------- */
+.stacked-bar {
+  display: flex;
+  width: 100%;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  margin-bottom: 12px;
+}
+
+.stacked-bar > .seg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.legend .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* -------------------- Badge -------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.badge.primary {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+}
+.badge.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+}
+.badge.warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: var(--color-warning);
+}
+.badge.danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--color-danger);
+}
+.badge.info {
+  background: rgba(107, 114, 128, 0.18);
+  color: var(--color-info);
+}
+
+/* -------------------- Diff -------------------- */
+.delta-pos {
+  color: var(--color-danger);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+.delta-neg {
+  color: var(--color-success);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+.delta-zero {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+table.tbl tr.row-added td {
+  background: rgba(16, 185, 129, 0.08);
+}
+table.tbl tr.row-removed td {
+  background: rgba(239, 68, 68, 0.08);
+}
+table.tbl tr.row-changed td {
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.diff-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.diff-pair > .side {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.diff-pair .side-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+.diff-pair .side-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+.diff-pair .side-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+/* 顶部摘要：左 → 右、本次变化 */
+.diff-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+/* -------------------- Empty / Error -------------------- */
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 30px;
+  font-size: 13px;
+}
+
+.error-block {
+  border: 1px solid var(--color-danger);
+  background: rgba(239, 68, 68, 0.08);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  color: var(--color-danger);
+}
+
+</style>
+  </head>
+  <body>
+    <div id="root">
+      <noscript>
+        <div class="empty">需要启用 JavaScript 才能查看对比报告。</div>
+      </noscript>
+    </div>
+
+    <!--
+      KingSDK 数据注入点：CLI render.ts 在生成单文件 HTML 时把 HapDiffReport JSON
+      写到这里；diff viewer 启动时 JSON.parse 它。
+    -->
+    <script id="__DATA__" type="application/json">{"schemaVersion":"1.0","generatedAt":"2026-05-09T06:22:47.609Z","toolVersion":"0.1.0","left":{"meta":{"file":"C:\\Users\\windye\\Downloads\\SGame_OpenHarmony_smcs_test_Forcelog_11.4.1.1_r4219829_E3919849_LightProfiler_v8_il2cpp_Test_tg.shell.hap","fileSize":3537889161,"sha256":"37c236e98724ad84019162ee1c0876174e26037ce15644a9cfccd4db45e91d97","analyzedAt":"2026-05-09T06:22:42.661Z","toolVersion":"0.1.0"},"basic":{"bundleName":"com.tencent.tmgp.sgametest","bundleType":"app","versionCode":1104010101,"versionName":"11.4.1.1","moduleName":"entry","moduleType":"entry","deviceTypes":["phone","tablet","2in1"],"targetAPIVersion":50000012,"minAPIVersion":50000012,"abilities":[{"name":"SGameAbility","visible":true}],"rawModuleJson":{"app":{"iconId":16777217,"minAPIVersion":50000012,"icon":"$media:app_icon","label":"$string:app_name","bundleType":"app","versionName":"11.4.1.1","versionCode":1104010101,"appEnvironments":[],"compileSdkType":"HarmonyOS","labelId":16777216,"compileSdkVersion":"5.0.0.71","targetAPIVersion":50000012,"vendor":"Tencent","bundleName":"com.tencent.tmgp.sgametest","distributedNotificationEnabled":true,"apiReleaseType":"Release"},"module":{"virtualMachine":"ark12.0.2.0","mainElement":"SGameAbility","metadata":[{"name":"client_id","value":"111573583"},{"name":"app_id","value":"5765880207855382439"},{"name":"ArkTSPartialUpdate","value":"true"},{"name":"partialUpdateStrictCheck","value":"warn"},{"name":"ITLoginAppID","value":"smoba"},{"name":"ITLoginAppKey","value":"f5d185b0508258ecbdd646d51a56dca2"},{"name":"UseTsHar","value":"true"},{"name":"half_leading","value":"true"}],"installationFree":false,"deliveryWithInstall":true,"requestPermissions":[{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.INTERNET"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.VIBRATE"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.GET_NETWORK_INFO"},{"reason":"$string:Permission_Location","reasonId":16777224,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.LOCATION"},{"reason":"$string:Permission_ApproximatelyLocation","reasonId":16777223,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.APPROXIMATELY_LOCATION"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.ACCELEROMETER"},{"reason":"$string:Permission_Microphone","reasonId":16777225,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.MICROPHONE"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.GET_WIFI_INFO"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.STORE_PERSISTENT_DATA"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.GYROSCOPE"},{"reason":"$string:Permission_WriteCalender","reasonId":16777228,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.WRITE_CALENDAR"},{"reason":"$string:Permission_PASTEBOARD","reasonId":16777226,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.READ_PASTEBOARD"},{"reason":"$string:Permission_APP_TRACKING_CONSENT","reasonId":16777222,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.APP_TRACKING_CONSENT"},{"reason":"$string:calendar_permission","reasonId":16777253,"usedScene":{"abilities":["EntryAbility"],"when":"inuse"},"name":"ohos.permission.READ_CALENDAR"},{"name":"ohos.permission.KEEP_BACKGROUND_RUNNING"},{"name":"ohos.permission.GET_BUNDLE_INFO"}],"description":"$string:module_desc","querySchemes":["weixin","wxopensdk","https","qqopenapi","uppaywallet","uppaysdk","snssdk1128","bilibili","smobagamehelper","xhsdiscover","kwai"],"compileMode":"esmodule","type":"entry","dependencies":[],"abilities":[{"iconId":16777235,"orientation":"auto_rotation_landscape","startWindowIconId":16777249,"visible":true,"backgroundModes":["audioRecording","audioPlayback"],"icon":"$media:icon","startWindowIcon":"$media:startWindowIcon_black","startWindowBackgroundId":16777231,"description":"$string:EntryAbility_desc","label":"$string:EntryAbility_label","skills":[{"entities":["entity.system.home"],"actions":["action.system.home","wxentity.action.open"]},{"uris":[{"scheme":"tpns","host":"com.tencent.tmgp.sgame.hw"},{"scheme":"stpns","host":"com.tencent.tmgp.sgame.hw"}],"actions":[""]},{"uris":[{"scheme":"tencent1104466820","host":"www.sgame.com"},{"scheme":"gwallet100703379"},{"scheme":"tencentmsdk1104466820"},{"scheme":"smoba"},{"scheme":"smopa1104466820"},{"scheme":"itogin3-com_tencent_tmgp_sgame_hw"},{"scheme":"kwaisdk","host":"router"},{"scheme":"midaspay"}],"actions":["action.uppay.open"]},{"uris":[{"pathRegex":"\\b(auth|share)\\b","scheme":"qqopenapi","host":"1104466820"}],"entities":["entity.system.browser","entity.system.home"],"actions":["ohos.want.action.viewData","action.system.home"]}],"srcEntry":"./ets/ability/SGameAbility.ets","descriptionId":16777220,"labelId":16777221,"startWindowBackground":"$color:start_window_background_black","name":"SGameAbility","supportWindowMode":["fullscreen"]}],"deviceTypes":["phone","tablet","2in1"],"pages":"$profile:main_pages","descriptionId":16777229,"name":"entry","compressNativeLibs":true,"packageName":"entry"}},"rawPackInfo":{"summary":{"app":{"bundleName":"com.tencent.tmgp.sgametest","bundleType":"app","version":{"code":1104010101,"name":"11.4.1.1"}},"modules":[{"mainAbility":"SGameAbility","deviceType":["phone","tablet","2in1"],"abilities":[{"name":"SGameAbility","label":"$string:EntryAbility_label","visible":true}],"distro":{"moduleType":"entry","installationFree":false,"deliveryWithInstall":true,"moduleName":"entry"},"apiVersion":{"compatible":12,"releaseType":"Release","target":12}}]},"packages":[{"deviceType":["phone","tablet","2in1"],"moduleType":"entry","deliveryWithInstall":true,"name":"entry-default"}]}}},"right":{"meta":{"file":"C:\\Users\\windye\\Downloads\\SGame_OpenHarmony_smcs_test_Forcelog_11.4.1.1_r4219829_E3919849_LightProfiler_v8_il2cpp_Test_tg.shell.hap","fileSize":3537889161,"sha256":"37c236e98724ad84019162ee1c0876174e26037ce15644a9cfccd4db45e91d97","analyzedAt":"2026-05-09T06:22:47.608Z","toolVersion":"0.1.0"},"basic":{"bundleName":"com.tencent.tmgp.sgametest","bundleType":"app","versionCode":1104010101,"versionName":"11.4.1.1","moduleName":"entry","moduleType":"entry","deviceTypes":["phone","tablet","2in1"],"targetAPIVersion":50000012,"minAPIVersion":50000012,"abilities":[{"name":"SGameAbility","visible":true}],"rawModuleJson":{"app":{"iconId":16777217,"minAPIVersion":50000012,"icon":"$media:app_icon","label":"$string:app_name","bundleType":"app","versionName":"11.4.1.1","versionCode":1104010101,"appEnvironments":[],"compileSdkType":"HarmonyOS","labelId":16777216,"compileSdkVersion":"5.0.0.71","targetAPIVersion":50000012,"vendor":"Tencent","bundleName":"com.tencent.tmgp.sgametest","distributedNotificationEnabled":true,"apiReleaseType":"Release"},"module":{"virtualMachine":"ark12.0.2.0","mainElement":"SGameAbility","metadata":[{"name":"client_id","value":"111573583"},{"name":"app_id","value":"5765880207855382439"},{"name":"ArkTSPartialUpdate","value":"true"},{"name":"partialUpdateStrictCheck","value":"warn"},{"name":"ITLoginAppID","value":"smoba"},{"name":"ITLoginAppKey","value":"f5d185b0508258ecbdd646d51a56dca2"},{"name":"UseTsHar","value":"true"},{"name":"half_leading","value":"true"}],"installationFree":false,"deliveryWithInstall":true,"requestPermissions":[{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.INTERNET"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.VIBRATE"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.GET_NETWORK_INFO"},{"reason":"$string:Permission_Location","reasonId":16777224,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.LOCATION"},{"reason":"$string:Permission_ApproximatelyLocation","reasonId":16777223,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.APPROXIMATELY_LOCATION"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.ACCELEROMETER"},{"reason":"$string:Permission_Microphone","reasonId":16777225,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.MICROPHONE"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.GET_WIFI_INFO"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.STORE_PERSISTENT_DATA"},{"reason":"$string:app_name","reasonId":16777216,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.GYROSCOPE"},{"reason":"$string:Permission_WriteCalender","reasonId":16777228,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.WRITE_CALENDAR"},{"reason":"$string:Permission_PASTEBOARD","reasonId":16777226,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.READ_PASTEBOARD"},{"reason":"$string:Permission_APP_TRACKING_CONSENT","reasonId":16777222,"usedScene":{"abilities":["SGameAbility"],"when":"always"},"name":"ohos.permission.APP_TRACKING_CONSENT"},{"reason":"$string:calendar_permission","reasonId":16777253,"usedScene":{"abilities":["EntryAbility"],"when":"inuse"},"name":"ohos.permission.READ_CALENDAR"},{"name":"ohos.permission.KEEP_BACKGROUND_RUNNING"},{"name":"ohos.permission.GET_BUNDLE_INFO"}],"description":"$string:module_desc","querySchemes":["weixin","wxopensdk","https","qqopenapi","uppaywallet","uppaysdk","snssdk1128","bilibili","smobagamehelper","xhsdiscover","kwai"],"compileMode":"esmodule","type":"entry","dependencies":[],"abilities":[{"iconId":16777235,"orientation":"auto_rotation_landscape","startWindowIconId":16777249,"visible":true,"backgroundModes":["audioRecording","audioPlayback"],"icon":"$media:icon","startWindowIcon":"$media:startWindowIcon_black","startWindowBackgroundId":16777231,"description":"$string:EntryAbility_desc","label":"$string:EntryAbility_label","skills":[{"entities":["entity.system.home"],"actions":["action.system.home","wxentity.action.open"]},{"uris":[{"scheme":"tpns","host":"com.tencent.tmgp.sgame.hw"},{"scheme":"stpns","host":"com.tencent.tmgp.sgame.hw"}],"actions":[""]},{"uris":[{"scheme":"tencent1104466820","host":"www.sgame.com"},{"scheme":"gwallet100703379"},{"scheme":"tencentmsdk1104466820"},{"scheme":"smoba"},{"scheme":"smopa1104466820"},{"scheme":"itogin3-com_tencent_tmgp_sgame_hw"},{"scheme":"kwaisdk","host":"router"},{"scheme":"midaspay"}],"actions":["action.uppay.open"]},{"uris":[{"pathRegex":"\\b(auth|share)\\b","scheme":"qqopenapi","host":"1104466820"}],"entities":["entity.system.browser","entity.system.home"],"actions":["ohos.want.action.viewData","action.system.home"]}],"srcEntry":"./ets/ability/SGameAbility.ets","descriptionId":16777220,"labelId":16777221,"startWindowBackground":"$color:start_window_background_black","name":"SGameAbility","supportWindowMode":["fullscreen"]}],"deviceTypes":["phone","tablet","2in1"],"pages":"$profile:main_pages","descriptionId":16777229,"name":"entry","compressNativeLibs":true,"packageName":"entry"}},"rawPackInfo":{"summary":{"app":{"bundleName":"com.tencent.tmgp.sgametest","bundleType":"app","version":{"code":1104010101,"name":"11.4.1.1"}},"modules":[{"mainAbility":"SGameAbility","deviceType":["phone","tablet","2in1"],"abilities":[{"name":"SGameAbility","label":"$string:EntryAbility_label","visible":true}],"distro":{"moduleType":"entry","installationFree":false,"deliveryWithInstall":true,"moduleName":"entry"},"apiVersion":{"compatible":12,"releaseType":"Release","target":12}}]},"packages":[{"deviceType":["phone","tablet","2in1"],"moduleType":"entry","deliveryWithInstall":true,"name":"entry-default"}]}}},"summary":{"totalSizeDelta":0,"compressedDelta":0,"fileCountDelta":0,"filesAdded":0,"filesRemoved":0,"filesChanged":0,"permissionsAdded":0,"permissionsRemoved":0,"versionLine":"11.4.1.1 (1104010101) → 11.4.1.1 (1104010101)","identical":true},"basic":{"changed":[]},"size":{"total":{"from":3878530823,"to":3878530823,"delta":0,"ratio":0},"compressed":{"from":3537889161,"to":3537889161,"delta":0,"ratio":0},"fileCount":{"from":570,"to":570,"delta":0,"ratio":0},"breakdown":[{"category":"resources","fromBytes":3338427201,"toBytes":3338427201,"delta":0,"ratio":0},{"category":"libs","fromBytes":531453040,"toBytes":531453040,"delta":0,"ratio":0},{"category":"ets","fromBytes":8592088,"toBytes":8592088,"delta":0,"ratio":0},{"category":"config","fromBytes":58494,"toBytes":58494,"delta":0,"ratio":0}]},"files":{"added":[],"removed":[],"changed":[],"totals":{"added":0,"removed":0,"changed":0,"unchanged":570}},"permissions":{"added":[],"removed":[],"unchanged":16},"resources":{"images":{"count":{"from":157,"to":157,"delta":0,"ratio":0},"bytes":{"from":3343865,"to":3343865,"delta":0,"ratio":0}},"strings":{"count":{"from":0,"to":0,"delta":0,"ratio":0},"localesAdded":[],"localesRemoved":[]},"media":{"count":{"from":4,"to":4,"delta":0,"ratio":0},"bytes":{"from":6303998,"to":6303998,"delta":0,"ratio":0}}},"rawfile":{"fileCount":{"from":349,"to":349,"delta":0,"ratio":0},"totalBytes":{"from":3335543195,"to":3335543195,"delta":0,"ratio":0},"topLevelGroups":[{"path":"Data/Package","fromBytes":2965602304,"toBytes":2965602304,"delta":0,"fromCount":194,"toCount":194},{"path":"8400","fromBytes":131250298,"toBytes":131250298,"delta":0,"fromCount":2,"toCount":2},{"path":"9300","fromBytes":128064395,"toBytes":128064395,"delta":0,"fromCount":2,"toCount":2},{"path":"Data/Managed","fromBytes":58187909,"toBytes":58187909,"delta":0,"fromCount":4,"toCount":4},{"path":"Data/Csb","fromBytes":22730170,"toBytes":22730170,"delta":0,"fromCount":2,"toCount":2},{"path":"(root)","fromBytes":13412872,"toBytes":13412872,"delta":0,"fromCount":33,"toCount":33},{"path":"Data/StreamingAssets","fromBytes":7761120,"toBytes":7761120,"delta":0,"fromCount":70,"toCount":70},{"path":"Data/resources.assets.resS","fromBytes":2542384,"toBytes":2542384,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/resources.assets","fromBytes":1796992,"toBytes":1796992,"delta":0,"fromCount":1,"toCount":1},{"path":"vue2","fromBytes":1122729,"toBytes":1122729,"delta":0,"fromCount":9,"toCount":9},{"path":"Data/unity default resources","fromBytes":1056272,"toBytes":1056272,"delta":0,"fromCount":1,"toCount":1},{"path":"msdkpix","fromBytes":721045,"toBytes":721045,"delta":0,"fromCount":7,"toCount":7},{"path":"Data/Resources","fromBytes":559288,"toBytes":559288,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/globalgamemanagers","fromBytes":328448,"toBytes":328448,"delta":0,"fromCount":1,"toCount":1},{"path":"images","fromBytes":225672,"toBytes":225672,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/level4","fromBytes":84188,"toBytes":84188,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/globalgamemanagers.assets","fromBytes":72368,"toBytes":72368,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/ScriptingAssemblies.json","fromBytes":4770,"toBytes":4770,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/RuntimeInitializeOnLoads.json","fromBytes":3496,"toBytes":3496,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/level0","fromBytes":3384,"toBytes":3384,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/level2","fromBytes":2032,"toBytes":2032,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/level5","fromBytes":1972,"toBytes":1972,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/level7","fromBytes":1824,"toBytes":1824,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/level1","fromBytes":1792,"toBytes":1792,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/level3","fromBytes":1520,"toBytes":1520,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/level6","fromBytes":1228,"toBytes":1228,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/sharedassets0.assets","fromBytes":421,"toBytes":421,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/sharedassets7.assets","fromBytes":349,"toBytes":349,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/sharedassets1.assets","fromBytes":337,"toBytes":337,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/sharedassets2.assets","fromBytes":337,"toBytes":337,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/sharedassets4.assets","fromBytes":289,"toBytes":289,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/sharedassets3.assets","fromBytes":277,"toBytes":277,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/sharedassets5.assets","fromBytes":277,"toBytes":277,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/sharedassets6.assets","fromBytes":277,"toBytes":277,"delta":0,"fromCount":1,"toCount":1},{"path":"Data/boot.config","fromBytes":159,"toBytes":159,"delta":0,"fromCount":1,"toCount":1}],"categories":[{"category":"config-db","fromBytes":2965602304,"toBytes":2965602304,"delta":0,"fromCount":194,"toCount":194},{"category":"ai-model","fromBytes":265792909,"toBytes":265792909,"delta":0,"fromCount":13,"toCount":13},{"category":"il2cpp-metadata","fromBytes":57755728,"toBytes":57755728,"delta":0,"fromCount":1,"toCount":1},{"category":"other","fromBytes":34454664,"toBytes":34454664,"delta":0,"fromCount":36,"toCount":36},{"category":"streaming-asset","fromBytes":7761120,"toBytes":7761120,"delta":0,"fromCount":70,"toCount":70},{"category":"data","fromBytes":2770636,"toBytes":2770636,"delta":0,"fromCount":15,"toCount":15},{"category":"script","fromBytes":1054697,"toBytes":1054697,"delta":0,"fromCount":6,"toCount":6},{"category":"image","fromBytes":351137,"toBytes":351137,"delta":0,"fromCount":14,"toCount":14}],"packages":[{"packageId":"9","fromBytes":699006976,"toBytes":699006976,"delta":0,"fromCount":2,"toCount":2},{"packageId":"3002","fromBytes":571834368,"toBytes":571834368,"delta":0,"fromCount":2,"toCount":2},{"packageId":"0","fromBytes":561414144,"toBytes":561414144,"delta":0,"fromCount":2,"toCount":2},{"packageId":"9900","fromBytes":67715072,"toBytes":67715072,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100015900","fromBytes":45776896,"toBytes":45776896,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100012300","fromBytes":44417024,"toBytes":44417024,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100014000","fromBytes":42074112,"toBytes":42074112,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100053800","fromBytes":38748160,"toBytes":38748160,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100051800","fromBytes":33128448,"toBytes":33128448,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100013300","fromBytes":31965184,"toBytes":31965184,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100011200","fromBytes":30965760,"toBytes":30965760,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100015200","fromBytes":29491200,"toBytes":29491200,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100013700","fromBytes":27623424,"toBytes":27623424,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100015000","fromBytes":26017792,"toBytes":26017792,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100013100","fromBytes":26001408,"toBytes":26001408,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100052300","fromBytes":25968640,"toBytes":25968640,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100010900","fromBytes":25804800,"toBytes":25804800,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100010600","fromBytes":25411584,"toBytes":25411584,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100012800","fromBytes":22478848,"toBytes":22478848,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100012700","fromBytes":22069248,"toBytes":22069248,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100012500","fromBytes":21643264,"toBytes":21643264,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100054200","fromBytes":19202048,"toBytes":19202048,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100011100","fromBytes":19103744,"toBytes":19103744,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100011800","fromBytes":18956288,"toBytes":18956288,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100018400","fromBytes":17268736,"toBytes":17268736,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100018200","fromBytes":17006592,"toBytes":17006592,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100013000","fromBytes":16498688,"toBytes":16498688,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100050200","fromBytes":15728640,"toBytes":15728640,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100013200","fromBytes":15630336,"toBytes":15630336,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100010700","fromBytes":15581184,"toBytes":15581184,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100017100","fromBytes":15482880,"toBytes":15482880,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100017600","fromBytes":14565376,"toBytes":14565376,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100012400","fromBytes":14385152,"toBytes":14385152,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100057700","fromBytes":14221312,"toBytes":14221312,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100050100","fromBytes":14204928,"toBytes":14204928,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100011600","fromBytes":14041088,"toBytes":14041088,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100053200","fromBytes":13910016,"toBytes":13910016,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100016600","fromBytes":13238272,"toBytes":13238272,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100015500","fromBytes":13139968,"toBytes":13139968,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100015300","fromBytes":12877824,"toBytes":12877824,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100012600","fromBytes":11796480,"toBytes":11796480,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100013500","fromBytes":11452416,"toBytes":11452416,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100015700","fromBytes":10600448,"toBytes":10600448,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100014600","fromBytes":10092544,"toBytes":10092544,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100011400","fromBytes":9863168,"toBytes":9863168,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100052400","fromBytes":9748480,"toBytes":9748480,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100011300","fromBytes":9338880,"toBytes":9338880,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100013900","fromBytes":8454144,"toBytes":8454144,"delta":0,"fromCount":2,"toCount":2},{"packageId":"305000000145","fromBytes":8404992,"toBytes":8404992,"delta":0,"fromCount":2,"toCount":2},{"packageId":"300100013600","fromBytes":8372224,"toBytes":8372224,"delta":0,"fromCount":2,"toCount":2}]},"nativeLibs":{"architectures":{"added":[],"removed":[]},"totalBytes":{"from":531453040,"to":531453040,"delta":0,"ratio":0},"added":[],"removed":[],"changed":[]},"abc":{"modulesAbc":{"fromBytes":8592088,"toBytes":8592088,"delta":0,"sourceMapChanged":false},"extra":{"added":[],"removed":[],"changed":[]}},"signature":{"fromPresent":false,"toPresent":false,"presentChanged":false,"fields":[{"field":"subject","changed":false},{"field":"issuer","changed":false},{"field":"notBefore","changed":false},{"field":"notAfter","changed":false}]},"dependencies":{"hsp":{"added":[],"removed":[]},"har":{"added":[],"removed":[]}},"warnings":[]}</script>
+
+    <script>
+"use strict";var KingsdkDiffViewer=(()=>{var U="http://www.w3.org/2000/svg",X=new Set(["svg","g","rect","text","line","path","circle"]);function t(n,e,...a){let s=X.has(n)?document.createElementNS(U,n):document.createElement(n);if(e)for(let[l,i]of Object.entries(e))i===!1||i===null||i===void 0||(l.startsWith("on")&&typeof i=="function"?s.addEventListener(l.slice(2).toLowerCase(),i):l==="class"?s.className=String(i):i===!0?s.setAttribute(l,""):s.setAttribute(l,String(i)));return C(s,a),s}function C(n,e){for(let a of e)a==null||a===!1||a===!0||(Array.isArray(a)?C(n,a):a instanceof Node?n.appendChild(a):n.appendChild(document.createTextNode(String(a))))}function d(n,e=2){if(!Number.isFinite(n)||n<0)return"0 B";let a=["B","KiB","MiB","GiB","TiB"],s=n,l=0;for(;s>=1024&&l<a.length-1;)s/=1024,l+=1;return`${l===0?s.toFixed(0):s.toFixed(e)} ${a[l]}`}function S(n,e=1){return Number.isFinite(n)?`${(n*100).toFixed(e)}%`:"-"}function R(n){let e=new Date(n);if(Number.isNaN(e.getTime()))return n;let a=s=>String(s).padStart(2,"0");return`${e.getFullYear()}-${a(e.getMonth()+1)}-${a(e.getDate())} ${a(e.getHours())}:${a(e.getMinutes())}:${a(e.getSeconds())}`}function w(n,e=12){return typeof n!="string"||n.length<=e?n:`${n.slice(0,e)}\u2026`}function E(n){let e=t("dl",{class:"kv"});for(let[a,s]of n)s==null||s===""||(e.appendChild(t("dt",null,a)),e.appendChild(t("dd",null,s)));return e}function u(n,e){return t("span",{class:e?`badge ${e}`:"badge"},n)}function p(n){return t("div",{class:"empty"},n)}function m(n,e,a){let s=t("thead",null,t("tr",null,...n.map((i,r)=>t("th",a?.[r]?{class:a[r]}:null,i)))),l=t("tbody",null,...e.map(i=>t("tr",null,...i.map((r,o)=>t("td",a?.[o]?{class:a[o]}:null,r)))));return t("table",{class:"tbl"},s,l)}function H(n,e={}){let a=e.format??(i=>String(i));if(n===0)return t("span",{class:"delta-zero"},a(0));let s=n>0?"+":"\u2212",l=Math.abs(n);return t("span",{class:n>0?"delta-pos":"delta-neg"},`${s}${a(l)}`)}function g(n){return H(n,{format:e=>d(e)})}function T(n){return H(n,{format:e=>e.toLocaleString()})}function h(n){if(n===null)return t("span",{class:"delta-zero"},"\u2014");if(n===0)return t("span",{class:"delta-zero"},"0%");let e=n>0?"delta-pos":"delta-neg",a=n>0?"+":"\u2212";return t("span",{class:e},`${a}${S(Math.abs(n))}`)}function A(n,e){return t("span",null,t("code",null,D(n)),t("span",{class:"delta-zero"}," \u2192 "),t("code",null,D(e)))}function D(n){return n==null?"\u2205":Array.isArray(n)?n.length===0?"[]":`[${n.join(", ")}]`:typeof n=="object"?JSON.stringify(n):String(n)}function b(n,e=d){return t("span",null,t("code",null,e(n.from)),t("span",{class:"delta-zero"}," \u2192 "),t("code",null,e(n.to)),"  ",H(n.delta,{format:e}),"  ",h(n.ratio))}function N(n){let e=n.summary,a=t("div",{class:"diff-summary"},v("\u603B\u4F53\u79EF\u53D8\u5316",e.totalSizeDelta,d),v("\u538B\u7F29\u5305\u53D8\u5316",e.compressedDelta,d),v("\u6587\u4EF6\u6570\u53D8\u5316",e.fileCountDelta,i=>i.toLocaleString()),v("\u6587\u4EF6\u65B0\u589E",e.filesAdded,i=>i.toLocaleString(),"count-only-pos"),v("\u6587\u4EF6\u5220\u9664",e.filesRemoved,i=>i.toLocaleString(),"count-only-neg"),v("\u6587\u4EF6\u4FEE\u6539",e.filesChanged,i=>i.toLocaleString(),"count-only"),v("\u6743\u9650\u65B0\u589E",e.permissionsAdded,i=>i.toLocaleString(),"count-only-pos"),v("\u6743\u9650\u5220\u9664",e.permissionsRemoved,i=>i.toLocaleString(),"count-only-neg")),s=t("div",{class:"diff-pair"},x("Baseline (left)",n.left),x("Candidate (right)",n.right)),l=e.identical?t("div",{class:"panel"},t("span",{class:"badge success"},"\u2713 identical")," ",t("span",{class:"card-sub"},"\u4E24\u4FA7 hap \u5728\u6240\u6709\u53D7\u76D1\u63A7\u7EF4\u5EA6\u5747\u65E0\u5DEE\u5F02")):null;return t("div",null,t("h2",{class:"section-title"},"\u6982\u89C8"),e.versionLine?t("div",{class:"panel"},t("span",{class:"card-label"},"\u7248\u672C"),t("div",{class:"card-value"},e.versionLine)):null,a,l,s,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u5143\u4FE1\u606F"),E([["\u5BF9\u6BD4\u65F6\u95F4",R(n.generatedAt)],["Tool \u7248\u672C",n.toolVersion],["Schema",n.schemaVersion]])))}function v(n,e,a,s){let l;return s==="count-only-pos"?l=e===0?t("span",{class:"delta-zero"},"0"):t("span",{class:"delta-pos"},`+${a(e)}`):s==="count-only-neg"?l=e===0?t("span",{class:"delta-zero"},"0"):t("span",{class:"delta-neg"},`\u2212${a(e)}`):s==="count-only"?l=t("span",{class:"delta-zero"},a(e)):l=H(e,{format:a}),t("div",{class:"card"},t("div",{class:"card-label"},n),t("div",{class:"card-value"},l))}function x(n,e){let a=e.meta.file,s=a.split(/[\\/]/).pop()||a,l=e.basic?`${e.basic.versionName} (${e.basic.versionCode})`:"\u2014";return t("div",{class:"side"},t("div",{class:"side-label"},n),t("div",{class:"side-title"},s),t("div",{class:"side-meta"},`${d(e.meta.fileSize)} \xB7 sha256 ${w(e.meta.sha256)} \xB7 ${l}`))}function z(n){if(!n.basic)return c("Basic Info",p("\u4E24\u4FA7\u5747\u65E0 basic \u4FE1\u606F"));if(n.basic.changed.length===0)return c("Basic Info",p("basic \u5B57\u6BB5\u672A\u53D1\u751F\u53D8\u5316"));let e=n.basic.changed.map(a=>[a.field,A(a.from,a.to)]);return c("Basic Info",t("div",{class:"panel"},m(["\u5B57\u6BB5","\u53D8\u5316"],e,["path",void 0])))}function _(n){if(!n.size)return c("\u4F53\u79EF",p("\u4E24\u4FA7\u5747\u65E0 size \u4FE1\u606F"));let e=n.size,a=t("div",{class:"card-grid"},t("div",{class:"card"},t("div",{class:"card-label"},"\u603B\u4F53\u79EF"),t("div",{class:"card-value"},b(e.total,d))),t("div",{class:"card"},t("div",{class:"card-label"},"\u538B\u7F29\u5305\u5927\u5C0F"),t("div",{class:"card-value"},b(e.compressed,d))),t("div",{class:"card"},t("div",{class:"card-label"},"\u6587\u4EF6\u6570"),t("div",{class:"card-value"},b(e.fileCount,l=>l.toLocaleString())))),s=e.breakdown.map(l=>[t("strong",null,l.category),d(l.fromBytes),d(l.toBytes),g(l.delta),h(l.ratio)]);return c("\u4F53\u79EF",a,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u5206\u7C7B\u5BF9\u6BD4"),m(["\u5206\u7C7B","Baseline","Candidate","Delta","Ratio"],s,[void 0,"num","num","num","num"])))}var y=100;function k(n){if(!n.files)return c("Files",p("\u4E00\u4FA7\u62A5\u544A\u672A\u5305\u542B files \u5217\u8868\uFF0C\u9010\u6587\u4EF6\u5BF9\u6BD4\u5DF2\u8DF3\u8FC7"));let e=n.files,a=t("div",{class:"card-grid"},f("\u65B0\u589E\u6587\u4EF6",e.totals.added,"pos"),f("\u5220\u9664\u6587\u4EF6",e.totals.removed,"neg"),f("\u4FEE\u6539\u6587\u4EF6",e.totals.changed,"warn"),f("\u672A\u53D8\u5316",e.totals.unchanged,"mute")),s=e.added.slice(0,y).map(r=>[r.path,t("span",{class:"badge"},r.category),d(r.bytes)]),l=e.removed.slice(0,y).map(r=>[r.path,t("span",{class:"badge"},r.category),d(r.bytes)]),i=e.changed.slice(0,y).map(r=>[r.path,t("span",{class:"badge"},r.category),d(r.fromBytes),d(r.toBytes),g(r.delta)]);return c("Files",a,e.added.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u65B0\u589E (${e.totals.added})${B(e.added.length,y)}`),m(["\u8DEF\u5F84","\u5206\u7C7B","\u4F53\u79EF"],s,["path",void 0,"num"])),e.removed.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u5220\u9664 (${e.totals.removed})${B(e.removed.length,y)}`),m(["\u8DEF\u5F84","\u5206\u7C7B","\u4F53\u79EF"],l,["path",void 0,"num"])),e.changed.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u4FEE\u6539 (${e.totals.changed})${B(e.changed.length,y)}`),m(["\u8DEF\u5F84","\u5206\u7C7B","Baseline","Candidate","Delta"],i,["path",void 0,"num","num","num"])))}function F(n){if(!n.permissions)return c("\u6743\u9650",p("\u4E24\u4FA7\u5747\u65E0\u6743\u9650\u4FE1\u606F"));let e=n.permissions,a=e.added.filter(o=>o.sensitive).length,s=e.removed.filter(o=>o.sensitive).length,l=t("div",{class:"card-grid"},f("\u65B0\u589E\u6743\u9650",e.added.length,"pos"),f("\u5220\u9664\u6743\u9650",e.removed.length,"neg"),f("\u5176\u4E2D\u654F\u611F(\u65B0\u589E)",a,a>0?"warn":"mute"),f("\u5176\u4E2D\u654F\u611F(\u5220\u9664)",s,"mute"),f("\u672A\u53D8\u5316",e.unchanged,"mute")),i=e.added.map(o=>[o.name,o.sensitive?u("sensitive","danger"):u("\u666E\u901A","info"),o.reason||"\u2014"]),r=e.removed.map(o=>[o.name,o.sensitive?u("sensitive","danger"):u("\u666E\u901A","info"),o.reason||"\u2014"]);return c("\u6743\u9650",l,i.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u65B0\u589E\u6743\u9650 (${e.added.length})`),m(["Permission","\u7C7B\u578B","\u7406\u7531"],i,["path",void 0,void 0])),r.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u5220\u9664\u6743\u9650 (${e.removed.length})`),m(["Permission","\u7C7B\u578B","\u7406\u7531"],r,["path",void 0,void 0])),e.added.length===0&&e.removed.length===0?p("\u6743\u9650\u96C6\u5408\u65E0\u53D8\u5316"):null)}function P(n){if(!n.resources)return c("\u8D44\u6E90",p("\u4E24\u4FA7\u5747\u65E0 resources \u4FE1\u606F"));let e=n.resources,a=t("div",{class:"panel"},m(["\u7EF4\u5EA6","Baseline","Candidate","Delta","Ratio"],[["\u56FE\u7247\u5F20\u6570",e.images.count.from,e.images.count.to,T(e.images.count.delta),h(e.images.count.ratio)],["\u56FE\u7247\u4F53\u79EF",d(e.images.bytes.from),d(e.images.bytes.to),g(e.images.bytes.delta),h(e.images.bytes.ratio)],["\u5A92\u4F53\u5F20\u6570",e.media.count.from,e.media.count.to,T(e.media.count.delta),h(e.media.count.ratio)],["\u5A92\u4F53\u4F53\u79EF",d(e.media.bytes.from),d(e.media.bytes.to),g(e.media.bytes.delta),h(e.media.bytes.ratio)],["\u5B57\u7B26\u4E32\u6570",e.strings.count.from,e.strings.count.to,T(e.strings.count.delta),h(e.strings.count.ratio)]],[void 0,"num","num","num","num"])),s=e.strings.localesAdded.length===0&&e.strings.localesRemoved.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},"Locale \u53D8\u5316"),t("div",null,e.strings.localesAdded.length>0?t("div",null,t("span",{class:"card-label"},"\u65B0\u589E")," ",...e.strings.localesAdded.map(l=>t("span",{class:"badge success"},l))):null,e.strings.localesRemoved.length>0?t("div",null,t("span",{class:"card-label"},"\u5220\u9664")," ",...e.strings.localesRemoved.map(l=>t("span",{class:"badge danger"},l))):null));return c("\u8D44\u6E90",a,s)}function I(n){if(!n.rawfile)return c("Rawfile",p("\u4E24\u4FA7\u5747\u65E0 rawfile \u4FE1\u606F"));let e=n.rawfile,a=t("div",{class:"card-grid"},t("div",{class:"card"},t("div",{class:"card-label"},"Rawfile \u603B\u4F53\u79EF"),t("div",{class:"card-value"},b(e.totalBytes,d))),t("div",{class:"card"},t("div",{class:"card-label"},"Rawfile \u6587\u4EF6\u6570"),t("div",{class:"card-value"},b(e.fileCount,r=>r.toLocaleString())))),s=e.topLevelGroups.map(r=>[t("code",null,r.path),d(r.fromBytes),d(r.toBytes),g(r.delta),`${r.fromCount} \u2192 ${r.toCount}`]),l=e.categories.map(r=>[t("strong",null,r.category),d(r.fromBytes),d(r.toBytes),g(r.delta),`${r.fromCount} \u2192 ${r.toCount}`]),i=!e.packages||e.packages.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u914D\u7F6E\u5305 Package \u5BF9\u6BD4\uFF08${e.packages.length}\uFF09`),m(["Package ID","Baseline","Candidate","Delta","\u6587\u4EF6\u6570 (B \u2192 C)"],e.packages.slice(0,50).map(r=>[t("code",null,r.packageId),d(r.fromBytes),d(r.toBytes),g(r.delta),`${r.fromCount} \u2192 ${r.toCount}`]),[void 0,"num","num","num","num"]));return c("Rawfile",a,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u9876\u5C42\u5206\u7EC4\u5BF9\u6BD4\uFF08\u6309 |\u0394| \u964D\u5E8F\uFF09"),s.length===0?p("\u65E0 group \u53D8\u5316"):m(["\u9876\u5C42\u8DEF\u5F84","Baseline","Candidate","Delta","\u6587\u4EF6\u6570 (B \u2192 C)"],s,["path","num","num","num","num"])),t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u7C7B\u522B\u5BF9\u6BD4\uFF08\u6309 |\u0394| \u964D\u5E8F\uFF09"),l.length===0?p("\u65E0 category \u53D8\u5316"):m(["\u7C7B\u522B","Baseline","Candidate","Delta","\u6587\u4EF6\u6570 (B \u2192 C)"],l,[void 0,"num","num","num","num"])),i)}function O(n){if(!n.nativeLibs)return c("Native",p("\u4E24\u4FA7\u5747\u65E0 nativeLibs \u4FE1\u606F"));let e=n.nativeLibs,a=t("div",{class:"card-grid"},t("div",{class:"card"},t("div",{class:"card-label"},"Native \u603B\u4F53\u79EF"),t("div",{class:"card-value"},b(e.totalBytes,d))),t("div",{class:"card"},t("div",{class:"card-label"},"\u67B6\u6784\u53D8\u5316"),t("div",{class:"card-value",style:"font-size:14px;"},e.architectures.added.length>0?t("span",null,"+ ",...e.architectures.added.map(r=>t("span",{class:"badge success"},r))," "):null,e.architectures.removed.length>0?t("span",null,"\u2212 ",...e.architectures.removed.map(r=>t("span",{class:"badge danger"},r))):null,e.architectures.added.length===0&&e.architectures.removed.length===0?t("span",{class:"delta-zero"},"\u65E0\u53D8\u5316"):null))),s=e.added.map(r=>[r.arch,t("code",null,r.name),d(r.bytes)]),l=e.removed.map(r=>[r.arch,t("code",null,r.name),d(r.bytes)]),i=e.changed.map(r=>[r.arch,t("code",null,r.name),d(r.fromBytes),d(r.toBytes),g(r.delta)]);return c("Native",a,e.added.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u65B0\u589E (${e.added.length})`),m(["Arch","Name","\u4F53\u79EF"],s,[void 0,"path","num"])):null,e.removed.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u5220\u9664 (${e.removed.length})`),m(["Arch","Name","\u4F53\u79EF"],l,[void 0,"path","num"])):null,e.changed.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u4FEE\u6539 (${e.changed.length})`),m(["Arch","Name","Baseline","Candidate","Delta"],i,[void 0,"path","num","num","num"])):null,e.added.length===0&&e.removed.length===0&&e.changed.length===0?p("Native \u5E93\u65E0\u53D8\u5316"):null)}function j(n){if(!n.abc)return c("ABC",p("\u4E24\u4FA7\u5747\u65E0 abc \u4FE1\u606F"));let e=n.abc,a=e.modulesAbc.fromBytes!==null?d(e.modulesAbc.fromBytes):"\u2205",s=e.modulesAbc.toBytes!==null?d(e.modulesAbc.toBytes):"\u2205",l=e.modulesAbc.delta===null?t("span",{class:"delta-zero"},"\u2014"):g(e.modulesAbc.delta),i=t("div",{class:"panel"},t("h3",{class:"panel-title"},"ets/modules.abc"),E([["Baseline",a],["Candidate",s],["Delta",l],["SourceMap",e.modulesAbc.sourceMapChanged?u("changed","warning"):u("unchanged","success")]])),r=t("div",{class:"card-grid"},f("extra \u65B0\u589E",e.extra.added.length,"pos"),f("extra \u5220\u9664",e.extra.removed.length,"neg"),f("extra \u4FEE\u6539",e.extra.changed.length,"warn"));return c("ABC",i,r,e.extra.added.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u65B0\u589E abc"),m(["\u8DEF\u5F84","\u4F53\u79EF"],e.extra.added.map(o=>[o.path,d(o.bytes)]),["path","num"])):null,e.extra.removed.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u5220\u9664 abc"),m(["\u8DEF\u5F84","\u4F53\u79EF"],e.extra.removed.map(o=>[o.path,d(o.bytes)]),["path","num"])):null,e.extra.changed.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u4FEE\u6539 abc"),m(["\u8DEF\u5F84","Baseline","Candidate","Delta"],e.extra.changed.map(o=>[o.path,d(o.fromBytes),d(o.toBytes),g(o.delta)]),["path","num","num","num"])):null)}function V(n){if(!n.signature)return c("\u7B7E\u540D",p("\u4E24\u4FA7\u5747\u65E0 signature \u4FE1\u606F"));let e=n.signature,a=t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u7B7E\u540D\u5B58\u5728\u6027"),E([["Baseline",e.fromPresent?u("\u5DF2\u7B7E","success"):u("\u672A\u7B7E","danger")],["Candidate",e.toPresent?u("\u5DF2\u7B7E","success"):u("\u672A\u7B7E","danger")],["\u662F\u5426\u53D8\u5316",e.presentChanged?u("changed","warning"):u("unchanged","success")]])),s=e.fields.map(l=>[l.field,l.from||"\u2014",l.to||"\u2014",l.changed?u("changed","warning"):u("unchanged","success")]);return c("\u7B7E\u540D",a,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u8BC1\u4E66\u5B57\u6BB5\u5BF9\u6BD4"),m(["\u5B57\u6BB5","Baseline","Candidate","\u72B6\u6001"],s,[void 0,"path","path",void 0])))}function G(n){if(!n.dependencies)return c("\u4F9D\u8D56",p("\u4E24\u4FA7\u5747\u65E0 dependencies \u4FE1\u606F"));let e=n.dependencies;if(e.hsp.added.length===0&&e.hsp.removed.length===0&&e.har.added.length===0&&e.har.removed.length===0)return c("\u4F9D\u8D56",p("\u4F9D\u8D56\u96C6\u5408\u65E0\u53D8\u5316"));let s=[];for(let l of e.hsp.added)s.push([u("HSP","primary"),u("+ added","success"),t("code",null,l)]);for(let l of e.hsp.removed)s.push([u("HSP","primary"),u("\u2212 removed","danger"),t("code",null,l)]);for(let l of e.har.added)s.push([u("HAR","info"),u("+ added","success"),t("code",null,l)]);for(let l of e.har.removed)s.push([u("HAR","info"),u("\u2212 removed","danger"),t("code",null,l)]);return c("\u4F9D\u8D56",t("div",{class:"panel"},m(["\u7C7B\u578B","\u72B6\u6001","Name"],s,[void 0,void 0,"path"])))}function J(n){return!n.warnings||n.warnings.length===0?c("\u8B66\u544A",p("\u5DEE\u5F02\u8BA1\u7B97\u8FC7\u7A0B\u672A\u89E6\u53D1\u8B66\u544A")):c("\u8B66\u544A",t("div",{class:"panel"},m(["Level","Code","Source","Message"],n.warnings.map(e=>[t("span",{class:`badge ${e.level==="error"?"danger":e.level==="warn"?"warning":"info"}`},e.level),t("code",null,e.code),e.source?t("code",null,e.source):"\u2014",e.message]),[void 0,void 0,void 0,"path"])))}function c(n,...e){return t("div",null,t("h2",{class:"section-title"},n),...e.filter(a=>a!==null))}function f(n,e,a){let s;return e===0?s=t("span",{class:"delta-zero"},"0"):a==="pos"?s=t("span",{class:"delta-pos"},`+${e.toLocaleString()}`):a==="neg"?s=t("span",{class:"delta-neg"},`\u2212${e.toLocaleString()}`):s=t("span",{class:a==="mute"?"delta-zero":"delta-pos"},e.toLocaleString()),t("div",{class:"card"},t("div",{class:"card-label"},n),t("div",{class:"card-value"},s))}function B(n,e){return n>e?`\uFF08\u5DF2\u622A\u65AD\u5C55\u793A\u524D ${e}\uFF0C\u5168\u91CF\u89C1 JSON\uFF09`:""}var $=[{id:"overview",label:"\u6982\u89C8",render:N},{id:"basic",label:"Basic",count:n=>n.basic?.changed.length,render:z},{id:"size",label:"\u4F53\u79EF",count:n=>n.size?M(n.size.total.delta):void 0,render:_},{id:"files",label:"Files",count:n=>n.files?`${n.files.totals.added}+/${n.files.totals.removed}\u2212/${n.files.totals.changed}~`:void 0,render:k},{id:"permissions",label:"\u6743\u9650",count:n=>n.permissions?`${n.permissions.added.length}+/${n.permissions.removed.length}\u2212`:void 0,render:F},{id:"resources",label:"\u8D44\u6E90",count:n=>n.resources?M(n.resources.images.bytes.delta+n.resources.media.bytes.delta):void 0,render:P},{id:"rawfile",label:"Rawfile",count:n=>n.rawfile?M(n.rawfile.totalBytes.delta):void 0,render:I},{id:"nativeLibs",label:"Native",count:n=>n.nativeLibs?`${n.nativeLibs.added.length}+/${n.nativeLibs.removed.length}\u2212/${n.nativeLibs.changed.length}~`:void 0,render:O},{id:"abc",label:"ABC",count:n=>n.abc?.modulesAbc.delta!=null?M(n.abc.modulesAbc.delta):void 0,render:j},{id:"signature",label:"\u7B7E\u540D",count:n=>n.signature?n.signature.fields.some(e=>e.changed)||n.signature.presentChanged?"\u26A0":"\u2713":void 0,render:V},{id:"dependencies",label:"\u4F9D\u8D56",count:n=>n.dependencies?`${n.dependencies.hsp.added.length+n.dependencies.har.added.length}+/${n.dependencies.hsp.removed.length+n.dependencies.har.removed.length}\u2212`:void 0,render:G},{id:"warnings",label:"\u8B66\u544A",count:n=>n.warnings?.length||void 0,render:J}];function Y(n,e){n.innerHTML="";let a=Z(e),s=ee(e);n.appendChild(t("div",{class:"app"},a,s));let l=K()??"overview";W(l),window.addEventListener("hashchange",()=>W(K()??"overview"))}function Z(n){let e=t("div",{class:"sidebar-header"},t("div",{class:"title"},"KingSDK Hap Diff"),t("div",{class:"subtitle"},n.summary.versionLine??`${q(n.left.meta.file)} \u2192 ${q(n.right.meta.file)}`)),a=$.map(s=>{let l=s.count?.(n);return t("a",{class:"nav-item",href:`#${s.id}`,"data-nav":s.id},t("span",null,s.label),l!=null&&l!==""?t("span",{class:"count"},String(l)):null)});return t("aside",{class:"sidebar"},e,...a)}function ee(n){let e=t("div",{class:"topbar"},t("h1",null,"Hap \u5BF9\u6BD4\u62A5\u544A"),n.summary.versionLine?t("span",{class:"badge primary"},n.summary.versionLine):null,n.summary.identical?t("span",{class:"badge success"},"\u2713 identical"):null,t("span",{class:"meta-chip"},"tool ",t("code",null,n.toolVersion))),a=$.map(s=>t("section",{class:"section","data-section":s.id,id:`section-${s.id}`},s.render(n)));return t("main",{class:"main"},e,...a)}function W(n){document.querySelectorAll("[data-section]").forEach(e=>{e.classList.toggle("active",e.getAttribute("data-section")===n)}),document.querySelectorAll("[data-nav]").forEach(e=>{e.classList.toggle("active",e.getAttribute("data-nav")===n)})}function K(){let n=window.location.hash;if(!n||n.length<2)return null;let e=n.slice(1);return $.some(a=>a.id===e)?e:null}function q(n){return n.split(/[\\/]/).pop()??n}function M(n){let e=n>0?"+":n<0?"\u2212":"",a=Math.abs(n);if(a===0)return"0";let s=["B","KiB","MiB","GiB"],l=a,i=0;for(;l>=1024&&i<s.length-1;)l/=1024,i+=1;return`${e}${i===0?l.toFixed(0):l.toFixed(1)}${s[i]}`}function Q(){let n=document.getElementById("root");if(!n){document.body.appendChild(L("\u9875\u9762\u7F3A\u5C11 #root \u5BB9\u5668\uFF0C\u65E0\u6CD5\u6302\u8F7D diff viewer\u3002"));return}let e=document.getElementById("__DATA__");if(!e||!e.textContent){n.appendChild(L("\u672A\u627E\u5230 #__DATA__ \u8282\u70B9\u6216\u5176\u5185\u5BB9\u4E3A\u7A7A\u3002"));return}let a;try{let s=e.textContent.trim();if(s==="__DATA_PLACEHOLDER__"||s===""){n.appendChild(L("\u5BF9\u6BD4\u6570\u636E\u672A\u6CE8\u5165\uFF1A__DATA__ \u4ECD\u662F\u5360\u4F4D\u7B26\u3002\u8BF7\u901A\u8FC7 CLI \u751F\u6210\u3002"));return}a=JSON.parse(s)}catch(s){n.appendChild(L(`\u89E3\u6790 diff JSON \u5931\u8D25: ${s instanceof Error?s.message:String(s)}`));return}if(!a||typeof a!="object"||!a.schemaVersion){n.appendChild(L("\u5BF9\u6BD4 JSON \u4E0D\u7B26\u5408 HapDiffReport schema\uFF08\u7F3A\u5C11 schemaVersion\uFF09\u3002"));return}try{Y(n,a)}catch(s){n.appendChild(L(`\u6E32\u67D3\u5931\u8D25: ${s instanceof Error?s.stack??s.message:String(s)}`))}}function L(n){let e=document.createElement("div");return e.className="error-block",e.textContent=n,e}document.readyState==="loading"?document.addEventListener("DOMContentLoaded",Q,{once:!0}):Q();})();
+
+</script>
+  </body>
+</html>

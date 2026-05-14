@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KingSDK Hap Report</title>
+    <!-- __STYLES__ -->
+  </head>
+  <body>
+    <div id="root">
+      <noscript>
+        <div class="empty">需要启用 JavaScript 才能查看报告。</div>
+      </noscript>
+    </div>
+
+    <!--
+      KingSDK 数据注入点：
+      CLI render.ts 在生成单文件 HTML 时，把 HapReport / HapDiffReport JSON
+      作为 textContent 写入到下面这个 script 节点；viewer 启动时 JSON.parse 它。
+      使用 <script type="application/json"> 而不是直接拼到 JS 里，避免 JSON 中出现
+      </script> 等字符序列时引发 XSS / 解析问题。
+    -->
+    <script id="__DATA__" type="application/json">__DATA_PLACEHOLDER__</script>
+
+    <!-- __SCRIPT__ -->
+  </body>
+</html>

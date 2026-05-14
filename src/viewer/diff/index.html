@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KingSDK Hap Diff Report</title>
+    <!-- __STYLES__ -->
+  </head>
+  <body>
+    <div id="root">
+      <noscript>
+        <div class="empty">需要启用 JavaScript 才能查看对比报告。</div>
+      </noscript>
+    </div>
+
+    <!--
+      KingSDK 数据注入点：CLI render.ts 在生成单文件 HTML 时把 HapDiffReport JSON
+      写到这里；diff viewer 启动时 JSON.parse 它。
+    -->
+    <script id="__DATA__" type="application/json">__DATA_PLACEHOLDER__</script>
+
+    <!-- __SCRIPT__ -->
+  </body>
+</html>

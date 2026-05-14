@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.tsbuildinfo
+.env
+.env.local
+
+tests/fixtures/*.hap
+!tests/fixtures/.gitkeep

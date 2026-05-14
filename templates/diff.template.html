@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KingSDK Hap Diff Report</title>
+    <style>
+/* ============================================================
+ * KingSDK Hap Report Viewer - styles
+ * 设计：紧凑信息密度、卡片化、亮/暗双主题（跟随系统）。
+ * 不依赖任何外部 CSS 框架，全部内联到 templates/report.template.html
+ * ============================================================ */
+
+:root {
+  --color-bg: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-surface-elev: #fbfcff;
+  --color-border: #e2e6ef;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-primary: #5b8cff;
+  --color-primary-bg: rgba(91, 140, 255, 0.12);
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #6b7280;
+  --color-code-bg: #f1f3f9;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+
+  --font-mono: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0d1117;
+    --color-surface: #161b22;
+    --color-surface-elev: #1c232c;
+    --color-border: #30363d;
+    --color-text: #e6edf3;
+    --color-text-muted: #8b949e;
+    --color-primary: #79a4ff;
+    --color-primary-bg: rgba(121, 164, 255, 0.18);
+    --color-code-bg: #1a1f27;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+code,
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* -------------------- 主框架 -------------------- */
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 0 20px 16px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 12px;
+}
+
+.sidebar-header .title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.sidebar-header .subtitle {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background 0.12s ease;
+}
+
+.nav-item:hover {
+  background: var(--color-primary-bg);
+  text-decoration: none;
+}
+
+.nav-item.active {
+  background: var(--color-primary-bg);
+  border-left-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.nav-item .count {
+  background: var(--color-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.nav-item.active .count {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.main {
+  padding: 28px 32px;
+  max-width: 1400px;
+  width: 100%;
+}
+
+.section {
+  display: none;
+}
+.section.active {
+  display: block;
+}
+
+/* -------------------- 顶部 meta 面包屑 -------------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.topbar .meta-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.topbar .meta-chip code {
+  background: var(--color-code-bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+/* -------------------- 卡片 / 网格 -------------------- */
+h2.section-title {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.card .card-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.card .card-value {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.card .card-sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+}
+
+.panel-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* 在 panel 里贴在标题下的解释行（小号灰字） */
+.panel-hint {
+  margin: -6px 0 12px;
+  font-size: 12px;
+  color: var(--color-text-muted, #666);
+  line-height: 1.5;
+}
+
+/* 嵌在 panel 里的子折叠面板（用于深度分析逐 so / 逐 abc 展开） */
+details.sub-panel {
+  background: var(--color-surface-elev);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  box-shadow: none;
+}
+details.sub-panel > summary {
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--color-text);
+  user-select: none;
+}
+details.sub-panel[open] > summary {
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+details.sub-panel > summary > strong {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+/* abc 字符串池预览：紧凑列布局，每项一行带 hover 高亮 */
+.string-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2px 12px;
+  font-size: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--color-code-bg);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+.string-list .string-item {
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.string-list .string-item:hover {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  overflow: visible;
+  white-space: normal;
+  word-break: break-all;
+  position: relative;
+  z-index: 1;
+}
+.string-list .string-item.added { color: var(--color-success); }
+.string-list .string-item.removed { color: var(--color-danger); text-decoration: line-through; }
+
+/* -------------------- 分页表格 -------------------- */
+.paginated {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.paginated-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 4px 0;
+}
+.paginated-controls .page-btn {
+  background: var(--color-surface-elev);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  line-height: 1;
+  min-width: 36px;
+  transition: background 120ms;
+}
+.paginated-controls .page-btn:hover:not(:disabled) {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.paginated-controls .page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.paginated-controls .page-jump-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.paginated-controls .page-jump {
+  width: 56px;
+  background: var(--color-surface-elev);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+.paginated-controls .page-jump:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+.paginated-controls .page-info {
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+/* -------------------- Key-Value 列表 -------------------- */
+dl.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 16px;
+  row-gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+
+dl.kv dt {
+  color: var(--color-text-muted);
+}
+
+dl.kv dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+/* -------------------- 表格 -------------------- */
+table.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.tbl th,
+table.tbl td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+table.tbl th {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-elev);
+}
+
+table.tbl tr:last-child td {
+  border-bottom: none;
+}
+
+table.tbl td.num,
+table.tbl th.num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  width: 1%; /* 让 num 列收缩到内容自然宽度，把多余空间留给 path */
+}
+
+table.tbl td.path,
+table.tbl th.path {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+table.tbl td.bar-col,
+table.tbl th.bar-col {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* -------------------- 比例条 -------------------- */
+.bar {
+  width: 100px;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.bar > .fill {
+  display: block;
+  height: 100%;
+  min-width: 1px;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+/* -------------------- Stacked Breakdown -------------------- */
+.stacked-bar {
+  display: flex;
+  width: 100%;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  margin-bottom: 12px;
+}
+
+.stacked-bar > .seg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.legend .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* -------------------- Badge -------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.badge.primary {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+}
+.badge.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+}
+.badge.warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: var(--color-warning);
+}
+.badge.danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--color-danger);
+}
+.badge.info {
+  background: rgba(107, 114, 128, 0.18);
+  color: var(--color-info);
+}
+
+/* -------------------- Diff -------------------- */
+.delta-pos {
+  color: var(--color-danger);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+.delta-neg {
+  color: var(--color-success);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+.delta-zero {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+table.tbl tr.row-added td {
+  background: rgba(16, 185, 129, 0.08);
+}
+table.tbl tr.row-removed td {
+  background: rgba(239, 68, 68, 0.08);
+}
+table.tbl tr.row-changed td {
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.diff-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.diff-pair > .side {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.diff-pair .side-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+.diff-pair .side-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+.diff-pair .side-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+/* 顶部摘要：左 → 右、本次变化 */
+.diff-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+/* -------------------- Empty / Error -------------------- */
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 30px;
+  font-size: 13px;
+}
+
+.error-block {
+  border: 1px solid var(--color-danger);
+  background: rgba(239, 68, 68, 0.08);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  color: var(--color-danger);
+}
+
+</style>
+  </head>
+  <body>
+    <div id="root">
+      <noscript>
+        <div class="empty">需要启用 JavaScript 才能查看对比报告。</div>
+      </noscript>
+    </div>
+
+    <!--
+      KingSDK 数据注入点：CLI render.ts 在生成单文件 HTML 时把 HapDiffReport JSON
+      写到这里；diff viewer 启动时 JSON.parse 它。
+    -->
+    <script id="__DATA__" type="application/json">__DATA_PLACEHOLDER__</script>
+
+    <script>
+"use strict";var KingsdkDiffViewer=(()=>{var Ee="http://www.w3.org/2000/svg",Me=new Set(["svg","g","rect","text","line","path","circle"]);function t(e,n,...a){let s=Me.has(e)?document.createElementNS(Ee,e):document.createElement(e);if(n)for(let[l,r]of Object.entries(n))r===!1||r===null||r===void 0||(l.startsWith("on")&&typeof r=="function"?s.addEventListener(l.slice(2).toLowerCase(),r):l==="class"?s.className=String(r):r===!0?s.setAttribute(l,""):s.setAttribute(l,String(r)));return K(s,a),s}function K(e,n){for(let a of n)a==null||a===!1||a===!0||(Array.isArray(a)?K(e,a):a instanceof Node?e.appendChild(a):e.appendChild(document.createTextNode(String(a))))}function o(e,n=2){if(!Number.isFinite(e)||e<0)return"0 B";let a=["B","KiB","MiB","GiB","TiB"],s=e,l=0;for(;s>=1024&&l<a.length-1;)s/=1024,l+=1;return`${l===0?s.toFixed(0):s.toFixed(n)} ${a[l]}`}function W(e,n=1){return Number.isFinite(e)?`${(e*100).toFixed(n)}%`:"-"}function Y(e){let n=new Date(e);if(Number.isNaN(n.getTime()))return e;let a=s=>String(s).padStart(2,"0");return`${n.getFullYear()}-${a(n.getMonth()+1)}-${a(n.getDate())} ${a(n.getHours())}:${a(n.getMinutes())}:${a(n.getSeconds())}`}function I(e,n=12){return typeof e!="string"||e.length<=n?e:`${e.slice(0,n)}\u2026`}function C(e){let n=t("dl",{class:"kv"});for(let[a,s]of e)s==null||s===""||(n.appendChild(t("dt",null,a)),n.appendChild(t("dd",null,s)));return n}function d(e,n){return t("span",{class:n?`badge ${n}`:"badge"},e)}function p(e){return t("div",{class:"empty"},e)}function f(e,n,a){let s=t("thead",null,t("tr",null,...e.map((r,i)=>t("th",a?.[i]?{class:a[i]}:null,r)))),l=t("tbody",null,...n.map(r=>t("tr",null,...r.map((i,c)=>t("td",a?.[c]?{class:a[c]}:null,i)))));return t("table",{class:"tbl"},s,l)}function z(e,n,a={}){let s=a.pageSize&&a.pageSize>0?a.pageSize:50,l=e.length,r=Math.max(1,Math.ceil(l/s));if(l===0)return p(a.emptyMessage??"\u65E0\u6570\u636E");let i=t("div",{class:"paginated"}),c=t("div",{class:"paginated-body"}),g=Math.min(Math.max(0,a.initialPage??0),r-1);function q(){for(;c.firstChild;)c.removeChild(c.firstChild);let v=g*s,R=Math.min(l,v+s);c.appendChild(n(e.slice(v,R)))}if(i.appendChild(c),r>1){let x=function(){let L=g*s+1,E=Math.min(l,(g+1)*s);J.textContent=`\u7B2C ${L.toLocaleString()}\u2013${E.toLocaleString()} \u6761 / \u5171 ${l.toLocaleString()}`,T.value=String(g+1),R.disabled=g===0,O.disabled=g===r-1},w=function(L){let E=Math.min(Math.max(0,L),r-1);E!==g&&(g=E,q(),x())};var Je=x,Ke=w;let v=t("div",{class:"paginated-controls"}),R=t("button",{class:"page-btn",type:"button"},"\u25C0"),O=t("button",{class:"page-btn",type:"button"},"\u25B6"),J=t("span",{class:"page-info"}),T=t("input",{class:"page-jump",type:"number",min:"1",max:String(r),step:"1"}),De=t("span",{class:"page-jump-label"},` / ${r}`);R.addEventListener("click",()=>w(g-1)),O.addEventListener("click",()=>w(g+1)),T.addEventListener("change",()=>{let L=parseInt(T.value,10);Number.isFinite(L)?w(L-1):x()}),T.addEventListener("keydown",L=>{if(L.key==="Enter"){let E=parseInt(T.value,10);Number.isFinite(E)&&w(E-1)}}),v.appendChild(R),v.appendChild(t("span",{class:"page-jump-wrap"},"\u7B2C ",T,De," \u9875")),v.appendChild(O),v.appendChild(J),i.appendChild(v),x()}else{let v=t("div",{class:"paginated-controls"},t("span",{class:"page-info"},`\u5171 ${l.toLocaleString()} \u6761`));i.appendChild(v)}return q(),i}function H(e,n,a,s={}){return z(n,l=>f(e,l,a),s)}function N(e,n={}){let a=n.format??(r=>String(r));if(e===0)return t("span",{class:"delta-zero"},a(0));let s=e>0?"+":"\u2212",l=Math.abs(e);return t("span",{class:e>0?"delta-pos":"delta-neg"},`${s}${a(l)}`)}function h(e){return N(e,{format:n=>o(n)})}function P(e){return N(e,{format:n=>n.toLocaleString()})}function y(e){if(e===null)return t("span",{class:"delta-zero"},"\u2014");if(e===0)return t("span",{class:"delta-zero"},"0%");let n=e>0?"delta-pos":"delta-neg",a=e>0?"+":"\u2212";return t("span",{class:n},`${a}${W(Math.abs(e))}`)}function Q(e,n){return t("span",null,t("code",null,Z(e)),t("span",{class:"delta-zero"}," \u2192 "),t("code",null,Z(n)))}function Z(e){return e==null?"\u2205":Array.isArray(e)?e.length===0?"[]":`[${e.join(", ")}]`:typeof e=="object"?JSON.stringify(e):String(e)}function M(e,n=o){return t("span",null,t("code",null,n(e.from)),t("span",{class:"delta-zero"}," \u2192 "),t("code",null,n(e.to)),"  ",N(e.delta,{format:n}),"  ",y(e.ratio))}function te(e){let n=e.summary,a=t("div",{class:"diff-summary"},D("\u603B\u4F53\u79EF\u53D8\u5316",n.totalSizeDelta,o),D("\u538B\u7F29\u5305\u53D8\u5316",n.compressedDelta,o),D("\u6587\u4EF6\u6570\u53D8\u5316",n.fileCountDelta,r=>r.toLocaleString()),D("\u6587\u4EF6\u65B0\u589E",n.filesAdded,r=>r.toLocaleString(),"count-only-pos"),D("\u6587\u4EF6\u5220\u9664",n.filesRemoved,r=>r.toLocaleString(),"count-only-neg"),D("\u6587\u4EF6\u4FEE\u6539",n.filesChanged,r=>r.toLocaleString(),"count-only"),D("\u6743\u9650\u65B0\u589E",n.permissionsAdded,r=>r.toLocaleString(),"count-only-pos"),D("\u6743\u9650\u5220\u9664",n.permissionsRemoved,r=>r.toLocaleString(),"count-only-neg")),s=t("div",{class:"diff-pair"},X("Baseline (left)",e.left),X("Candidate (right)",e.right)),l=n.identical?t("div",{class:"panel"},t("span",{class:"badge success"},"\u2713 identical")," ",t("span",{class:"card-sub"},"\u4E24\u4FA7 hap \u5728\u6240\u6709\u53D7\u76D1\u63A7\u7EF4\u5EA6\u5747\u65E0\u5DEE\u5F02")):null;return t("div",null,t("h2",{class:"section-title"},"\u6982\u89C8"),n.versionLine?t("div",{class:"panel"},t("span",{class:"card-label"},"\u7248\u672C"),t("div",{class:"card-value"},n.versionLine)):null,a,l,s,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u5143\u4FE1\u606F"),C([["\u5BF9\u6BD4\u65F6\u95F4",Y(e.generatedAt)],["Tool \u7248\u672C",e.toolVersion],["Schema",e.schemaVersion]])))}function D(e,n,a,s){let l;return s==="count-only-pos"?l=n===0?t("span",{class:"delta-zero"},"0"):t("span",{class:"delta-pos"},`+${a(n)}`):s==="count-only-neg"?l=n===0?t("span",{class:"delta-zero"},"0"):t("span",{class:"delta-neg"},`\u2212${a(n)}`):s==="count-only"?l=t("span",{class:"delta-zero"},a(n)):l=N(n,{format:a}),t("div",{class:"card"},t("div",{class:"card-label"},e),t("div",{class:"card-value"},l))}function X(e,n){let a=n.meta.file,s=a.split(/[\\/]/).pop()||a,l=n.basic?`${n.basic.versionName} (${n.basic.versionCode})`:"\u2014";return t("div",{class:"side"},t("div",{class:"side-label"},e),t("div",{class:"side-title"},s),t("div",{class:"side-meta"},`${o(n.meta.fileSize)} \xB7 sha256 ${I(n.meta.sha256)} \xB7 ${l}`))}function ae(e){if(!e.basic)return u("Basic Info",p("\u4E24\u4FA7\u5747\u65E0 basic \u4FE1\u606F"));if(e.basic.changed.length===0)return u("Basic Info",p("basic \u5B57\u6BB5\u672A\u53D1\u751F\u53D8\u5316"));let n=e.basic.changed.map(a=>[a.field,Q(a.from,a.to)]);return u("Basic Info",t("div",{class:"panel"},f(["\u5B57\u6BB5","\u53D8\u5316"],n,["path",void 0])))}function le(e){if(!e.size)return u("\u4F53\u79EF",p("\u4E24\u4FA7\u5747\u65E0 size \u4FE1\u606F"));let n=e.size,a=t("div",{class:"card-grid"},t("div",{class:"card"},t("div",{class:"card-label"},"\u603B\u4F53\u79EF"),t("div",{class:"card-value"},M(n.total,o))),t("div",{class:"card"},t("div",{class:"card-label"},"\u538B\u7F29\u5305\u5927\u5C0F"),t("div",{class:"card-value"},M(n.compressed,o))),t("div",{class:"card"},t("div",{class:"card-label"},"\u6587\u4EF6\u6570"),t("div",{class:"card-value"},M(n.fileCount,l=>l.toLocaleString())))),s=n.breakdown.map(l=>[t("strong",null,l.category),o(l.fromBytes),o(l.toBytes),h(l.delta),y(l.ratio)]);return u("\u4F53\u79EF",a,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u5206\u7C7B\u5BF9\u6BD4"),f(["\u5206\u7C7B","Baseline","Candidate","Delta","Ratio"],s,[void 0,"num","num","num","num"])))}var $=100;function se(e){if(!e.files)return u("Files",p("\u4E00\u4FA7\u62A5\u544A\u672A\u5305\u542B files \u5217\u8868\uFF0C\u9010\u6587\u4EF6\u5BF9\u6BD4\u5DF2\u8DF3\u8FC7"));let n=e.files,a=t("div",{class:"card-grid"},m("\u65B0\u589E\u6587\u4EF6",n.totals.added,"pos"),m("\u5220\u9664\u6587\u4EF6",n.totals.removed,"neg"),m("\u4FEE\u6539\u6587\u4EF6",n.totals.changed,"warn"),m("\u672A\u53D8\u5316",n.totals.unchanged,"mute")),s=n.added.slice(0,$).map(i=>[i.path,t("span",{class:"badge"},i.category),o(i.bytes)]),l=n.removed.slice(0,$).map(i=>[i.path,t("span",{class:"badge"},i.category),o(i.bytes)]),r=n.changed.slice(0,$).map(i=>[i.path,t("span",{class:"badge"},i.category),o(i.fromBytes),o(i.toBytes),h(i.delta)]);return u("Files",a,n.added.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u65B0\u589E (${n.totals.added})${j(n.added.length,$)}`),f(["\u8DEF\u5F84","\u5206\u7C7B","\u4F53\u79EF"],s,["path",void 0,"num"])),n.removed.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u5220\u9664 (${n.totals.removed})${j(n.removed.length,$)}`),f(["\u8DEF\u5F84","\u5206\u7C7B","\u4F53\u79EF"],l,["path",void 0,"num"])),n.changed.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u4FEE\u6539 (${n.totals.changed})${j(n.changed.length,$)}`),f(["\u8DEF\u5F84","\u5206\u7C7B","Baseline","Candidate","Delta"],r,["path",void 0,"num","num","num"])))}function ie(e){if(!e.permissions)return u("\u6743\u9650",p("\u4E24\u4FA7\u5747\u65E0\u6743\u9650\u4FE1\u606F"));let n=e.permissions,a=n.added.filter(c=>c.sensitive).length,s=n.removed.filter(c=>c.sensitive).length,l=t("div",{class:"card-grid"},m("\u65B0\u589E\u6743\u9650",n.added.length,"pos"),m("\u5220\u9664\u6743\u9650",n.removed.length,"neg"),m("\u5176\u4E2D\u654F\u611F(\u65B0\u589E)",a,a>0?"warn":"mute"),m("\u5176\u4E2D\u654F\u611F(\u5220\u9664)",s,"mute"),m("\u672A\u53D8\u5316",n.unchanged,"mute")),r=n.added.map(c=>[c.name,c.sensitive?d("sensitive","danger"):d("\u666E\u901A","info"),c.reason||"\u2014"]),i=n.removed.map(c=>[c.name,c.sensitive?d("sensitive","danger"):d("\u666E\u901A","info"),c.reason||"\u2014"]);return u("\u6743\u9650",l,r.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u65B0\u589E\u6743\u9650 (${n.added.length})`),f(["Permission","\u7C7B\u578B","\u7406\u7531"],r,["path",void 0,void 0])),i.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u5220\u9664\u6743\u9650 (${n.removed.length})`),f(["Permission","\u7C7B\u578B","\u7406\u7531"],i,["path",void 0,void 0])),n.added.length===0&&n.removed.length===0?p("\u6743\u9650\u96C6\u5408\u65E0\u53D8\u5316"):null)}function re(e){if(!e.resources)return u("\u8D44\u6E90",p("\u4E24\u4FA7\u5747\u65E0 resources \u4FE1\u606F"));let n=e.resources,a=t("div",{class:"panel"},f(["\u7EF4\u5EA6","Baseline","Candidate","Delta","Ratio"],[["\u56FE\u7247\u5F20\u6570",n.images.count.from,n.images.count.to,P(n.images.count.delta),y(n.images.count.ratio)],["\u56FE\u7247\u4F53\u79EF",o(n.images.bytes.from),o(n.images.bytes.to),h(n.images.bytes.delta),y(n.images.bytes.ratio)],["\u5A92\u4F53\u5F20\u6570",n.media.count.from,n.media.count.to,P(n.media.count.delta),y(n.media.count.ratio)],["\u5A92\u4F53\u4F53\u79EF",o(n.media.bytes.from),o(n.media.bytes.to),h(n.media.bytes.delta),y(n.media.bytes.ratio)],["\u5B57\u7B26\u4E32\u6570",n.strings.count.from,n.strings.count.to,P(n.strings.count.delta),y(n.strings.count.ratio)]],[void 0,"num","num","num","num"])),s=n.strings.localesAdded.length===0&&n.strings.localesRemoved.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},"Locale \u53D8\u5316"),t("div",null,n.strings.localesAdded.length>0?t("div",null,t("span",{class:"card-label"},"\u65B0\u589E")," ",...n.strings.localesAdded.map(l=>t("span",{class:"badge success"},l))):null,n.strings.localesRemoved.length>0?t("div",null,t("span",{class:"card-label"},"\u5220\u9664")," ",...n.strings.localesRemoved.map(l=>t("span",{class:"badge danger"},l))):null));return u("\u8D44\u6E90",a,s)}function de(e){if(!e.rawfile)return u("Rawfile",p("\u4E24\u4FA7\u5747\u65E0 rawfile \u4FE1\u606F"));let n=e.rawfile,a=t("div",{class:"card-grid"},t("div",{class:"card"},t("div",{class:"card-label"},"Rawfile \u603B\u4F53\u79EF"),t("div",{class:"card-value"},M(n.totalBytes,o))),t("div",{class:"card"},t("div",{class:"card-label"},"Rawfile \u6587\u4EF6\u6570"),t("div",{class:"card-value"},M(n.fileCount,i=>i.toLocaleString())))),s=n.topLevelGroups.map(i=>[t("code",null,i.path),o(i.fromBytes),o(i.toBytes),h(i.delta),`${i.fromCount} \u2192 ${i.toCount}`]),l=n.categories.map(i=>[t("strong",null,i.category),o(i.fromBytes),o(i.toBytes),h(i.delta),`${i.fromCount} \u2192 ${i.toCount}`]),r=!n.packages||n.packages.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u914D\u7F6E\u5305 Package \u5BF9\u6BD4\uFF08${n.packages.length}\uFF09`),f(["Package ID","Baseline","Candidate","Delta","\u6587\u4EF6\u6570 (B \u2192 C)"],n.packages.slice(0,50).map(i=>[t("code",null,i.packageId),o(i.fromBytes),o(i.toBytes),h(i.delta),`${i.fromCount} \u2192 ${i.toCount}`]),[void 0,"num","num","num","num"]));return u("Rawfile",a,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u9876\u5C42\u5206\u7EC4\u5BF9\u6BD4\uFF08\u6309 |\u0394| \u964D\u5E8F\uFF09"),s.length===0?p("\u65E0 group \u53D8\u5316"):f(["\u9876\u5C42\u8DEF\u5F84","Baseline","Candidate","Delta","\u6587\u4EF6\u6570 (B \u2192 C)"],s,["path","num","num","num","num"])),t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u7C7B\u522B\u5BF9\u6BD4\uFF08\u6309 |\u0394| \u964D\u5E8F\uFF09"),l.length===0?p("\u65E0 category \u53D8\u5316"):f(["\u7C7B\u522B","Baseline","Candidate","Delta","\u6587\u4EF6\u6570 (B \u2192 C)"],l,[void 0,"num","num","num","num"])),r)}function oe(e){if(!e.nativeLibs)return u("Native",p("\u4E24\u4FA7\u5747\u65E0 nativeLibs \u4FE1\u606F"));let n=e.nativeLibs,a=t("div",{class:"card-grid"},t("div",{class:"card"},t("div",{class:"card-label"},"Native \u603B\u4F53\u79EF"),t("div",{class:"card-value"},M(n.totalBytes,o))),t("div",{class:"card"},t("div",{class:"card-label"},"\u67B6\u6784\u53D8\u5316"),t("div",{class:"card-value",style:"font-size:14px;"},n.architectures.added.length>0?t("span",null,"+ ",...n.architectures.added.map(i=>t("span",{class:"badge success"},i))," "):null,n.architectures.removed.length>0?t("span",null,"\u2212 ",...n.architectures.removed.map(i=>t("span",{class:"badge danger"},i))):null,n.architectures.added.length===0&&n.architectures.removed.length===0?t("span",{class:"delta-zero"},"\u65E0\u53D8\u5316"):null))),s=n.added.map(i=>[i.arch,t("code",null,i.name),o(i.bytes)]),l=n.removed.map(i=>[i.arch,t("code",null,i.name),o(i.bytes)]),r=n.changed.map(i=>[i.arch,t("code",null,i.name),o(i.fromBytes),o(i.toBytes),h(i.delta)]);return u("Native",a,n.added.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u65B0\u589E (${n.added.length})`),f(["Arch","Name","\u4F53\u79EF"],s,[void 0,"path","num"])):null,n.removed.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u5220\u9664 (${n.removed.length})`),f(["Arch","Name","\u4F53\u79EF"],l,[void 0,"path","num"])):null,n.changed.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u4FEE\u6539 (${n.changed.length})`),f(["Arch","Name","Baseline","Candidate","Delta"],r,[void 0,"path","num","num","num"])):null,n.added.length===0&&n.removed.length===0&&n.changed.length===0?p("Native \u5E93\u65E0\u53D8\u5316"):null,Te(e))}var G=50,V=50,ee=100;function Se(e){return e.totals.added+e.totals.removed+e.totals.changed>0||(e.sectionsDiff?.anyChanged??!1)||e.neededDiff!==void 0&&e.neededDiff.added.length+e.neededDiff.removed.length>0||(e.mitigationsDiff?.anyChanged??!1)||e.glibcDiff!==void 0&&e.glibcDiff.added.length+e.glibcDiff.removed.length>0||(e.rodataDiff?.anyChanged??!1)||(e.buildInfoDiff?.anyChanged??!1)}function Te(e){let n=e.nativeLibSymbols;if(!n||n.perLib.length===0)return null;let a=n.perLib.filter(Se),s=t("div",{class:"card-grid"},m("\u53D7\u5F71\u54CD so",a.length,"warn"),m("\u7B26\u53F7\u65B0\u589E",n.perLib.reduce((i,c)=>i+c.totals.added,0),"pos"),m("\u7B26\u53F7\u5220\u9664",n.perLib.reduce((i,c)=>i+c.totals.removed,0),"neg"),m("\u7B26\u53F7\u4FEE\u6539",n.perLib.reduce((i,c)=>i+c.totals.changed,0),"warn"),m("\u8282\u533A\u53D8\u5316(\u603B\u6761\u76EE)",n.perLib.reduce((i,c)=>{let g=c.sectionsDiff;return g?i+g.added.length+g.removed.length+g.changed.length:i},0),"warn"),m("\u4F9D\u8D56\u53D8\u5316(\u603B\u6761\u76EE)",n.perLib.reduce((i,c)=>c.neededDiff?i+c.neededDiff.added.length+c.neededDiff.removed.length:i,0),"warn"),m("Mitigations \u9000\u5316 so",n.perLib.filter(i=>i.mitigationsDiff?.anyChanged).length,"warn")),l=n.perLib.map(i=>[t("span",{class:"badge primary"},i.arch),t("code",null,i.name),i.fromMissing?d("\u65B0 so","success"):i.toMissing?d("\u5220 so","danger"):d("\u2014","info"),i.totals.added.toLocaleString(),i.totals.removed.toLocaleString(),i.totals.changed.toLocaleString(),ce(i)]),r=a.map(i=>Ce(i));return t("div",null,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u53EF\u9009\u6DF1\u5EA6\u5DEE\u5F02 \xB7 Native ELF \u591A\u7EF4\u5EA6"),s,t("h3",{class:"panel-title",style:"margin-top:12px"},"\u9010 so \u6C47\u603B"),f(["Arch","Name","\u5B58\u5728\u6027","\u7B26\u53F7 +","\u7B26\u53F7 \u2212","\u7B26\u53F7 ~","\u5176\u5B83\u53D8\u5316\u6807\u8BB0"],l,[void 0,"path",void 0,"num","num","num",void 0])),...r)}function ce(e){let n=[];return e.sectionsDiff?.anyChanged&&n.push(d("sections","warning")),e.neededDiff&&e.neededDiff.added.length+e.neededDiff.removed.length>0&&n.push(d("needed","warning")),e.mitigationsDiff?.anyChanged&&n.push(d("mitigations","danger")),e.glibcDiff&&e.glibcDiff.added.length+e.glibcDiff.removed.length>0&&n.push(d("glibc","warning")),e.rodataDiff?.anyChanged&&n.push(d("rodata","info")),e.buildInfoDiff?.anyChanged&&n.push(d("build","info")),n.length===0?t("span",{class:"delta-zero"},"\u2014"):t("span",null,...n.flatMap(a=>[a," "]))}function Ce(e){return t("details",{class:"panel sub-panel"},t("summary",null,t("strong",null,`${e.arch}/${e.name}`)," \xB7 ",`\u7B26\u53F7 +${e.totals.added} \u2212${e.totals.removed} ~${e.totals.changed}`," \xB7 ",ce(e)),$e(e.buildInfoDiff),Be(e.mitigationsDiff),Re(e.neededDiff),we(e.glibcDiff),Ne(e.sectionsDiff),Ae(e.rodataDiff),xe(e))}function $e(e){return!e||!e.anyChanged?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u6784\u5EFA\u4FE1\u606F\u53D8\u5316"),C([["Build-id (B)",e.fromBuildId?t("code",null,e.fromBuildId):"\u2014"],["Build-id (C)",e.toBuildId?t("code",null,e.toBuildId):"\u2014"],["Build-id \u72B6\u6001",e.buildIdChanged?d("changed","warning"):d("unchanged","success")],["Compiler (B)",e.fromComment?t("code",null,e.fromComment):"\u2014"],["Compiler (C)",e.toComment?t("code",null,e.toComment):"\u2014"],["Compiler \u72B6\u6001",e.commentChanged?d("changed","warning"):d("unchanged","success")]]))}function Be(e){if(!e||!e.anyChanged)return null;let n=(a,s)=>[a,t("span",null,s.from?d("\u542F\u7528","success"):d("\u672A\u542F\u7528","danger"),t("span",{class:"card-sub",style:"margin: 0 4px;"},"\u2192"),s.to?d("\u542F\u7528","success"):d("\u672A\u542F\u7528","danger")," ",s.changed?d("changed","warning"):d("unchanged","info"))];return t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u5B89\u5168\u7F16\u8BD1\u9009\u9879\u53D8\u5316"),C([n("NX",e.nx),["RELRO",t("span",null,ne(e.relro.from),t("span",{class:"card-sub",style:"margin: 0 4px;"},"\u2192"),ne(e.relro.to)," ",e.relro.changed?d("changed","warning"):d("unchanged","info"))],n("PIE",e.pie),n("Stack Canary",e.stackCanary),n("FORTIFY_SOURCE",e.fortify)]))}function ne(e){return e==="full"?d("full","success"):e==="partial"?d("partial","warning"):d("none","danger")}function Re(e){return!e||e.added.length+e.removed.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u52A8\u6001\u4F9D\u8D56\u53D8\u5316\uFF08DT_NEEDED\uFF09+${e.added.length} \u2212${e.removed.length}`),A(e))}function we(e){return!e||e.added.length+e.removed.length===0?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u7B26\u53F7\u7248\u672C\u9700\u6C42\u53D8\u5316\uFF08GLIBC / GCC \u7B49\uFF09+${e.added.length} \u2212${e.removed.length}`),A(e))}function Ne(e){if(!e||!e.anyChanged)return null;let n=e.changed.map(l=>[t("code",null,l.name),o(l.fromSize),o(l.toSize),h(l.delta)]),a=e.added.map(l=>[t("code",null,l.name),o(l.toSize)]),s=e.removed.map(l=>[t("code",null,l.name),o(l.fromSize)]);return t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u8282\u533A\u53D8\u5316\uFF08${e.changed.length} \u4FEE\u6539 / ${e.added.length} \u65B0\u589E / ${e.removed.length} \u5220\u9664\uFF09`),e.changed.length>0?t("div",null,t("h3",{class:"panel-title"},`\u4FEE\u6539 (${e.changed.length})\uFF08\u6309 |\u0394| \u964D\u5E8F\uFF09`),H(["Section","Baseline","Candidate","Delta"],n,["path","num","num","num"],{pageSize:V})):null,e.added.length>0?t("div",null,t("h3",{class:"panel-title"},`\u65B0\u589E (${e.added.length})`),H(["Section","Size"],a,["path","num"],{pageSize:V})):null,e.removed.length>0?t("div",null,t("h3",{class:"panel-title"},`\u5220\u9664 (${e.removed.length})`),H(["Section","Size"],s,["path","num"],{pageSize:V})):null)}function Ae(e){return!e||!e.anyChanged?null:t("div",{class:"panel"},t("h3",{class:"panel-title"},".rodata \u5B57\u7B26\u4E32\u6C60\u53D8\u5316"),F("URL",e.urls),F("\u8DEF\u5F84",e.paths),F("SQL \u8BED\u53E5",e.sqlLike),F("\u5176\u5B83",e.other))}function F(e,n){return n.added.length+n.removed.length===0?null:t("details",{class:"panel sub-panel"},t("summary",null,t("strong",null,e)," \xB7 ",`+${n.added.length} \u2212${n.removed.length}`,n.unchanged>0?`\uFF08\u4E0D\u53D8 ${n.unchanged}\uFF09`:""),A(n))}function A(e){return t("div",null,e.added.length>0?t("div",null,t("h3",{class:"panel-title"},`\u65B0\u589E (${e.added.length})`),z(e.added,n=>t("div",{class:"string-list"},...n.map(a=>t("code",{class:"string-item added"},"+ ",a))),{pageSize:ee})):null,e.removed.length>0?t("div",null,t("h3",{class:"panel-title"},`\u5220\u9664 (${e.removed.length})`),z(e.removed,n=>t("div",{class:"string-list"},...n.map(a=>t("code",{class:"string-item removed"},"\u2212 ",a))),{pageSize:ee})):null)}function xe(e){if(e.totals.added+e.totals.removed+e.totals.changed===0)return null;let n=e.added.map(l=>[t("code",null,l.name),l.type,l.bind,l.imported?"UND":"def",o(l.size)]),a=e.removed.map(l=>[t("code",null,l.name),l.type,l.bind,l.imported?"UND":"def",o(l.size)]),s=e.changed.map(l=>[t("code",null,l.name),l.type,l.bind,l.imported?"UND":"def",o(l.fromSize),o(l.toSize),h(l.delta)]);return t("div",{class:"panel"},t("h3",{class:"panel-title"},`\u7B26\u53F7\u8868\u53D8\u5316\uFF08+${e.totals.added} \u2212${e.totals.removed} ~${e.totals.changed}\uFF09`),n.length>0?t("div",null,t("h3",{class:"panel-title"},`\u65B0\u589E (${e.totals.added})`),H(["Symbol","Type","Bind","\u53EF\u89C1\u6027","Size"],n,["path",void 0,void 0,void 0,"num"],{pageSize:G})):null,a.length>0?t("div",null,t("h3",{class:"panel-title"},`\u5220\u9664 (${e.totals.removed})`),H(["Symbol","Type","Bind","\u53EF\u89C1\u6027","Size"],a,["path",void 0,void 0,void 0,"num"],{pageSize:G})):null,s.length>0?t("div",null,t("h3",{class:"panel-title"},`\u4FEE\u6539 (${e.totals.changed})\uFF08\u6309 |\u0394| \u964D\u5E8F\uFF09`),H(["Symbol","Type","Bind","\u53EF\u89C1\u6027","Baseline","Candidate","Delta"],s,["path",void 0,void 0,void 0,"num","num","num"],{pageSize:G})):null)}function ue(e){if(!e.abc)return u("ABC",p("\u4E24\u4FA7\u5747\u65E0 abc \u4FE1\u606F"));let n=e.abc,a=n.modulesAbc.fromBytes!==null?o(n.modulesAbc.fromBytes):"\u2205",s=n.modulesAbc.toBytes!==null?o(n.modulesAbc.toBytes):"\u2205",l=n.modulesAbc.delta===null?t("span",{class:"delta-zero"},"\u2014"):h(n.modulesAbc.delta),r=t("div",{class:"panel"},t("h3",{class:"panel-title"},"ets/modules.abc"),C([["Baseline",a],["Candidate",s],["Delta",l],["SourceMap",n.modulesAbc.sourceMapChanged?d("changed","warning"):d("unchanged","success")]])),i=t("div",{class:"card-grid"},m("extra \u65B0\u589E",n.extra.added.length,"pos"),m("extra \u5220\u9664",n.extra.removed.length,"neg"),m("extra \u4FEE\u6539",n.extra.changed.length,"warn"));return u("ABC",r,i,n.extra.added.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u65B0\u589E abc"),f(["\u8DEF\u5F84","\u4F53\u79EF"],n.extra.added.map(c=>[c.path,o(c.bytes)]),["path","num"])):null,n.extra.removed.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u5220\u9664 abc"),f(["\u8DEF\u5F84","\u4F53\u79EF"],n.extra.removed.map(c=>[c.path,o(c.bytes)]),["path","num"])):null,n.extra.changed.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u4FEE\u6539 abc"),f(["\u8DEF\u5F84","Baseline","Candidate","Delta"],n.extra.changed.map(c=>[c.path,o(c.fromBytes),o(c.toBytes),h(c.delta)]),["path","num","num","num"])):null,Ie(e))}function Ie(e){let n=e.abcDetails;if(!n||n.entries.length===0)return null;let a=t("div",{class:"card-grid"},m("abc \u603B\u6570",n.totals.total,"mute"),m("\u5185\u5BB9/\u7248\u672C\u53D8\u5316",n.totals.changed,"warn")),s=n.entries.map(r=>[t("code",null,r.path),r.changed?d("changed","warning"):d("unchanged","success"),S(r.fromBytes,r.toBytes,fe),S(r.fromVersion,r.toVersion,i=>i??"\u2014"),S(r.fromNumClasses,r.toNumClasses,i=>i==null?"\u2014":i.toLocaleString()),S(r.fromSha256,r.toSha256,i=>i?I(i):"\u2014")]),l=n.entries.filter(r=>r.stringsDiff&&r.stringsDiff.anyChanged).map(r=>ze(r.path,r.stringsDiff));return t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u53EF\u9009\u6DF1\u5EA6\u5DEE\u5F02 \xB7 ABC \u5934\u90E8\u7EC6\u8282"),a,f(["\u8DEF\u5F84","\u72B6\u6001","\u4F53\u79EF B \u2192 C","Version B \u2192 C","\u7C7B\u6570 B \u2192 C","SHA-256 B \u2192 C"],s,["path",void 0,"num",void 0,"num",void 0]),l.length>0?t("h3",{class:"panel-title",style:"margin-top:14px"},"ABC \u5B57\u7B26\u4E32\u6C60\u5DEE\u5F02\uFF08\u6309\u5206\u7C7B\uFF09"):null,...l)}function ze(e,n){let a=n.classDescriptors.added.length+n.moduleRecords.added.length+n.sourceFiles.added.length+n.identifiers.added.length,s=n.classDescriptors.removed.length+n.moduleRecords.removed.length+n.sourceFiles.removed.length+n.identifiers.removed.length;return t("details",{class:"panel sub-panel"},t("summary",null,t("strong",null,e)," \xB7 ",`+${a} \u2212${s}`),_("\u7C7B\u63CF\u8FF0\u7B26 (L...;)",n.classDescriptors),_("\u6A21\u5757\u8BB0\u5F55 (&...)",n.moduleRecords),_("\u6E90\u6587\u4EF6",n.sourceFiles),_("\u65B9\u6CD5/\u6807\u8BC6\u7B26",n.identifiers))}function _(e,n){return n.added.length===0&&n.removed.length===0?null:t("details",{class:"panel sub-panel"},t("summary",null,t("strong",null,e)," \xB7 ",`+${n.added.length} \u2212${n.removed.length}`,n.unchanged>0?`\uFF08\u4E0D\u53D8 ${n.unchanged}\uFF09`:""),A(n))}function fe(e){return e==null?"\u2014":o(e)}function S(e,n,a){let s=e===n;return t("span",null,a(e),t("span",{class:"card-sub",style:"margin: 0 4px;"},"\u2192"),t("span",{class:s?"delta-zero":"delta-pos"},a(n)))}function me(e){if(!e.il2cppMetadata)return u("IL2CPP \u5143\u6570\u636E",p("\u4E24\u4FA7\u5747\u672A\u542F\u7528 IL2CPP \u5143\u6570\u636E\u6DF1\u5EA6\u5206\u6790\uFF08\u4EC5\u5BF9 Unity \u6E38\u620F hap \u6709\u610F\u4E49\uFF09"));let n=e.il2cppMetadata;if(n.entries.length===0)return u("IL2CPP \u5143\u6570\u636E",p("\u4E24\u4FA7\u90FD\u672A\u53D1\u73B0 global-metadata.dat"));let a=t("div",{class:"card-grid"},m("\u6587\u4EF6\u603B\u6570",n.totals.total,"mute"),m("\u5185\u5BB9/\u7248\u672C\u53D8\u5316",n.totals.changed,"warn")),s=n.entries.map(r=>[t("code",null,r.path),r.changed?d("changed","warning"):d("unchanged","success"),S(r.fromBytes,r.toBytes,fe),S(r.fromMetadataVersion,r.toMetadataVersion,i=>i==null?"\u2014":`v${i}`),S(r.fromSha256,r.toSha256,i=>i?I(i):"\u2014"),Pe(r)]),l=n.entries.filter(r=>r.changed&&(r.namesDiff?.anyChanged||r.literalsDiff?.anyChanged)).map(r=>Fe(r));return u("IL2CPP \u5143\u6570\u636E",t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u5DEE\u5F02\u6C47\u603B"),a,H(["\u8DEF\u5F84","\u72B6\u6001","\u4F53\u79EF B \u2192 C","Metadata \u7248\u672C B \u2192 C","SHA-256 B \u2192 C","Unity \u7248\u672C\u8303\u56F4"],s,["path",void 0,"num",void 0,void 0,"path"],{pageSize:50})),l.length>0?t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u9010\u6587\u4EF6\u540D\u5B57\u6C60 / \u5B57\u9762\u91CF\u6C60\u5DEE\u5F02"),...l):null)}function Pe(e){return(e.fromUnityVersionRange??"")===(e.toUnityVersionRange??"")?t("span",{class:"delta-zero"},e.fromUnityVersionRange??"\u2014"):t("span",null,e.fromUnityVersionRange??"\u2014",t("span",{class:"card-sub",style:"margin: 0 4px;"},"\u2192"),t("span",{class:"delta-pos"},e.toUnityVersionRange??"\u2014"))}function Fe(e){let n=Oe(e.namesDiff),a=Ge(e.namesDiff),s=Ve(e.literalsDiff),l=je(e.literalsDiff);return t("details",{class:"panel sub-panel",open:""},t("summary",null,t("strong",null,e.path)," \xB7 ",`\u540D\u5B57 +${n} \u2212${a}`," \xB7 ",`\u5B57\u9762\u91CF +${s} \u2212${l}`),e.namesDiff?_e(e.namesDiff):null,e.literalsDiff?ke(e.literalsDiff):null)}function _e(e){return e.anyChanged?t("div",{class:"panel sub-panel"},t("h3",{class:"panel-title"},"\u540D\u5B57\u6C60\u5DEE\u5F02\uFF08\u542F\u53D1\u5F0F\u5206\u6876\uFF09"),b("\u7C7B\u578B\u540D\uFF08Namespace.Class\uFF09",e.typeNames),b("\u547D\u540D\u7A7A\u95F4",e.namespaces),b("Assembly \u540D",e.assemblies),b("\u6807\u8BC6\u7B26\uFF08\u65B9\u6CD5/\u5B57\u6BB5\u540D\u7B49\uFF09",e.identifiers),b("\u5176\u5B83",e.other)):null}function ke(e){return e.anyChanged?t("div",{class:"panel sub-panel"},t("h3",{class:"panel-title"},"C# \u5B57\u7B26\u4E32\u5B57\u9762\u91CF\u6C60\u5DEE\u5F02"),b("URL",e.urls),b("\u8DEF\u5F84",e.paths),b("SQL \u8BED\u53E5",e.sqlLike),b("\u5176\u5B83",e.other)):null}function b(e,n){return n.added.length===0&&n.removed.length===0?null:t("details",{class:"panel sub-panel"},t("summary",null,t("strong",null,e)," \xB7 ",`+${n.added.length} \u2212${n.removed.length}`,n.unchanged>0?`\uFF08\u4E0D\u53D8 ${n.unchanged}\uFF09`:""),A(n))}function Oe(e){return e?e.typeNames.added.length+e.namespaces.added.length+e.assemblies.added.length+e.identifiers.added.length+e.other.added.length:0}function Ge(e){return e?e.typeNames.removed.length+e.namespaces.removed.length+e.assemblies.removed.length+e.identifiers.removed.length+e.other.removed.length:0}function Ve(e){return e?e.urls.added.length+e.paths.added.length+e.sqlLike.added.length+e.other.added.length:0}function je(e){return e?e.urls.removed.length+e.paths.removed.length+e.sqlLike.removed.length+e.other.removed.length:0}function pe(e){if(!e.signature)return u("\u7B7E\u540D",p("\u4E24\u4FA7\u5747\u65E0 signature \u4FE1\u606F"));let n=e.signature,a=t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u7B7E\u540D\u5B58\u5728\u6027"),C([["Baseline",n.fromPresent?d("\u5DF2\u7B7E","success"):d("\u672A\u7B7E","danger")],["Candidate",n.toPresent?d("\u5DF2\u7B7E","success"):d("\u672A\u7B7E","danger")],["\u662F\u5426\u53D8\u5316",n.presentChanged?d("changed","warning"):d("unchanged","success")]])),s=n.fields.map(l=>[l.field,l.from||"\u2014",l.to||"\u2014",l.changed?d("changed","warning"):d("unchanged","success")]);return u("\u7B7E\u540D",a,t("div",{class:"panel"},t("h3",{class:"panel-title"},"\u8BC1\u4E66\u5B57\u6BB5\u5BF9\u6BD4"),f(["\u5B57\u6BB5","Baseline","Candidate","\u72B6\u6001"],s,[void 0,"path","path",void 0])))}function ge(e){if(!e.dependencies)return u("\u4F9D\u8D56",p("\u4E24\u4FA7\u5747\u65E0 dependencies \u4FE1\u606F"));let n=e.dependencies;if(n.hsp.added.length===0&&n.hsp.removed.length===0&&n.har.added.length===0&&n.har.removed.length===0)return u("\u4F9D\u8D56",p("\u4F9D\u8D56\u96C6\u5408\u65E0\u53D8\u5316"));let s=[];for(let l of n.hsp.added)s.push([d("HSP","primary"),d("+ added","success"),t("code",null,l)]);for(let l of n.hsp.removed)s.push([d("HSP","primary"),d("\u2212 removed","danger"),t("code",null,l)]);for(let l of n.har.added)s.push([d("HAR","info"),d("+ added","success"),t("code",null,l)]);for(let l of n.har.removed)s.push([d("HAR","info"),d("\u2212 removed","danger"),t("code",null,l)]);return u("\u4F9D\u8D56",t("div",{class:"panel"},f(["\u7C7B\u578B","\u72B6\u6001","Name"],s,[void 0,void 0,"path"])))}function he(e){return!e.warnings||e.warnings.length===0?u("\u8B66\u544A",p("\u5DEE\u5F02\u8BA1\u7B97\u8FC7\u7A0B\u672A\u89E6\u53D1\u8B66\u544A")):u("\u8B66\u544A",t("div",{class:"panel"},f(["Level","Code","Source","Message"],e.warnings.map(n=>[t("span",{class:`badge ${n.level==="error"?"danger":n.level==="warn"?"warning":"info"}`},n.level),t("code",null,n.code),n.source?t("code",null,n.source):"\u2014",n.message]),[void 0,void 0,void 0,"path"])))}function u(e,...n){return t("div",null,t("h2",{class:"section-title"},e),...n.filter(a=>a!==null))}function m(e,n,a){let s;return n===0?s=t("span",{class:"delta-zero"},"0"):a==="pos"?s=t("span",{class:"delta-pos"},`+${n.toLocaleString()}`):a==="neg"?s=t("span",{class:"delta-neg"},`\u2212${n.toLocaleString()}`):s=t("span",{class:a==="mute"?"delta-zero":"delta-pos"},n.toLocaleString()),t("div",{class:"card"},t("div",{class:"card-label"},e),t("div",{class:"card-value"},s))}function j(e,n){return e>n?`\uFF08\u5DF2\u622A\u65AD\u5C55\u793A\u524D ${n}\uFF0C\u5168\u91CF\u89C1 JSON\uFF09`:""}var U=[{id:"overview",label:"\u6982\u89C8",render:te},{id:"basic",label:"Basic",count:e=>e.basic?.changed.length,render:ae},{id:"size",label:"\u4F53\u79EF",count:e=>e.size?k(e.size.total.delta):void 0,render:le},{id:"files",label:"Files",count:e=>e.files?`${e.files.totals.added}+/${e.files.totals.removed}\u2212/${e.files.totals.changed}~`:void 0,render:se},{id:"permissions",label:"\u6743\u9650",count:e=>e.permissions?`${e.permissions.added.length}+/${e.permissions.removed.length}\u2212`:void 0,render:ie},{id:"resources",label:"\u8D44\u6E90",count:e=>e.resources?k(e.resources.images.bytes.delta+e.resources.media.bytes.delta):void 0,render:re},{id:"rawfile",label:"Rawfile",count:e=>e.rawfile?k(e.rawfile.totalBytes.delta):void 0,render:de},{id:"nativeLibs",label:"Native",count:e=>e.nativeLibs?`${e.nativeLibs.added.length}+/${e.nativeLibs.removed.length}\u2212/${e.nativeLibs.changed.length}~`:void 0,render:oe},{id:"abc",label:"ABC",count:e=>e.abc?.modulesAbc.delta!=null?k(e.abc.modulesAbc.delta):void 0,render:ue},{id:"il2cpp",label:"IL2CPP",count:e=>e.il2cppMetadata?`${e.il2cppMetadata.totals.changed}/${e.il2cppMetadata.totals.total}`:void 0,render:me},{id:"signature",label:"\u7B7E\u540D",count:e=>e.signature?e.signature.fields.some(n=>n.changed)||e.signature.presentChanged?"\u26A0":"\u2713":void 0,render:pe},{id:"dependencies",label:"\u4F9D\u8D56",count:e=>e.dependencies?`${e.dependencies.hsp.added.length+e.dependencies.har.added.length}+/${e.dependencies.hsp.removed.length+e.dependencies.har.removed.length}\u2212`:void 0,render:ge},{id:"warnings",label:"\u8B66\u544A",count:e=>e.warnings?.length||void 0,render:he}];function He(e,n){e.innerHTML="";let a=Ue(n),s=qe(n);e.appendChild(t("div",{class:"app"},a,s));let l=be()??"overview";ve(l),window.addEventListener("hashchange",()=>ve(be()??"overview"))}function Ue(e){let n=t("div",{class:"sidebar-header"},t("div",{class:"title"},"KingSDK Hap Diff"),t("div",{class:"subtitle"},e.summary.versionLine??`${Le(e.left.meta.file)} \u2192 ${Le(e.right.meta.file)}`)),a=U.map(s=>{let l=s.count?.(e);return t("a",{class:"nav-item",href:`#${s.id}`,"data-nav":s.id},t("span",null,s.label),l!=null&&l!==""?t("span",{class:"count"},String(l)):null)});return t("aside",{class:"sidebar"},n,...a)}function qe(e){let n=t("div",{class:"topbar"},t("h1",null,"Hap \u5BF9\u6BD4\u62A5\u544A"),e.summary.versionLine?t("span",{class:"badge primary"},e.summary.versionLine):null,e.summary.identical?t("span",{class:"badge success"},"\u2713 identical"):null,t("span",{class:"meta-chip"},"tool ",t("code",null,e.toolVersion))),a=U.map(s=>t("section",{class:"section","data-section":s.id,id:`section-${s.id}`},s.render(e)));return t("main",{class:"main"},n,...a)}function ve(e){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("active",n.getAttribute("data-section")===e)}),document.querySelectorAll("[data-nav]").forEach(n=>{n.classList.toggle("active",n.getAttribute("data-nav")===e)})}function be(){let e=window.location.hash;if(!e||e.length<2)return null;let n=e.slice(1);return U.some(a=>a.id===n)?n:null}function Le(e){return e.split(/[\\/]/).pop()??e}function k(e){let n=e>0?"+":e<0?"\u2212":"",a=Math.abs(e);if(a===0)return"0";let s=["B","KiB","MiB","GiB"],l=a,r=0;for(;l>=1024&&r<s.length-1;)l/=1024,r+=1;return`${n}${r===0?l.toFixed(0):l.toFixed(1)}${s[r]}`}function ye(){let e=document.getElementById("root");if(!e){document.body.appendChild(B("\u9875\u9762\u7F3A\u5C11 #root \u5BB9\u5668\uFF0C\u65E0\u6CD5\u6302\u8F7D diff viewer\u3002"));return}let n=document.getElementById("__DATA__");if(!n||!n.textContent){e.appendChild(B("\u672A\u627E\u5230 #__DATA__ \u8282\u70B9\u6216\u5176\u5185\u5BB9\u4E3A\u7A7A\u3002"));return}let a;try{let s=n.textContent.trim();if(s==="__DATA_PLACEHOLDER__"||s===""){e.appendChild(B("\u5BF9\u6BD4\u6570\u636E\u672A\u6CE8\u5165\uFF1A__DATA__ \u4ECD\u662F\u5360\u4F4D\u7B26\u3002\u8BF7\u901A\u8FC7 CLI \u751F\u6210\u3002"));return}a=JSON.parse(s)}catch(s){e.appendChild(B(`\u89E3\u6790 diff JSON \u5931\u8D25: ${s instanceof Error?s.message:String(s)}`));return}if(!a||typeof a!="object"||!a.schemaVersion){e.appendChild(B("\u5BF9\u6BD4 JSON \u4E0D\u7B26\u5408 HapDiffReport schema\uFF08\u7F3A\u5C11 schemaVersion\uFF09\u3002"));return}try{He(e,a)}catch(s){e.appendChild(B(`\u6E32\u67D3\u5931\u8D25: ${s instanceof Error?s.stack??s.message:String(s)}`))}}function B(e){let n=document.createElement("div");return n.className="error-block",n.textContent=e,n}document.readyState==="loading"?document.addEventListener("DOMContentLoaded",ye,{once:!0}):ye();})();
+
+</script>
+  </body>
+</html>
