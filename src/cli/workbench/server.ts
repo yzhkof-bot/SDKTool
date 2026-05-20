@@ -1,4 +1,4 @@
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { join } from 'node:path';
@@ -8,6 +8,12 @@ import { locateByMeta } from './locate.js';
 import { startAnalyzeJob, startCompareJob } from './runner.js';
 import { JobStore, defaultCacheDir } from './store.js';
 import { renderWorkbenchPage } from './page.js';
+import {
+  checkAiHealth,
+  ConversationError,
+  ConversationManager,
+  SseWriter,
+} from './ai/index.js';
 
 export interface WorkbenchServerOptions {
   port?: number;
@@ -49,9 +55,10 @@ export async function startWorkbenchServer(
   const port = options.port ?? 7790;
   const log = options.log ?? ((t) => process.stderr.write(t));
   const store = new JobStore(options.cacheDir ?? defaultCacheDir(port));
+  const conversations = new ConversationManager({ store, log });
 
   const server: Server = createServer((req, res) => {
-    handle(req, res, store, options.toolVersion, log).catch((err) => {
+    handle(req, res, store, conversations, options.toolVersion, log).catch((err) => {
       log(`[workbench] handler error: ${err?.stack ?? err}\n`);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -75,7 +82,11 @@ export async function startWorkbenchServer(
     url: `http://${host}:${actualPort}/`,
     port: actualPort,
     store,
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    close: () =>
+      new Promise<void>((resolve) => {
+        conversations.closeAll();
+        server.close(() => resolve());
+      }),
   };
 }
 
@@ -87,6 +98,7 @@ async function handle(
   req: IncomingMessage,
   res: ServerResponse,
   store: JobStore,
+  conversations: ConversationManager,
   toolVersion: string,
   log: (t: string) => void,
 ): Promise<void> {
@@ -196,6 +208,82 @@ async function handle(
     return;
   }
 
+  // -------------------- AI 对话 API --------------------
+
+  if (method === 'GET' && url.pathname === '/api/ai/health') {
+    sendJson(res, 200, checkAiHealth());
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/ai/conversations') {
+    const body = (await readJson(req).catch((e) => ({ __error: e }))) as
+      | { jobId?: unknown; model?: unknown; __error?: Error };
+    if (body.__error) {
+      sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
+      return;
+    }
+    const jobId = typeof body.jobId === 'string' ? body.jobId.trim() : '';
+    if (!jobId) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: '缺少 jobId 字符串字段' });
+      return;
+    }
+    const model =
+      typeof body.model === 'string' && body.model.trim() ? body.model.trim() : undefined;
+    try {
+      const { id, session, job } = conversations.create(jobId, model ? { model } : {});
+      sendJson(res, 201, {
+        conversationId: id,
+        sessionId: session.info.sessionId,
+        jobId: job.id,
+        cwd: session.info.jobDir,
+        ...(session.info.model ? { model: session.info.model } : {}),
+      });
+    } catch (err) {
+      handleConversationError(res, err);
+    }
+    return;
+  }
+
+  const convMessages = /^\/api\/ai\/conversations\/([a-z0-9_]+)\/messages$/i.exec(url.pathname);
+  if (method === 'POST' && convMessages) {
+    const cid = convMessages[1]!;
+    const body = (await readJson(req).catch((e) => ({ __error: e }))) as
+      | { text?: unknown; __error?: Error };
+    if (body.__error) {
+      sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
+      return;
+    }
+    const text = typeof body.text === 'string' ? body.text : '';
+    if (!text.trim()) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: 'text 不能为空' });
+      return;
+    }
+    await streamConversationSse(req, res, conversations, cid, text, log);
+    return;
+  }
+
+  const convInterrupt = /^\/api\/ai\/conversations\/([a-z0-9_]+)\/interrupt$/i.exec(url.pathname);
+  if (method === 'POST' && convInterrupt) {
+    const cid = convInterrupt[1]!;
+    try {
+      await conversations.interrupt(cid);
+      sendJson(res, 200, { interrupted: cid });
+    } catch (err) {
+      handleConversationError(res, err);
+    }
+    return;
+  }
+
+  const convId = /^\/api\/ai\/conversations\/([a-z0-9_]+)$/i.exec(url.pathname);
+  if (method === 'DELETE' && convId) {
+    const ok = conversations.close(convId[1]!);
+    if (!ok) sendJson(res, 404, { error: 'NOT_FOUND' });
+    else sendJson(res, 200, { closed: convId[1] });
+    return;
+  }
+
+  // -------------------- 静态产物 --------------------
+
   // compare job 单侧产物：必须放在通用 /jobs/:id/(html|json) 之前，避免被吞
   const sideMatch = /^\/jobs\/([0-9a-f]+)\/sides\/(left|right)\/(html|json)$/.exec(url.pathname);
   if (method === 'GET' && sideMatch) {
@@ -213,6 +301,68 @@ async function handle(
   }
 
   sendJson(res, 404, { error: 'NOT_FOUND', path: url.pathname });
+}
+
+/* -------------------------------------------------------------------------- */
+/* AI 路由辅助                                                                 */
+/* -------------------------------------------------------------------------- */
+
+function handleConversationError(res: ServerResponse, err: unknown): void {
+  if (err instanceof ConversationError) {
+    sendJson(res, err.statusCode, { error: err.code, message: err.message });
+    return;
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  sendJson(res, 500, { error: 'INTERNAL', message });
+}
+
+/**
+ * SSE 处理：把 ConversationManager.acquire(cid) → sendAndStream(text) 的事件流
+ * 转写到 HTTP 响应。客户端断开时尽力中断 SDK 会话以省 token。
+ */
+async function streamConversationSse(
+  req: IncomingMessage,
+  res: ServerResponse,
+  conversations: ConversationManager,
+  cid: string,
+  text: string,
+  log: (t: string) => void,
+): Promise<void> {
+  let entry;
+  try {
+    entry = conversations.acquire(cid);
+  } catch (err) {
+    handleConversationError(res, err);
+    return;
+  }
+
+  const writer = new SseWriter(res);
+  const onClose = (): void => {
+    if (!writer.isClosed) {
+      writer.markClosed();
+      entry.session.interrupt().catch(() => {});
+    }
+  };
+  req.on('close', onClose);
+
+  try {
+    for await (const ev of entry.session.sendAndStream(text)) {
+      if (writer.isClosed) break;
+      writer.write(ev);
+    }
+  } catch (err) {
+    log(`[ai] sse error ${cid}: ${err instanceof Error ? err.stack ?? err.message : err}\n`);
+    if (!writer.isClosed) {
+      writer.write({
+        type: 'error',
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  } finally {
+    req.off('close', onClose);
+    conversations.release(cid);
+    writer.end();
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -237,7 +387,55 @@ async function serveJobProduct(
   const dir = store.jobDir(id);
   const fileName = job.kind === 'analyze' ? `report.${kind}` : `diff.${kind}`;
   const filePath = join(dir, fileName);
+  // compare 任务的 diff.html 通过 workbench 访问时，需要塞 AI 启用标记，
+  // 让 viewer 知道当前是"workbench 模式 + 当前 jobId"，按钮才可用。
+  // analyze 任务暂不支持 AI（产物体积更小，价值低；后续要做单独加路由）。
+  if (kind === 'html' && job.kind === 'compare') {
+    await serveDiffHtmlWithAi(res, filePath, fileName, id);
+    return;
+  }
   await streamFileOr404(res, filePath, fileName, kind);
+}
+
+/**
+ * 给 workbench 模式下的 diff.html 注入 `window.__KINGSDK_AI__`：viewer 启动时
+ * 据此显示并启用 "AI 分析" 按钮，否则按钮置灰提示"workbench 才能用"。
+ *
+ * 注入点：放在原 `<script id="__DATA__">...</script>` 之前，保证 viewer bootstrap 时已可读。
+ * 失败时降级回普通 stream（不阻断 diff 渲染）。
+ */
+async function serveDiffHtmlWithAi(
+  res: ServerResponse,
+  filePath: string,
+  fileName: string,
+  jobId: string,
+): Promise<void> {
+  if (!existsSync(filePath)) {
+    sendJson(res, 404, { error: 'PRODUCT_MISSING', file: fileName });
+    return;
+  }
+  try {
+    const html = readFileSync(filePath, 'utf8');
+    const injection =
+      '<script>window.__KINGSDK_AI__=' +
+      JSON.stringify({ jobId, apiBase: '/api/ai' }) +
+      ';</script>';
+    const marker = '<script id="__DATA__"';
+    const idx = html.indexOf(marker);
+    const patched =
+      idx >= 0
+        ? html.slice(0, idx) + injection + '\n    ' + html.slice(idx)
+        : html.replace('</head>', `  ${injection}\n  </head>`);
+    const body = Buffer.from(patched, 'utf8');
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': body.length,
+      'Cache-Control': 'no-cache',
+    });
+    res.end(body);
+  } catch {
+    await streamFileOr404(res, filePath, fileName, 'html');
+  }
 }
 
 /**

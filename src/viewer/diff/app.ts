@@ -2,6 +2,7 @@ import type { HapDiffReport } from '../../shared/schema.js';
 
 import { h } from '../helpers.js';
 
+import { createAiPanel } from './ai-panel.js';
 import {
   renderAbc,
   renderBasic,
@@ -129,9 +130,12 @@ const SECTIONS: SectionDef[] = [
 export function mountDiffApp(root: HTMLElement, diff: HapDiffReport): void {
   root.innerHTML = '';
 
+  const ai = createAiPanel();
+
   const sidebar = renderSidebar(diff);
-  const main = renderMain(diff);
+  const main = renderMain(diff, ai.trigger);
   root.appendChild(h('div', { class: 'app' }, sidebar, main));
+  document.body.appendChild(ai.drawer);
 
   const initial = parseHash() ?? 'overview';
   activate(initial);
@@ -164,7 +168,7 @@ function renderSidebar(d: HapDiffReport): HTMLElement {
   return h('aside', { class: 'sidebar' }, header, ...navItems) as HTMLElement;
 }
 
-function renderMain(d: HapDiffReport): HTMLElement {
+function renderMain(d: HapDiffReport, aiTrigger: HTMLElement): HTMLElement {
   const topbar = h(
     'div',
     { class: 'topbar' },
@@ -172,6 +176,8 @@ function renderMain(d: HapDiffReport): HTMLElement {
     d.summary.versionLine ? h('span', { class: 'badge primary' }, d.summary.versionLine) : null,
     d.summary.identical ? h('span', { class: 'badge success' }, '✓ identical') : null,
     h('span', { class: 'meta-chip' }, 'tool ', h('code', null, d.toolVersion)),
+    h('span', { class: 'topbar-spacer' }),
+    aiTrigger,
   );
 
   const sections = SECTIONS.map((s) =>
