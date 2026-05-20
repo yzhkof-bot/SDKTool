@@ -1,23 +1,23 @@
 import type {
   Analyzer,
   AnalyzerContext,
-  HapEntry,
-  HapRawfileInfo,
+  PackageEntry,
+  HarmonyRawfileInfo,
   RawfileCategory,
   RawfileCategorySummary,
   RawfileExtensionSummary,
   RawfileFileSummary,
   RawfileGroupSummary,
   RawfilePackageSummary,
-} from '../../shared/schema.js';
+} from '../../../shared/schema.js';
 import {
   DEFAULT_TOP_FILES_LIMIT,
   RAWFILE_PREFIX,
   RAWFILE_RULES,
   extractRawfilePackageId,
   rawfileTopLevelGroup,
-} from '../../shared/constants.js';
-import { extname, safeRatio } from '../../shared/utils.js';
+} from '../../../shared/constants.js';
+import { extname, safeRatio } from '../../../shared/utils.js';
 
 /**
  * Rawfile 细分分析（QTS / 游戏美术资源专用）。
@@ -47,7 +47,7 @@ export const rawfileAnalyzer: Analyzer = {
 
 /* ------------------------------------------------------------------ */
 
-function computeRawfile(ctx: AnalyzerContext, topLimit: number): HapRawfileInfo | undefined {
+function computeRawfile(ctx: AnalyzerContext, topLimit: number): HarmonyRawfileInfo | undefined {
   const entries = ctx.hap.entries.filter(
     (e) => !e.isDirectory && e.path.startsWith(RAWFILE_PREFIX) && e.path.length > RAWFILE_PREFIX.length,
   );
@@ -142,7 +142,7 @@ function computeRawfile(ctx: AnalyzerContext, topLimit: number): HapRawfileInfo 
 function addToBucket<K>(
   map: Map<K, { bytes: number; fileCount: number }>,
   key: K,
-  entry: HapEntry,
+  entry: PackageEntry,
 ): void {
   const bucket = map.get(key) ?? { bytes: 0, fileCount: 0 };
   bucket.bytes += entry.uncompressedSize;

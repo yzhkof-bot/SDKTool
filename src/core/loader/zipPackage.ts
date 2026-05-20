@@ -2,18 +2,24 @@ import { stat } from 'node:fs/promises';
 import { resolve as resolvePath } from 'node:path';
 import yauzl, { type ZipFile, type Entry } from 'yauzl';
 
-import type { HapEntry, VirtualHap } from '../../shared/schema.js';
+import type { PackageEntry, VirtualPackage } from '../../shared/schema.js';
 import { sha256OfFile } from '../../shared/utils.js';
 
 /**
- * 打开一个 .hap（本质是 zip）文件，返回 VirtualHap：
+ * 通用应用包 (zip 容器) 加载器。
+ *
+ * 不绑定任何平台：HarmonyOS .hap / Android .apk / .aab / iOS .ipa（外层）都是 zip，
+ * 都可以直接走这个 loader。返回的 VirtualPackage 是一个 zip-as-package 的虚拟视图：
  *  - entries 元信息一次性读完（用于 size / 路径分析）
- *  - 文件内容按需读取，避免大 hap 全量解压
+ *  - 文件内容按需读取，避免大包全量解压
  *
  * 实现说明：yauzl 默认 lazyEntries=true，需要主动 readEntry() 触发下一条 entry 事件。
  * 我们先把所有 entry 元信息收集到数组，再按需通过 openReadStream 取内容。
+ *
+ * 命名：返回类型仍叫 VirtualPackage 是为了不破坏外部 npm 包用户的引用；语义上把它
+ * 当作 "VirtualPackage" 看待即可（schema 重命名留待 v2，避免一次性 break）。
  */
-export async function openHap(filePath: string): Promise<VirtualHap> {
+export async function openZipPackage(filePath: string): Promise<VirtualPackage> {
   const absPath = resolvePath(filePath);
   const fileStat = await stat(absPath);
   if (!fileStat.isFile()) {
@@ -44,7 +50,7 @@ export async function openHap(filePath: string): Promise<VirtualHap> {
   };
 
   const readFile = async (path: string): Promise<Buffer> => {
-    if (closed) throw new Error('VirtualHap already closed');
+    if (closed) throw new Error('VirtualPackage already closed');
     const normalized = normalizePath(path);
     const entry = entryByPath.get(normalized);
     if (!entry) {
@@ -88,9 +94,9 @@ function openZip(filePath: string): Promise<ZipFile> {
   });
 }
 
-function readAllEntries(zip: ZipFile): Promise<{ metas: HapEntry[]; rawEntries: Entry[] }> {
+function readAllEntries(zip: ZipFile): Promise<{ metas: PackageEntry[]; rawEntries: Entry[] }> {
   return new Promise((resolve, reject) => {
-    const metas: HapEntry[] = [];
+    const metas: PackageEntry[] = [];
     const rawEntries: Entry[] = [];
 
     zip.on('entry', (entry: Entry) => {

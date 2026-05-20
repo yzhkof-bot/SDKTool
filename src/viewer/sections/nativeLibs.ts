@@ -1,9 +1,9 @@
 import type {
-  HapNativeLibMitigations,
-  HapNativeLibRodataStrings,
-  HapNativeLibSection,
-  HapNativeLibSymbols,
-  HapReport,
+  NativeLibMitigations,
+  NativeLibRodataStrings,
+  NativeLibSection,
+  NativeLibSymbols,
+  PackageReport,
 } from '../../shared/schema.js';
 
 import { badge, emptyState, formatBytes, h, kv, paginatedTable, table } from '../helpers.js';
@@ -12,7 +12,7 @@ const SYMBOLS_PAGE_SIZE = 50;
 const SECTIONS_PAGE_SIZE = 50;
 const STRING_PAGE_SIZE = 50;
 
-export function renderNativeLibs(report: HapReport): HTMLElement {
+export function renderNativeLibs(report: PackageReport): HTMLElement {
   const n = report.nativeLibs;
   if (!n || n.libs.length === 0) return emptyState('无 Native 库');
 
@@ -49,7 +49,7 @@ export function renderNativeLibs(report: HapReport): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderNativeSymbols(report: HapReport): HTMLElement | null {
+function renderNativeSymbols(report: PackageReport): HTMLElement | null {
   const sym = report.nativeLibSymbols;
   if (!sym || sym.perLib.length === 0) return null;
 
@@ -90,7 +90,7 @@ function renderNativeSymbols(report: HapReport): HTMLElement | null {
   ) as HTMLElement;
 }
 
-function renderMitigationsBadges(m: HapNativeLibMitigations): HTMLElement {
+function renderMitigationsBadges(m: NativeLibMitigations): HTMLElement {
   return h(
     'span',
     null,
@@ -109,7 +109,7 @@ function renderMitigationsBadges(m: HapNativeLibMitigations): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderOneLibDeep(lib: HapNativeLibSymbols): HTMLElement {
+function renderOneLibDeep(lib: NativeLibSymbols): HTMLElement {
   const summaryParts: string[] = [];
   if (lib.sections) summaryParts.push(`sections=${lib.sections.length}`);
   if (lib.needed) summaryParts.push(`needed=${lib.needed.length}`);
@@ -136,7 +136,7 @@ function renderOneLibDeep(lib: HapNativeLibSymbols): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderBuildInfoPanel(lib: HapNativeLibSymbols): HTMLElement | null {
+function renderBuildInfoPanel(lib: NativeLibSymbols): HTMLElement | null {
   if (!lib.buildId && !lib.comment) return null;
   const rows: Array<[string, HTMLElement | string]> = [];
   if (lib.buildId) rows.push(['Build-id', h('code', null, lib.buildId) as HTMLElement]);
@@ -149,7 +149,7 @@ function renderBuildInfoPanel(lib: HapNativeLibSymbols): HTMLElement | null {
   ) as HTMLElement;
 }
 
-function renderMitigationsPanel(m: HapNativeLibMitigations | undefined): HTMLElement | null {
+function renderMitigationsPanel(m: NativeLibMitigations | undefined): HTMLElement | null {
   if (!m) return null;
   return h(
     'div',
@@ -201,7 +201,7 @@ function renderGlibcPanel(versions: string[] | undefined): HTMLElement | null {
 }
 
 function renderSectionsPanel(
-  sections: HapNativeLibSection[] | undefined,
+  sections: NativeLibSection[] | undefined,
 ): HTMLElement | null {
   if (!sections || sections.length === 0) return null;
   const bySize = [...sections].sort((a, b) => b.size - a.size);
@@ -226,7 +226,7 @@ function renderSectionsPanel(
 }
 
 function renderRodataPanel(
-  rod: HapNativeLibRodataStrings | undefined,
+  rod: NativeLibRodataStrings | undefined,
 ): HTMLElement | null {
   if (!rod) return null;
   const totalShown = rod.urls.length + rod.paths.length + rod.sqlLike.length + rod.other.length;
@@ -263,7 +263,7 @@ function renderRodataGroup(label: string, items: string[]): HTMLElement | null {
   ) as HTMLElement;
 }
 
-function renderSymbolsPanel(lib: HapNativeLibSymbols): HTMLElement | null {
+function renderSymbolsPanel(lib: NativeLibSymbols): HTMLElement | null {
   if (lib.symbols.length === 0) return null;
   const rows = lib.symbols.map((s) => [
     h('code', null, s.name),

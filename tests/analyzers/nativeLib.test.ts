@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzeHap } from '../../src/core/index.js';
+import { analyzePackage } from '../../src/core/index.js';
 
 import { buildFixtureHap } from '../helpers/fixtureHap.js';
 
 describe('NativeLibAnalyzer', () => {
   it('提取所有架构与 lib 列表', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['nativeLib'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['nativeLib'] });
 
     const n = report.nativeLibs!;
     expect(n.architectures).toEqual(['arm64-v8a', 'x86_64']);
@@ -31,7 +31,7 @@ describe('NativeLibAnalyzer', () => {
     await writeMiniZip(file, [
       { path: 'module.json', content: '{"app":{},"module":{}}' },
     ]);
-    const report = await analyzeHap(file, { toolVersion: 't', only: ['nativeLib'] });
+    const report = await analyzePackage(file, { toolVersion: 't', only: ['nativeLib'] });
     expect(report.nativeLibs!.architectures).toEqual([]);
     expect(report.nativeLibs!.libs).toEqual([]);
     expect(report.nativeLibs!.totalBytes).toBe(0);

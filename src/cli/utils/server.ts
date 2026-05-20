@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { spawn } from 'node:child_process';
 import { platform } from 'node:os';
 
-import type { HapReport } from '../../shared/schema.js';
+import type { PackageReport } from '../../shared/schema.js';
 
 import { renderReportHtml } from './render.js';
 
@@ -26,13 +26,13 @@ export interface ViewServerHandle {
  *
  * 路由：
  *   GET /              → 注入了报告数据的 HTML
- *   GET /api/report    → HapReport JSON
+ *   GET /api/report    → PackageReport JSON
  *   GET /healthz       → 简单存活检查
  *
  * 仅监听 127.0.0.1，不暴露公网；零外部依赖（Node 内置 http）。
  */
 export async function startViewServer(
-  report: HapReport,
+  report: PackageReport,
   options: ViewServerOptions = {},
 ): Promise<ViewServerHandle> {
   const host = options.host ?? '127.0.0.1';

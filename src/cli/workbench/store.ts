@@ -10,7 +10,7 @@ import {
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import type { WorkbenchJob, WorkbenchJobKind } from '../../shared/schema.js';
+import type { Platform, WorkbenchJob, WorkbenchJobKind } from '../../shared/schema.js';
 
 /**
  * 持久化任务存储。
@@ -33,8 +33,18 @@ export class JobStore {
     this.loadFromDisk();
   }
 
-  /** 创建一个 pending job 并返回。调用方拿到 id 后异步 update */
-  create(kind: WorkbenchJobKind, inputs: string[], label: string): WorkbenchJob {
+  /**
+   * 创建一个 pending job 并返回。调用方拿到 id 后异步 update。
+   *
+   * `platform` 可省略：老调用方（一期重构前）不传，未来历史里也允许缺失，
+   * 消费方一律按 'harmony' 兜底。
+   */
+  create(
+    kind: WorkbenchJobKind,
+    inputs: string[],
+    label: string,
+    platform?: Platform,
+  ): WorkbenchJob {
     const id = randomBytes(8).toString('hex');
     const job: WorkbenchJob = {
       id,
@@ -43,6 +53,7 @@ export class JobStore {
       label,
       inputs,
       createdAt: new Date().toISOString(),
+      ...(platform ? { platform } : {}),
     };
     this.jobs.set(id, job);
     this.order.unshift(id); // 最近的排前面

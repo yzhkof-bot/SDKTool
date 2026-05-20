@@ -1,9 +1,11 @@
-import type { HapReport } from '../shared/schema.js';
+import type { PackageReport, Platform } from '../shared/schema.js';
 
 import { h } from './helpers.js';
 import { renderAbc } from './sections/abc.js';
 import { renderDependencies } from './sections/dependencies.js';
+import { renderDex } from './sections/dex.js';
 import { renderIl2cpp } from './sections/il2cpp.js';
+import { renderManifest } from './sections/manifest.js';
 import { renderNativeLibs } from './sections/nativeLibs.js';
 import { renderOverview } from './sections/overview.js';
 import { renderPermissions } from './sections/permissions.js';
@@ -16,8 +18,16 @@ import { renderWarnings } from './sections/warnings.js';
 interface SectionDef {
   id: string;
   label: string;
-  count?: (r: HapReport) => number | string | undefined;
-  render: (r: HapReport) => HTMLElement;
+  count?: (r: PackageReport) => number | string | undefined;
+  render: (r: PackageReport) => HTMLElement;
+  /**
+   * 该 section 适用的平台白名单。缺省 = 所有平台都显示。
+   *
+   * 一期约定：HarmonyOS 专属维度（ets/abc、rawfile、HarmonyOS 的 hsp/har 依赖）
+   * 只在 harmony 报告下显示；通用维度（size、native libs、签名、权限…）跨平台显示。
+   * il2cpp 是 Unity 引擎产物，HarmonyOS / Android 都可能出现，按跨平台处理。
+   */
+  platforms?: Platform[];
 }
 
 const SECTIONS: SectionDef[] = [
@@ -27,6 +37,18 @@ const SECTIONS: SectionDef[] = [
     label: '体积',
     count: (r) => r.size?.fileCount,
     render: renderSize,
+  },
+  {
+    id: 'manifest',
+    label: 'Manifest',
+    count: (r) =>
+      (r.androidManifest?.usesPermissions?.length ?? 0) +
+      ((r.androidManifest?.components?.activities.length ?? 0) +
+        (r.androidManifest?.components?.services.length ?? 0) +
+        (r.androidManifest?.components?.receivers.length ?? 0) +
+        (r.androidManifest?.components?.providers.length ?? 0)),
+    render: renderManifest,
+    platforms: ['android'],
   },
   {
     id: 'permissions',
@@ -45,6 +67,7 @@ const SECTIONS: SectionDef[] = [
     label: 'Rawfile',
     count: (r) => r.rawfile?.fileCount,
     render: renderRawfile,
+    platforms: ['harmony'],
   },
   {
     id: 'nativeLibs',
@@ -57,6 +80,14 @@ const SECTIONS: SectionDef[] = [
     label: 'ABC',
     count: (r) => (r.abc?.modulesAbc ? 1 : 0) + (r.abc?.extraAbcFiles.length ?? 0),
     render: renderAbc,
+    platforms: ['harmony'],
+  },
+  {
+    id: 'dex',
+    label: 'DEX',
+    count: (r) => r.dex?.fileCount,
+    render: renderDex,
+    platforms: ['android'],
   },
   {
     id: 'il2cpp',
@@ -75,6 +106,7 @@ const SECTIONS: SectionDef[] = [
     label: '依赖',
     count: (r) => (r.dependencies ? r.dependencies.hsp.length + r.dependencies.har.length : 0),
     render: renderDependencies,
+    platforms: ['harmony'],
   },
   {
     id: 'warnings',
@@ -84,25 +116,35 @@ const SECTIONS: SectionDef[] = [
   },
 ];
 
-export function mountApp(root: HTMLElement, report: HapReport): void {
+/**
+ * 根据 report.platform 过滤 SECTIONS。
+ * 未声明 platform 的老报告按 'harmony' 处理（向后兼容）。
+ */
+function pickSections(report: PackageReport): SectionDef[] {
+  const p: Platform = report.platform ?? 'harmony';
+  return SECTIONS.filter((s) => !s.platforms || s.platforms.includes(p));
+}
+
+export function mountApp(root: HTMLElement, report: PackageReport): void {
   root.innerHTML = '';
 
-  const sidebar = renderSidebar(report);
-  const main = renderMain(report);
+  const sections = pickSections(report);
+  const sidebar = renderSidebar(report, sections);
+  const main = renderMain(report, sections);
 
   const app = h('div', { class: 'app' }, sidebar, main);
   root.appendChild(app);
 
-  const initial = parseHash() ?? 'overview';
+  const initial = parseHash(sections) ?? 'overview';
   activateSection(initial);
 
   window.addEventListener('hashchange', () => {
-    const id = parseHash() ?? 'overview';
+    const id = parseHash(sections) ?? 'overview';
     activateSection(id);
   });
 }
 
-function renderSidebar(report: HapReport): HTMLElement {
+function renderSidebar(report: PackageReport, sections: SectionDef[]): HTMLElement {
   const header = h(
     'div',
     { class: 'sidebar-header' },
@@ -116,7 +158,7 @@ function renderSidebar(report: HapReport): HTMLElement {
     ),
   );
 
-  const navItems = SECTIONS.map((s) => {
+  const navItems = sections.map((s) => {
     const c = s.count?.(report);
     const item = h(
       'a',
@@ -130,7 +172,8 @@ function renderSidebar(report: HapReport): HTMLElement {
   return h('aside', { class: 'sidebar' }, header, ...navItems) as HTMLElement;
 }
 
-function renderMain(report: HapReport): HTMLElement {
+function renderMain(report: PackageReport, sections: SectionDef[]): HTMLElement {
+  const platform: Platform = report.platform ?? 'harmony';
   const topbar = h(
     'div',
     { class: 'topbar' },
@@ -138,6 +181,7 @@ function renderMain(report: HapReport): HTMLElement {
     report.basic
       ? h('span', { class: 'badge primary' }, `${report.basic.versionName} (${report.basic.versionCode})`)
       : null,
+    h('span', { class: `badge platform platform-${platform}` }, platformLabel(platform)),
     h(
       'span',
       { class: 'meta-chip' },
@@ -152,11 +196,11 @@ function renderMain(report: HapReport): HTMLElement {
     ),
   );
 
-  const sections = SECTIONS.map((s) =>
+  const sectionEls = sections.map((s) =>
     h('section', { class: 'section', 'data-section': s.id, id: `section-${s.id}` }, s.render(report)),
   );
 
-  return h('main', { class: 'main' }, topbar, ...sections) as HTMLElement;
+  return h('main', { class: 'main' }, topbar, ...sectionEls) as HTMLElement;
 }
 
 function activateSection(id: string): void {
@@ -168,9 +212,22 @@ function activateSection(id: string): void {
   });
 }
 
-function parseHash(): string | null {
+function parseHash(sections: SectionDef[]): string | null {
   const h = window.location.hash;
   if (!h || h.length < 2) return null;
   const id = h.slice(1);
-  return SECTIONS.some((s) => s.id === id) ? id : null;
+  return sections.some((s) => s.id === id) ? id : null;
+}
+
+function platformLabel(p: Platform): string {
+  switch (p) {
+    case 'harmony':
+      return 'HarmonyOS';
+    case 'android':
+      return 'Android';
+    case 'ios':
+      return 'iOS';
+    default:
+      return p;
+  }
 }

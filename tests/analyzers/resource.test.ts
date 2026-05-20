@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzeHap } from '../../src/core/index.js';
+import { analyzePackage } from '../../src/core/index.js';
 
 import { buildFixtureHap } from '../helpers/fixtureHap.js';
 
 describe('ResourceAnalyzer', () => {
   it('图片/字符串/媒体计数与 topLargest 排序', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['resource'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['resource'] });
 
     expect(report.resources).toBeDefined();
     const r = report.resources!;
@@ -30,7 +30,7 @@ describe('ResourceAnalyzer', () => {
 
   it('rawResIndex 在顶层 resources.index 存在时被记录', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['resource'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['resource'] });
     expect(report.resources!.rawResIndex).toEqual({ bytes: 128 });
   });
 
@@ -40,7 +40,7 @@ describe('ResourceAnalyzer', () => {
     });
     // 所有 resources/* 还是会被 fixture 默认带上；这里通过 includeModuleJson=false 仅验证
     // analyzer 不依赖 module.json 也能跑
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['resource'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['resource'] });
     expect(report.resources).toBeDefined();
     expect(report.resources!.images.count).toBeGreaterThanOrEqual(0);
   });

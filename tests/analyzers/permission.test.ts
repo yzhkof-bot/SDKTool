@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzeHap } from '../../src/core/index.js';
+import { analyzePackage } from '../../src/core/index.js';
 
 import { buildFixtureHap, DEMO_MODULE_JSON } from '../helpers/fixtureHap.js';
 
 describe('PermissionAnalyzer', () => {
   it('提取所有权限并标注 sensitive', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['permission'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['permission'] });
 
     expect(report.permissions).toBeDefined();
     const map = new Map(report.permissions!.map((p) => [p.name, p]));
@@ -20,7 +20,7 @@ describe('PermissionAnalyzer', () => {
 
   it('透传 reason / usedScene', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['permission'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['permission'] });
 
     const loc = report.permissions!.find((p) => p.name === 'ohos.permission.LOCATION');
     expect(loc?.reason).toBe('$string:perm_reason_location');
@@ -29,7 +29,7 @@ describe('PermissionAnalyzer', () => {
 
   it('排序：敏感优先 + 字典序', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['permission'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['permission'] });
 
     const list = report.permissions!;
     // 前面应该全是 sensitive=true
@@ -45,7 +45,7 @@ describe('PermissionAnalyzer', () => {
 
   it('module.json 缺失时返回空数组（不抛错）', async () => {
     const hap = await buildFixtureHap({ includeModuleJson: false });
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['permission'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['permission'] });
     expect(report.permissions).toEqual([]);
   });
 
@@ -53,7 +53,7 @@ describe('PermissionAnalyzer', () => {
     const moduleJson = JSON.parse(JSON.stringify(DEMO_MODULE_JSON));
     delete moduleJson.module.requestPermissions;
     const hap = await buildFixtureHap({ moduleJson });
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['permission'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['permission'] });
     expect(report.permissions).toEqual([]);
   });
 
@@ -64,7 +64,7 @@ describe('PermissionAnalyzer', () => {
       { name: 'ohos.permission.INTERNET' },
     ];
     const hap = await buildFixtureHap({ moduleJson });
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['permission'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['permission'] });
     expect(report.permissions).toHaveLength(1);
     expect(report.permissions![0]!.name).toBe('ohos.permission.INTERNET');
     expect(report.warnings.some((w) => w.code === 'INVALID_PERMISSION_ENTRY')).toBe(true);

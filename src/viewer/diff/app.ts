@@ -1,4 +1,4 @@
-import type { HapDiffReport } from '../../shared/schema.js';
+import type { PackageDiffReport } from '../../shared/schema.js';
 
 import { h } from '../helpers.js';
 
@@ -7,6 +7,7 @@ import {
   renderAbc,
   renderBasic,
   renderDependencies,
+  renderDex,
   renderFiles,
   renderIl2cpp,
   renderNativeLibs,
@@ -23,10 +24,10 @@ interface SectionDef {
   id: string;
   label: string;
   /** 侧栏右侧的简短计数文本，可选 */
-  count?: (d: HapDiffReport) => string | number | undefined;
+  count?: (d: PackageDiffReport) => string | number | undefined;
   /** 该 section 是否需要警示样式（有显著变化时） */
-  attention?: (d: HapDiffReport) => boolean;
-  render: (d: HapDiffReport) => HTMLElement;
+  attention?: (d: PackageDiffReport) => boolean;
+  render: (d: PackageDiffReport) => HTMLElement;
 }
 
 const SECTIONS: SectionDef[] = [
@@ -98,6 +99,21 @@ const SECTIONS: SectionDef[] = [
     render: renderIl2cpp,
   },
   {
+    id: 'dex',
+    label: 'DEX',
+    count: (d) => {
+      if (!d.dex && !d.dexDetails) return undefined;
+      const fileLevel = d.dex
+        ? `${d.dex.added.length}+/${d.dex.removed.length}−/${d.dex.changed.length}~`
+        : '';
+      const methodLevel = d.dexDetails
+        ? `m ${d.dexDetails.totals.methodsAdded}+/${d.dexDetails.totals.methodsRemoved}−/${d.dexDetails.totals.methodsChanged}~`
+        : '';
+      return [fileLevel, methodLevel].filter(Boolean).join(' · ') || undefined;
+    },
+    render: renderDex,
+  },
+  {
     id: 'signature',
     label: '签名',
     count: (d) =>
@@ -127,7 +143,7 @@ const SECTIONS: SectionDef[] = [
   },
 ];
 
-export function mountDiffApp(root: HTMLElement, diff: HapDiffReport): void {
+export function mountDiffApp(root: HTMLElement, diff: PackageDiffReport): void {
   root.innerHTML = '';
 
   const ai = createAiPanel();
@@ -143,7 +159,7 @@ export function mountDiffApp(root: HTMLElement, diff: HapDiffReport): void {
   window.addEventListener('hashchange', () => activate(parseHash() ?? 'overview'));
 }
 
-function renderSidebar(d: HapDiffReport): HTMLElement {
+function renderSidebar(d: PackageDiffReport): HTMLElement {
   const header = h(
     'div',
     { class: 'sidebar-header' },
@@ -168,7 +184,7 @@ function renderSidebar(d: HapDiffReport): HTMLElement {
   return h('aside', { class: 'sidebar' }, header, ...navItems) as HTMLElement;
 }
 
-function renderMain(d: HapDiffReport, aiTrigger: HTMLElement): HTMLElement {
+function renderMain(d: PackageDiffReport, aiTrigger: HTMLElement): HTMLElement {
   const topbar = h(
     'div',
     { class: 'topbar' },

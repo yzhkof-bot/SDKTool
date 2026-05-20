@@ -58,7 +58,7 @@ export async function main(argv: string[] = process.argv): Promise<number> {
     });
 
   cli
-    .command('compare <a> <b>', '对比两份 hap 或两份 report.json，输出 HapDiffReport')
+    .command('compare <a> <b>', '对比两份 hap 或两份 report.json，输出 PackageDiffReport')
     .option('-o, --output <file>', '把 diff JSON 写到文件而不是 stdout')
     .option('--pretty', '美化 JSON 输出（缩进 2 空格）')
     .option('--only <ids>', '仅运行指定 analyzer（仅当输入是 .hap 时生效）')
@@ -89,7 +89,7 @@ export async function main(argv: string[] = process.argv): Promise<number> {
     });
 
   cli
-    .command('view <report>', '启动本地 HTTP 服务浏览 HapReport JSON')
+    .command('view <report>', '启动本地 HTTP 服务浏览 PackageReport JSON')
     .option('--port <port>', '监听端口', { default: 7788 })
     .option('--host <host>', '监听地址', { default: '127.0.0.1' })
     .option('--no-open', '不自动打开浏览器')

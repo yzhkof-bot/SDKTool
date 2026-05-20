@@ -1,7 +1,12 @@
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { platform } from 'node:os';
 import { join } from 'node:path';
+import { spawn } from 'node:child_process';
+
+import { getExtraAnalyzerMeta } from '../../core/analyzers/index.js';
+import { DEFAULT_PLATFORM, type Platform } from '../../shared/schema.js';
 
 import { browseDirectory, BrowseError } from './browse.js';
 import { locateByMeta } from './locate.js';
@@ -36,15 +41,16 @@ export interface WorkbenchServerHandle {
  * 路由：
  *   GET  /                              工作台 HTML 页面
  *   GET  /healthz                       存活检查
+ *   GET  /api/extras?platform=          按平台返回可选深度 analyzer 元信息
  *   GET  /api/browse?dir=...            服务端目录浏览（零拷贝选 hap）
  *   GET  /api/jobs                      job 列表
  *   GET  /api/jobs/:id                  单个 job
- *   POST /api/analyze                   { path } → 启动分析作业
- *   POST /api/compare                   { leftPath, rightPath } → 启动对比作业
+ *   POST /api/analyze                   { path, platform?, extras? } → 启动分析作业
+ *   POST /api/compare                   { leftPath, rightPath, platform?, extras? } → 启动对比作业
  *   GET  /jobs/:id/html                 作业主产物 HTML（analyze=报告 / compare=diff）
  *   GET  /jobs/:id/json                 作业主产物 JSON
- *   GET  /jobs/:id/sides/:side/html     compare job 单侧 HapReport HTML（side ∈ left|right）
- *   GET  /jobs/:id/sides/:side/json     compare job 单侧 HapReport JSON
+ *   GET  /jobs/:id/sides/:side/html     compare job 单侧 PackageReport HTML（side ∈ left|right）
+ *   GET  /jobs/:id/sides/:side/json     compare job 单侧 PackageReport JSON
  *
  * 仅监听 127.0.0.1，零外部依赖。
  */
@@ -107,7 +113,7 @@ async function handle(
 
   // 静态：工作台首页
   if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-    sendHtml(res, renderWorkbenchPage());
+    sendHtml(res, renderWorkbenchPage(store.cacheDir));
     return;
   }
   if (method === 'GET' && url.pathname === '/healthz') {
@@ -116,6 +122,26 @@ async function handle(
   }
 
   // API
+  if (method === 'POST' && url.pathname === '/api/open-cache-dir') {
+    const cacheDir = store.cacheDir;
+    openInExplorer(cacheDir, log);
+    sendJson(res, 200, { opened: cacheDir });
+    return;
+  }
+
+  if (method === 'GET' && url.pathname === '/api/extras') {
+    const p = parsePlatformQuery(url.searchParams.get('platform'));
+    if (p === 'INVALID') {
+      sendJson(res, 400, {
+        error: 'BAD_PLATFORM',
+        message: `platform 取值非法，允许：harmony | android | ios`,
+      });
+      return;
+    }
+    sendJson(res, 200, { platform: p, extras: getExtraAnalyzerMeta(p) });
+    return;
+  }
+
   if (method === 'GET' && url.pathname === '/api/browse') {
     try {
       const dir = url.searchParams.get('dir') ?? undefined;
@@ -185,8 +211,16 @@ async function handle(
       sendJson(res, 400, { error: 'BAD_REQUEST', message: '缺少 path 字符串字段' });
       return;
     }
+    const platform = parsePlatformField((body as { platform?: unknown }).platform);
+    if (platform === 'INVALID') {
+      sendJson(res, 400, {
+        error: 'BAD_PLATFORM',
+        message: `platform 取值非法，允许：harmony | android | ios`,
+      });
+      return;
+    }
     const extras = parseExtras((body as { extras?: unknown }).extras);
-    const id = startAnalyzeJob(path.trim(), { store, toolVersion, log, extras });
+    const id = startAnalyzeJob(path.trim(), { store, toolVersion, log, extras, platform });
     sendJson(res, 202, { jobId: id });
     return;
   }
@@ -202,8 +236,22 @@ async function handle(
       sendJson(res, 400, { error: 'BAD_REQUEST', message: '需要 leftPath / rightPath 两个字符串字段' });
       return;
     }
+    const platform = parsePlatformField((body as { platform?: unknown }).platform);
+    if (platform === 'INVALID') {
+      sendJson(res, 400, {
+        error: 'BAD_PLATFORM',
+        message: `platform 取值非法，允许：harmony | android | ios`,
+      });
+      return;
+    }
     const extras = parseExtras((body as { extras?: unknown }).extras);
-    const id = startCompareJob(leftPath.trim(), rightPath.trim(), { store, toolVersion, log, extras });
+    const id = startCompareJob(leftPath.trim(), rightPath.trim(), {
+      store,
+      toolVersion,
+      log,
+      extras,
+      platform,
+    });
     sendJson(res, 202, { jobId: id });
     return;
   }
@@ -340,6 +388,7 @@ async function streamConversationSse(
   const onClose = (): void => {
     if (!writer.isClosed) {
       writer.markClosed();
+      // 客户端断开 → 尽力中断 SDK 推理
       entry.session.interrupt().catch(() => {});
     }
   };
@@ -434,12 +483,13 @@ async function serveDiffHtmlWithAi(
     });
     res.end(body);
   } catch {
+    // 注入异常 → 退回到普通流式
     await streamFileOr404(res, filePath, fileName, 'html');
   }
 }
 
 /**
- * compare job 的"单侧 HapReport"产物。
+ * compare job 的"单侧 PackageReport"产物。
  *
  * - 仅对 kind='compare' 有效；analyze job → 400（语义不通）
  * - status≠'done' → 409
@@ -514,6 +564,31 @@ function sendText(res: ServerResponse, text: string): void {
   res.end(text);
 }
 
+const PLATFORM_WHITELIST: ReadonlySet<string> = new Set<Platform>(['harmony', 'android', 'ios']);
+
+/**
+ * 解析查询参数 `?platform=`：
+ *  - null / 空串 → 兜底 DEFAULT_PLATFORM（也就是 'harmony'），便于老客户端不传时正常工作
+ *  - 合法 Platform → 直接返回
+ *  - 其它 → 返回字面量 'INVALID'，由 caller 产出 400
+ */
+function parsePlatformQuery(raw: string | null): Platform | 'INVALID' {
+  if (raw === null || raw === '') return DEFAULT_PLATFORM;
+  return PLATFORM_WHITELIST.has(raw) ? (raw as Platform) : 'INVALID';
+}
+
+/**
+ * 解析 body.platform 字段（同 query 但出现位置不同）：
+ *  - undefined / null → 兜底 DEFAULT_PLATFORM
+ *  - 合法字符串 → 返回
+ *  - 其它 → 'INVALID'
+ */
+function parsePlatformField(raw: unknown): Platform | 'INVALID' {
+  if (raw === undefined || raw === null || raw === '') return DEFAULT_PLATFORM;
+  if (typeof raw !== 'string') return 'INVALID';
+  return PLATFORM_WHITELIST.has(raw) ? (raw as Platform) : 'INVALID';
+}
+
 /**
  * 解析 body.extras，宽松模式：
  *  - undefined / null / 空数组 / 非数组 → undefined（runner 走默认）
@@ -560,4 +635,28 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
     });
     req.on('error', reject);
   });
+}
+
+/**
+ * 用系统文件管理器打开指定目录。
+ * Windows → explorer.exe，macOS → open，Linux → xdg-open。
+ * 仅本地工具使用，fire-and-forget，不等待结果。
+ */
+function openInExplorer(dir: string, log: (t: string) => void): void {
+  const os = platform();
+  let cmd: string;
+  let args: string[];
+  if (os === 'win32') {
+    cmd = 'explorer.exe';
+    args = [dir];
+  } else if (os === 'darwin') {
+    cmd = 'open';
+    args = [dir];
+  } else {
+    cmd = 'xdg-open';
+    args = [dir];
+  }
+  const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+  child.unref();
+  child.on('error', (e) => log(`[workbench] open-cache-dir failed: ${e.message}\n`));
 }

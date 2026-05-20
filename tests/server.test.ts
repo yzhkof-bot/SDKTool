@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { startViewServer } from '../src/cli/utils/server.js';
-import type { HapReport } from '../src/shared/schema.js';
+import type { PackageReport } from '../src/shared/schema.js';
 
-const SAMPLE_REPORT: HapReport = {
+const SAMPLE_REPORT: PackageReport = {
   schemaVersion: '1.0',
   meta: {
     file: '/tmp/test.hap',
@@ -34,7 +34,7 @@ describe('startViewServer', () => {
     expect(html).toContain(SAMPLE_REPORT.meta.file);
   });
 
-  it('GET /api/report 返回 HapReport JSON', async () => {
+  it('GET /api/report 返回 PackageReport JSON', async () => {
     const handle = await startViewServer(SAMPLE_REPORT, { port: 0, openBrowser: false });
     handles.push(handle);
 

@@ -537,6 +537,24 @@ table.tbl th.bar-col {
   color: var(--color-info);
 }
 
+/* Platform badge：标记当前报告归属的应用平台 */
+.badge.platform {
+  border: 1px solid transparent;
+  background: rgba(91, 140, 255, 0.10);
+  color: var(--color-primary);
+  border-color: rgba(91, 140, 255, 0.35);
+}
+.badge.platform.platform-android {
+  background: rgba(16, 185, 129, 0.10);
+  color: var(--color-success);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.badge.platform.platform-ios {
+  background: rgba(245, 158, 11, 0.10);
+  color: var(--color-warning);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
 /* -------------------- Diff -------------------- */
 .delta-pos {
   color: var(--color-danger);

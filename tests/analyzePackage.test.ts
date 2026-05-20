@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzeHap } from '../src/core/index.js';
+import { analyzePackage } from '../src/core/index.js';
 import { SCHEMA_VERSION } from '../src/shared/schema.js';
 
 import { buildFixtureHap, DEMO_MODULE_JSON } from './helpers/fixtureHap.js';
 
-describe('analyzeHap (M1 端到端)', () => {
+describe('analyzePackage (M1 端到端)', () => {
   it('能产出符合 schema 的完整报告', async () => {
     const hapPath = await buildFixtureHap({ includePackInfo: true });
-    const report = await analyzeHap(hapPath, { toolVersion: '0.0.0-test' });
+    const report = await analyzePackage(hapPath, { toolVersion: '0.0.0-test' });
 
     expect(report.schemaVersion).toBe(SCHEMA_VERSION);
     expect(report.meta.file).toBe(hapPath);
@@ -20,7 +20,7 @@ describe('analyzeHap (M1 端到端)', () => {
 
   it('basic analyzer 解析 module.json', async () => {
     const hapPath = await buildFixtureHap();
-    const report = await analyzeHap(hapPath, { toolVersion: 'test' });
+    const report = await analyzePackage(hapPath, { toolVersion: 'test' });
 
     expect(report.basic).toBeDefined();
     expect(report.basic?.bundleName).toBe(DEMO_MODULE_JSON.app.bundleName);
@@ -41,7 +41,7 @@ describe('analyzeHap (M1 端到端)', () => {
 
   it('basic analyzer 在 module.json 缺失时只产生 warning 不抛错', async () => {
     const hapPath = await buildFixtureHap({ includeModuleJson: false });
-    const report = await analyzeHap(hapPath, { toolVersion: 'test' });
+    const report = await analyzePackage(hapPath, { toolVersion: 'test' });
 
     expect(report.basic).toBeUndefined();
     expect(report.warnings.some((w) => w.code === 'MODULE_JSON_NOT_FOUND')).toBe(true);
@@ -49,7 +49,7 @@ describe('analyzeHap (M1 端到端)', () => {
 
   it('size analyzer 给出 breakdown / topFiles / fileCount', async () => {
     const hapPath = await buildFixtureHap();
-    const report = await analyzeHap(hapPath, { toolVersion: 'test', topFilesLimit: 3 });
+    const report = await analyzePackage(hapPath, { toolVersion: 'test', topFilesLimit: 3 });
 
     expect(report.size).toBeDefined();
     expect(report.size!.fileCount).toBeGreaterThan(0);
@@ -81,7 +81,7 @@ describe('analyzeHap (M1 端到端)', () => {
 
   it('--only 限制只跑 size analyzer', async () => {
     const hapPath = await buildFixtureHap();
-    const report = await analyzeHap(hapPath, {
+    const report = await analyzePackage(hapPath, {
       toolVersion: 'test',
       only: ['size'],
     });
@@ -101,7 +101,7 @@ describe('analyzeHap (M1 端到端)', () => {
     };
     const { basicInfoAnalyzer, sizeAnalyzer } = await import('../src/core/analyzers/index.js');
 
-    const report = await analyzeHap(hapPath, {
+    const report = await analyzePackage(hapPath, {
       toolVersion: 'test',
       analyzers: [basicInfoAnalyzer, sizeAnalyzer, failingAnalyzer],
     });

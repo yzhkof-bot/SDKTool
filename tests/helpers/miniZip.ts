@@ -17,13 +17,27 @@ export interface ZipEntry {
   content?: Buffer | string;
 }
 
+export interface BuildMiniZipOptions {
+  /**
+   * 在 local file headers 与 central directory 之间插入的"裸字节"段。
+   * 用于在 APK fixture 中放置 APK Signing Block（v2/v3）。
+   *
+   * 插入后 EOCD 里的 cd_offset 会自动加上这段长度，让 zip 解析器仍能正常找到 CD。
+   */
+  extraBeforeCentral?: Buffer;
+}
+
 /** 写一个 zip 到指定路径 */
-export async function writeMiniZip(filePath: string, entries: ZipEntry[]): Promise<void> {
-  const buf = buildMiniZip(entries);
+export async function writeMiniZip(
+  filePath: string,
+  entries: ZipEntry[],
+  options: BuildMiniZipOptions = {},
+): Promise<void> {
+  const buf = buildMiniZip(entries, options);
   await writeFile(filePath, buf);
 }
 
-export function buildMiniZip(entries: ZipEntry[]): Buffer {
+export function buildMiniZip(entries: ZipEntry[], options: BuildMiniZipOptions = {}): Buffer {
   const localChunks: Buffer[] = [];
   const centralChunks: Buffer[] = [];
   let offset = 0;
@@ -83,6 +97,8 @@ export function buildMiniZip(entries: ZipEntry[]): Buffer {
 
   const centralBuffer = Buffer.concat(centralChunks);
   const localBuffer = Buffer.concat(localChunks);
+  const extraBuffer = options.extraBeforeCentral ?? Buffer.alloc(0);
+  const cdOffset = localBuffer.length + extraBuffer.length;
 
   // EOCD
   const eocd = Buffer.alloc(22);
@@ -92,10 +108,10 @@ export function buildMiniZip(entries: ZipEntry[]): Buffer {
   eocd.writeUInt16LE(entries.length, 8);
   eocd.writeUInt16LE(entries.length, 10);
   eocd.writeUInt32LE(centralBuffer.length, 12);
-  eocd.writeUInt32LE(localBuffer.length, 16);
+  eocd.writeUInt32LE(cdOffset, 16);            // cd offset (含 extraBeforeCentral 偏移)
   eocd.writeUInt16LE(0, 20);                   // comment len
 
-  return Buffer.concat([localBuffer, centralBuffer, eocd]);
+  return Buffer.concat([localBuffer, extraBuffer, centralBuffer, eocd]);
 }
 
 /* CRC-32 (IEEE 802.3) */

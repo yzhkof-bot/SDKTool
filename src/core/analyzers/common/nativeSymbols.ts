@@ -1,17 +1,21 @@
+import { createHash } from 'node:crypto';
+
 import type {
   Analyzer,
   AnalyzerContext,
-  HapNativeLibMitigations,
-  HapNativeLibRodataStrings,
-  HapNativeLibSection,
-  HapNativeLibSymbols,
-  HapNativeLibSymbolsInfo,
-  HapNativeSymbol,
-  HapReport,
+  NativeLibMitigations,
+  NativeLibRodataStrings,
+  NativeLibSection,
+  NativeLibSymbols,
+  NativeLibSymbolsInfo,
+  NativeSymbol,
+  PackageReport,
   NativeSymbolBind,
   NativeSymbolType,
-} from '../../shared/schema.js';
-import { basename } from '../../shared/utils.js';
+} from '../../../shared/schema.js';
+import { basename } from '../../../shared/utils.js';
+
+import { matchNativeLibPath } from './nativeLib.js';
 
 /**
  * 可选深度分析：对每个 libs/<arch>/*.so 做"ELF 多维度解剖"。
@@ -42,23 +46,36 @@ export const nativeSymbolsAnalyzer: Analyzer = {
   id: 'nativeSymbols',
   name: 'Native Deep Analysis',
   enabledByDefault: false,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     // 项目级硬约定（见 .cursor/rules/data-completeness.mdc）：所有限额默认 0 = 全量。
     // viewer 用 paginated() 分页，不依赖 analyzer 截断。
     const maxPerLib = clampMax(ctx.options.maxSymbolsPerLib, 0);
     const rodataLimit = clampMax(ctx.options.rodataStringLimit, 0);
-    const targets = ctx.hap.entries.filter(
-      (e) => !e.isDirectory && /^libs\/([^/]+)\/.+\.so$/i.test(e.path),
-    );
+    // 默认开 SHA-256 hash，让 differ 能识别"同名同 size 但 body 变"；极端追求速度时显式 false。
+    const hashSymbolBodies = ctx.options.nativeHashSymbolBodies !== false;
+    // 路径规则由 nativeLib 集中维护：harmony=libs/<abi>/, android=lib/<abi>/。
+    // 这里复用 matchNativeLibPath 既保证两个 analyzer 的扫描范围一致，也避免
+    // 后续新增平台时漏改一个地方。.so 后缀按 ELF native 库的现实约束保留。
+    const targets = ctx.hap.entries.filter((e) => {
+      if (e.isDirectory) return false;
+      const m = matchNativeLibPath(e.path, ctx.platform);
+      return !!m && /\.so$/i.test(m.subPath);
+    });
 
-    const perLib: HapNativeLibSymbols[] = [];
+    const perLib: NativeLibSymbols[] = [];
     for (const entry of targets) {
-      const m = /^libs\/([^/]+)\/(.+)$/.exec(entry.path)!;
-      const arch = m[1] ?? '';
-      const name = basename(m[2] ?? '');
+      const m = matchNativeLibPath(entry.path, ctx.platform)!;
+      const arch = m.arch;
+      const name = basename(m.subPath);
       try {
         const buf = await ctx.hap.readFile(entry.path);
-        const parsed = parseElfDeep(buf, { maxPerLib, rodataLimit, addWarning: ctx.addWarning, path: entry.path });
+        const parsed = parseElfDeep(buf, {
+          maxPerLib,
+          rodataLimit,
+          hashSymbolBodies,
+          addWarning: ctx.addWarning,
+          path: entry.path,
+        });
         perLib.push({ arch, name, ...parsed });
       } catch (err) {
         perLib.push({
@@ -84,7 +101,7 @@ export const nativeSymbolsAnalyzer: Analyzer = {
       return a.name.localeCompare(b.name);
     });
 
-    const info: HapNativeLibSymbolsInfo = {
+    const info: NativeLibSymbolsInfo = {
       perLib,
       scanned: perLib.length,
       maxSymbolsPerLib: maxPerLib,
@@ -191,12 +208,14 @@ interface ParsedElf {
 interface DeepOpts {
   maxPerLib: number;
   rodataLimit: number;
+  /** 是否对每个 FUNC 符号的字节段算 SHA-256（codeSha256） */
+  hashSymbolBodies: boolean;
   path: string;
   addWarning: AnalyzerContext['addWarning'];
 }
 
-function parseElfDeep(buf: Buffer, opts: DeepOpts): Omit<HapNativeLibSymbols, 'arch' | 'name'> {
-  const base: Omit<HapNativeLibSymbols, 'arch' | 'name'> = {
+function parseElfDeep(buf: Buffer, opts: DeepOpts): Omit<NativeLibSymbols, 'arch' | 'name'> {
+  const base: Omit<NativeLibSymbols, 'arch' | 'name'> = {
     elfClass: 'UNKNOWN',
     totalSymbols: 0,
     definedCount: 0,
@@ -222,7 +241,9 @@ function parseElfDeep(buf: Buffer, opts: DeepOpts): Omit<HapNativeLibSymbols, 'a
   };
 
   /* 1. 符号表（保留原有行为：取 .dynsym，否则退化 .symtab） */
-  const dynsymRes = trySub('NATIVE_DEEP_SYMBOLS_FAILED', () => parseSymbolTable(elf, opts.maxPerLib));
+  const dynsymRes = trySub('NATIVE_DEEP_SYMBOLS_FAILED', () =>
+    parseSymbolTable(elf, opts.maxPerLib, opts.hashSymbolBodies),
+  );
   if (dynsymRes) {
     base.totalSymbols = dynsymRes.totalSymbols;
     base.definedCount = dynsymRes.definedCount;
@@ -425,12 +446,16 @@ interface ParsedSymbols {
   totalSymbols: number;
   definedCount: number;
   importedCount: number;
-  symbols: HapNativeSymbol[];
+  symbols: NativeSymbol[];
   /** 所有导入符号名集合（mitigations 用） */
   allImports: Set<string>;
 }
 
-function parseSymbolTable(elf: ParsedElf, maxPerLib: number): ParsedSymbols {
+function parseSymbolTable(
+  elf: ParsedElf,
+  maxPerLib: number,
+  hashSymbolBodies: boolean,
+): ParsedSymbols {
   const { buf, is64, sections, r16, r32, rWord } = elf;
   const symbolSection =
     sections.find((s) => s.type === SHT_DYNSYM) ?? sections.find((s) => s.type === SHT_SYMTAB);
@@ -453,7 +478,11 @@ function parseSymbolTable(elf: ParsedElf, maxPerLib: number): ParsedSymbols {
     throw new Error('符号表越界');
   }
 
-  const allSymbols: HapNativeSymbol[] = [];
+  // 仅在启用 hash 时建立 section vaddr→file offset 映射；
+  // 节区比 program header 更精确（PHDR 的 LOAD 段一覆盖到底，section 能区分 .text vs .rodata）。
+  const execSectionRanges = hashSymbolBodies ? buildExecSectionRanges(elf) : [];
+
+  const allSymbols: NativeSymbol[] = [];
   const allImports = new Set<string>();
   let definedCount = 0;
   let importedCount = 0;
@@ -464,13 +493,16 @@ function parseSymbolTable(elf: ParsedElf, maxPerLib: number): ParsedSymbols {
     let stInfo: number;
     let stShndx: number;
     let stSize: number;
+    let stValue: number;
     if (is64) {
       stName = r32(base + 0);
       stInfo = buf.readUInt8(base + 4);
       stShndx = r16(base + 6);
+      stValue = rWord(base + 8);
       stSize = rWord(base + 16);
     } else {
       stName = r32(base + 0);
+      stValue = r32(base + 4);
       stSize = r32(base + 8);
       stInfo = buf.readUInt8(base + 12);
       stShndx = r16(base + 14);
@@ -491,7 +523,27 @@ function parseSymbolTable(elf: ParsedElf, maxPerLib: number): ParsedSymbols {
       definedCount += 1;
     }
 
-    allSymbols.push({ name, bind, type, size: stSize, imported });
+    const sym: NativeSymbol = { name, bind, type, size: stSize, imported };
+
+    // 仅对自定义 FUNC + size>0 算 hash；
+    // 落在某个可执行段（含 .text / .plt 等）才取，避免误抓 .bss/.data 上的同地址混淆。
+    if (
+      hashSymbolBodies &&
+      !imported &&
+      type === 'FUNC' &&
+      stSize > 0 &&
+      execSectionRanges.length > 0
+    ) {
+      const fileOff = mapVaddrToFileOffset(stValue, stSize, execSectionRanges);
+      if (fileOff !== null && fileOff + stSize <= buf.length) {
+        // ARM/Thumb 互通：低位 bit 用作 Thumb 标记，不参与寻址；mapVaddrToFileOffset 已经把它清掉。
+        sym.codeSha256 = createHash('sha256')
+          .update(buf.subarray(fileOff, fileOff + stSize))
+          .digest('hex');
+      }
+    }
+
+    allSymbols.push(sym);
   }
 
   allSymbols.sort((a, b) => {
@@ -507,6 +559,67 @@ function parseSymbolTable(elf: ParsedElf, maxPerLib: number): ParsedSymbols {
     symbols,
     allImports,
   };
+}
+
+/**
+ * 节区 vaddr→file offset 映射：仅收集 SHF_ALLOC + SHF_EXECINSTR + 非 NOBITS 的节
+ * （`.text` / `.plt` / `.init` 等），用来定位 FUNC 符号对应的指令字节。
+ */
+interface ExecSectionRange {
+  shAddr: number;
+  shOffset: number;
+  shSize: number;
+}
+
+function buildExecSectionRanges(elf: ParsedElf): ExecSectionRange[] {
+  const ranges: ExecSectionRange[] = [];
+  for (const s of elf.sections) {
+    if (s.type === SHT_NOBITS) continue; // .bss 等无文件内容
+    if ((s.flags & SHF_ALLOC) === 0) continue;
+    if ((s.flags & SHF_EXECINSTR) === 0) continue;
+    if (s.size === 0) continue;
+    // section header 缺 sh_addr 字段我们没读，需要现读一次
+    const shAddr = readShAddr(elf, s.index);
+    if (shAddr === null) continue;
+    ranges.push({ shAddr, shOffset: s.offset, shSize: s.size });
+  }
+  return ranges;
+}
+
+function readShAddr(elf: ParsedElf, idx: number): number | null {
+  // 复刻 parseElfBasics 里 section header 偏移布局
+  const { buf, is64, isLE } = elf;
+  if (idx < 0 || idx >= elf.sections.length) return null;
+  const eShoff = is64
+    ? Number(isLE ? buf.readBigUInt64LE(40) : buf.readBigUInt64BE(40))
+    : (isLE ? buf.readUInt32LE(32) : buf.readUInt32BE(32));
+  const eShentsize = is64
+    ? (isLE ? buf.readUInt16LE(58) : buf.readUInt16BE(58))
+    : (isLE ? buf.readUInt16LE(46) : buf.readUInt16BE(46));
+  const baseOff = eShoff + idx * eShentsize;
+  // sh_addr 在 ELF64 偏移 16；ELF32 偏移 12
+  const addrOff = is64 ? baseOff + 16 : baseOff + 12;
+  if (is64) {
+    if (addrOff + 8 > buf.length) return null;
+    return Number(isLE ? buf.readBigUInt64LE(addrOff) : buf.readBigUInt64BE(addrOff));
+  }
+  if (addrOff + 4 > buf.length) return null;
+  return isLE ? buf.readUInt32LE(addrOff) : buf.readUInt32BE(addrOff);
+}
+
+function mapVaddrToFileOffset(
+  rawVaddr: number,
+  size: number,
+  ranges: ExecSectionRange[],
+): number | null {
+  // ARM/Thumb 函数符号 st_value 低位 1 表示 Thumb 模式（指令仍 2 字节对齐），剥掉
+  const vaddr = rawVaddr & ~0x1;
+  for (const r of ranges) {
+    if (vaddr >= r.shAddr && vaddr + size <= r.shAddr + r.shSize) {
+      return r.shOffset + (vaddr - r.shAddr);
+    }
+  }
+  return null;
 }
 
 function decodeBind(b: number): NativeSymbolBind {
@@ -535,7 +648,7 @@ function decodeType(t: number): NativeSymbolType {
  * 3. sections breakdown
  * --------------------------------------------------------------------------- */
 
-function parseSectionsBreakdown(elf: ParsedElf): HapNativeLibSection[] {
+function parseSectionsBreakdown(elf: ParsedElf): NativeLibSection[] {
   return elf.sections
     .filter((s) => s.name !== '' || s.size > 0) // 跳过 index 0 的 NULL section
     .map((s) => ({
@@ -738,7 +851,7 @@ function parseMitigations(
   elf: ParsedElf,
   dyn: ParsedDynamic | undefined,
   imports: Set<string>,
-): HapNativeLibMitigations {
+): NativeLibMitigations {
   // NX：找 PT_GNU_STACK；存在 + 不带 PF_X 即 NX
   const gnuStack = elf.programHeaders.find((p) => p.type === PT_GNU_STACK);
   const nx = gnuStack ? (gnuStack.flags & PF_X) === 0 : false;
@@ -778,7 +891,7 @@ function parseMitigations(
 const RODATA_MIN_LEN = 6;
 const RODATA_MAX_LEN = 1024;
 
-function parseRodataStrings(elf: ParsedElf, limit: number): HapNativeLibRodataStrings | undefined {
+function parseRodataStrings(elf: ParsedElf, limit: number): NativeLibRodataStrings | undefined {
   const sec = elf.sectionByName.get('.rodata');
   if (!sec || sec.size === 0) return undefined;
   if (sec.offset + sec.size > elf.buf.length) throw new Error('.rodata 越界');

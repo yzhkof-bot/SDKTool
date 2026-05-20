@@ -2,10 +2,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { HapDiffReport, HapReport } from '../../shared/schema.js';
+import type { PackageDiffReport, PackageReport } from '../../shared/schema.js';
 
 /**
- * 把 HapReport / HapDiffReport JSON 注入到 viewer HTML 模板，产出可双击打开的单文件 HTML。
+ * 把 PackageReport / PackageDiffReport JSON 注入到 viewer HTML 模板，产出可双击打开的单文件 HTML。
  *
  * 模板由 build 步骤产生（scripts/buildViewerTemplate.mjs），保存在 templates/ 下。
  * 模板内含 __DATA_PLACEHOLDER__ 占位符，本函数把它替换为 JSON.stringify(report)。
@@ -23,12 +23,12 @@ export interface RenderHtmlOptions {
   template?: string;
 }
 
-export function renderReportHtml(report: HapReport, options: RenderHtmlOptions = {}): string {
+export function renderReportHtml(report: PackageReport, options: RenderHtmlOptions = {}): string {
   const template = options.template ?? loadDefaultTemplate('report');
   return injectData(template, report);
 }
 
-export function renderDiffHtml(diff: HapDiffReport, options: RenderHtmlOptions = {}): string {
+export function renderDiffHtml(diff: PackageDiffReport, options: RenderHtmlOptions = {}): string {
   const template = options.template ?? loadDefaultTemplate('diff');
   return injectData(template, diff);
 }
@@ -98,7 +98,7 @@ export function _resetTemplateCache(): void {
  *  - U+2028/9   →  \u2028/9     旧浏览器把它当行结束符，会让 JS / JSON 解析炸
  *
  * 注意不能用 `\!` / `\>` 这种字面反斜杠——它们不是合法 JSON 转义字符，viewer
- * 端 JSON.parse 时会抛 "Bad escaped character"。HapReport 内含 .rodata / abc
+ * 端 JSON.parse 时会抛 "Bad escaped character"。PackageReport 内含 .rodata / abc
  * 字符串池时，命中 `<!--` 或 `-->` 子串的概率很高，曾经的实现会在那一刻爆掉。
  */
 export function serializeForHtml(value: unknown): string {

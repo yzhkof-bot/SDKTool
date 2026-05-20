@@ -6,7 +6,7 @@ export type {
   Analyzer,
   AnalyzerContext,
   AnalyzeOptions,
-  HapReport,
+  PackageReport,
   ReportWarning,
   WarningLevel,
 } from '../../shared/schema.js';

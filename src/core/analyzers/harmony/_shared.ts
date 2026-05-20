@@ -1,16 +1,16 @@
 import JSON5 from 'json5';
 
-import type { AnalyzerContext, VirtualHap } from '../../shared/schema.js';
+import type { AnalyzerContext, VirtualPackage } from '../../../shared/schema.js';
 
 /**
  * analyzer 共享辅助：跨 analyzer 复用 module.json / pack.info 的解析结果。
  *
- * pipeline 把同一个 VirtualHap 实例并发派发给多个 analyzer，因此用 WeakMap 缓存
+ * pipeline 把同一个 VirtualPackage 实例并发派发给多个 analyzer，因此用 WeakMap 缓存
  * 同一 hap 上的解析 Promise，N 个 analyzer 只读 1 次。
  */
 
-const moduleJsonCache = new WeakMap<VirtualHap, Promise<SharedReadResult<unknown>>>();
-const packInfoCache = new WeakMap<VirtualHap, Promise<SharedReadResult<unknown>>>();
+const moduleJsonCache = new WeakMap<VirtualPackage, Promise<SharedReadResult<unknown>>>();
+const packInfoCache = new WeakMap<VirtualPackage, Promise<SharedReadResult<unknown>>>();
 
 const MODULE_CANDIDATES = ['module.json', 'module.json5', 'config.json'];
 const PACK_INFO_PATH = 'pack.info';

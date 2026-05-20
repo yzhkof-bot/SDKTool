@@ -5,19 +5,76 @@
  *  - 整体只有这一个文件就能渲染整个工作台 UI（HTML+CSS+JS 全内联），方便 server.ts 直接输出
  *  - 不打 IIFE bundle、不依赖 viewer/sections，行为简单（fetch + 拉表 + DOM 增删）
  *  - 文件选择走"服务端目录浏览器" modal，**零拷贝**：浏览器只是渲染目录列表，
- *    点选时把绝对路径回传 API，server 直接 analyzeHap(absPath)，hap 不会被复制
- *  - 可选深度分析（extras）：渲染时从后端 EXTRA_ANALYZERS 注入，多选 checkbox
+ *    点选时把绝对路径回传 API，server 直接 analyzePackage(absPath)，hap 不会被复制
+ *  - 可选深度分析（extras）：SSR 时渲染默认平台 (HarmonyOS) 的 extras 列表；切换平台时
+ *    通过 GET /api/extras?platform= 拉新列表客户端渲染替换
+ *  - 多平台：顶部 Platform Segment 切换 harmony/android/ios，POST 时带 platform 字段；
+ *    一期 android/ios 仅注册但 disabled，等 analyzer 落地后解锁
  */
 
-import { EXTRA_ANALYZERS, type ExtraAnalyzerMeta } from '../../core/analyzers/index.js';
+import { getExtraAnalyzerMeta } from '../../core/analyzers/index.js';
+import { DEFAULT_PLATFORM, type Platform } from '../../shared/schema.js';
 
-export function renderWorkbenchPage(): string {
-  return PAGE_HTML(EXTRA_ANALYZERS);
+import type { ExtraAnalyzerMeta } from '../../core/analyzers/meta.js';
+
+/**
+ * Platform UI 元数据：决定 segment 文案 / 可用性 / 文件类型 filter / 输入框 placeholder。
+ *
+ * 一期约定：仅 harmony 启用；android / ios 占位但 disabled，鼠标 hover 显示 tooltip。
+ * 解锁 android 只需要把 enabled 改成 true + 把对应 analyzer 实现挂上（参见 todo #7）。
+ */
+interface PlatformUIDef {
+  id: Platform;
+  label: string;
+  enabled: boolean;
+  /** disabled 状态下的 tooltip 文案 */
+  tooltip?: string;
+  /** 文件选择器 filter（picker / drag fallback 都用） */
+  fileFilter: string;
+  /** 单输入框 placeholder（analyze 单包 + compare 两侧通用） */
+  placeholder: string;
 }
 
-function PAGE_HTML(extras: ExtraAnalyzerMeta[]): string {
+const PLATFORM_DEFS: ReadonlyArray<PlatformUIDef> = [
+  {
+    id: 'harmony',
+    label: 'HarmonyOS',
+    enabled: true,
+    fileFilter: '.hap,.json',
+    placeholder: '/abs/path/to/your.hap 或 D:\\path\\your.hap',
+  },
+  {
+    id: 'android',
+    label: 'Android',
+    enabled: true,
+    fileFilter: '.apk,.aab,.json',
+    placeholder: '/abs/path/to/your.apk 或 D:\\path\\your.apk',
+  },
+  {
+    id: 'ios',
+    label: 'iOS',
+    enabled: false,
+    tooltip: '后续支持',
+    fileFilter: '.ipa,.json',
+    placeholder: '/abs/path/to/your.ipa 或 D:\\path\\your.ipa',
+  },
+];
+
+export function renderWorkbenchPage(cacheDir: string): string {
+  return PAGE_HTML(getExtraAnalyzerMeta(DEFAULT_PLATFORM), cacheDir);
+}
+
+function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string): string {
   const extrasAnalyze = renderExtrasBlock(extras, 'analyze');
   const extrasCompare = renderExtrasBlock(extras, 'compare');
+  const cacheDirEsc = escHtml(cacheDir);
+  const platformSegment = renderPlatformSegment();
+  const platformFilter = renderPlatformHistoryFilter();
+  const defaultPlatform = DEFAULT_PLATFORM;
+  const defaultDef = PLATFORM_DEFS.find((p) => p.id === defaultPlatform) ?? PLATFORM_DEFS[0]!;
+  const defaultFilter = escAttr(defaultDef.fileFilter);
+  const defaultPlaceholder = escAttr(defaultDef.placeholder);
+  const platformDefsJson = JSON.stringify(PLATFORM_DEFS);
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -28,32 +85,41 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[]): string {
 </head>
 <body>
   <div class="topbar">
-    <h1>KingSDK Hap Workbench</h1>
-    <div class="topbar-sub">本地工作台 · 监听 127.0.0.1 · 零拷贝（不复制 hap）</div>
+    <h1>KingSDK Workbench</h1>
+    <div class="topbar-sub">本地工作台 · 监听 127.0.0.1 · 零拷贝（不复制原始包）</div>
+    <div class="topbar-storage">
+      <span class="topbar-storage-label">历史记录目录</span>
+      <code class="topbar-storage-path" id="cache-dir-path">${cacheDirEsc}</code>
+      <button class="btn-icon-sm" id="btn-copy-cache-dir" title="复制路径">⎘</button>
+      <button class="btn-icon-sm" id="btn-open-cache-dir" title="在文件管理器中打开">📂</button>
+      <span class="topbar-storage-msg" id="cache-dir-msg"></span>
+    </div>
   </div>
 
-  <div class="container">
+  <div class="container" id="container" data-platform="${escAttr(defaultPlatform)}">
+    ${platformSegment}
+
     <div class="tabs">
-      <button class="tab active" data-tab="analyze">分析单个 Hap</button>
-      <button class="tab" data-tab="compare">对比两个 Hap</button>
+      <button class="tab active" data-tab="analyze">分析单个包</button>
+      <button class="tab" data-tab="compare">对比两个包</button>
     </div>
 
     <section class="panel" data-section="analyze">
       <h2 class="panel-title">分析</h2>
-      <p class="hint">三种方式选 hap：<b>拖到下方虚线框</b>（按 name+size 反查 Downloads/Desktop/Documents/cwd 下文件）、点<b>浏览…</b>、或直接<b>粘贴绝对路径</b>。文件不会被上传或复制。</p>
+      <p class="hint">三种方式选包：<b>拖到下方虚线框</b>（按 name+size 反查 Downloads/Desktop/Documents/cwd 下文件）、点<b>浏览…</b>、或直接<b>粘贴绝对路径</b>。文件不会被上传或复制。</p>
       <div class="drop-row" data-input-id="analyze-path">
-        <div class="drop-row-tag">Hap</div>
+        <div class="drop-row-tag" data-pkg-tag>包</div>
         <div class="drop-row-main">
           <div class="path-row">
-            <label>Hap 路径</label>
-            <input type="text" id="analyze-path" data-dropinput placeholder="/abs/path/to/your.hap 或 D:\\\\path\\\\your.hap" />
-            <button class="btn-secondary" data-browse-target="analyze-path" data-filter=".hap,.json">浏览…</button>
+            <label>包路径</label>
+            <input type="text" id="analyze-path" data-dropinput placeholder="${defaultPlaceholder}" />
+            <button class="btn-secondary" data-browse-target="analyze-path" data-filter="${defaultFilter}">浏览…</button>
           </div>
           <div class="row-status" data-status-for="analyze-path"></div>
         </div>
         <div class="drop-row-hint">拖到这里</div>
       </div>
-      ${extrasAnalyze}
+      <div data-extras-host="analyze">${extrasAnalyze}</div>
       <div class="actions">
         <button class="btn-primary" id="btn-analyze">开始分析</button>
       </div>
@@ -62,14 +128,14 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[]): string {
 
     <section class="panel" data-section="compare" hidden>
       <h2 class="panel-title">对比</h2>
-      <p class="hint">两侧各是独立拖拽区——把<b>旧版 hap</b>拖到<b>左边</b>，<b>新版 hap</b>拖到<b>右边</b>。两侧支持 .hap 或已生成的 .json 报告。文件不会被复制。</p>
+      <p class="hint">两侧各是独立拖拽区——把<b>旧版包</b>拖到<b>左边</b>，<b>新版包</b>拖到<b>右边</b>。两侧需要是同一平台；也支持已生成的 .json 报告。文件不会被复制。</p>
       <div class="drop-row" data-input-id="compare-left">
         <div class="drop-row-tag tag-left">Baseline (左·旧)</div>
         <div class="drop-row-main">
           <div class="path-row">
             <label>路径</label>
-            <input type="text" id="compare-left" data-dropinput placeholder="较早的 hap / 报告 JSON" />
-            <button class="btn-secondary" data-browse-target="compare-left" data-filter=".hap,.json">浏览…</button>
+            <input type="text" id="compare-left" data-dropinput placeholder="较早的包 / 报告 JSON" />
+            <button class="btn-secondary" data-browse-target="compare-left" data-filter="${defaultFilter}">浏览…</button>
           </div>
           <div class="row-status" data-status-for="compare-left"></div>
         </div>
@@ -80,14 +146,14 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[]): string {
         <div class="drop-row-main">
           <div class="path-row">
             <label>路径</label>
-            <input type="text" id="compare-right" data-dropinput placeholder="较新的 hap / 报告 JSON" />
-            <button class="btn-secondary" data-browse-target="compare-right" data-filter=".hap,.json">浏览…</button>
+            <input type="text" id="compare-right" data-dropinput placeholder="较新的包 / 报告 JSON" />
+            <button class="btn-secondary" data-browse-target="compare-right" data-filter="${defaultFilter}">浏览…</button>
           </div>
           <div class="row-status" data-status-for="compare-right"></div>
         </div>
         <div class="drop-row-hint">拖到这里 · 右</div>
       </div>
-      ${extrasCompare}
+      <div data-extras-host="compare">${extrasCompare}</div>
       <div class="actions">
         <button class="btn-primary" id="btn-compare">开始对比</button>
       </div>
@@ -96,6 +162,7 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[]): string {
 
     <section class="panel">
       <h2 class="panel-title">历史记录 <span class="muted">(自动刷新，最近 50 条；点每行右侧 × 删单条)</span></h2>
+      ${platformFilter}
       <div id="jobs"></div>
     </section>
   </div>
@@ -122,9 +189,52 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[]): string {
     </div>
   </div>
 
+  <script>
+    window.__KINGSDK__ = {
+      defaultPlatform: ${JSON.stringify(defaultPlatform)},
+      platforms: ${platformDefsJson},
+    };
+  </script>
   <script>${SCRIPT}</script>
 </body>
 </html>`;
+}
+
+/**
+ * Platform segment：顶部一组 chip，点击切换当前平台。
+ * 一期仅 harmony 可点击；android / ios 渲染为 disabled，hover 显示 tooltip。
+ */
+function renderPlatformSegment(): string {
+  const items = PLATFORM_DEFS.map((p) => {
+    const cls = ['platform-chip'];
+    if (p.id === DEFAULT_PLATFORM) cls.push('active');
+    if (!p.enabled) cls.push('disabled');
+    const title = p.enabled ? '' : ` title="${escAttr(p.tooltip ?? '即将上线')}"`;
+    return `<button type="button" class="${cls.join(' ')}" data-platform="${escAttr(p.id)}"${p.enabled ? '' : ' disabled'}${title}>${escHtml(p.label)}</button>`;
+  }).join('');
+  return `<div class="platform-segment" role="tablist" aria-label="选择平台">
+    <span class="platform-segment-label">平台</span>
+    <div class="platform-segment-chips">${items}</div>
+  </div>`;
+}
+
+/**
+ * 历史记录区顶部的"按平台过滤"开关。
+ * "全部" + 启用平台 + （disabled 平台不进过滤项，避免出现一个永远没结果的选项）
+ */
+function renderPlatformHistoryFilter(): string {
+  const items: string[] = [
+    `<button type="button" class="hist-filter-chip active" data-hist-filter="all">全部</button>`,
+  ];
+  for (const p of PLATFORM_DEFS) {
+    items.push(
+      `<button type="button" class="hist-filter-chip" data-hist-filter="${escAttr(p.id)}">${escHtml(p.label)}</button>`,
+    );
+  }
+  return `<div class="hist-filter">
+    <span class="hist-filter-label">筛选</span>
+    <div class="hist-filter-chips">${items.join('')}</div>
+  </div>`;
 }
 
 /**
@@ -204,12 +314,41 @@ body { margin: 0; background: var(--color-bg); color: var(--color-text); font-fa
 .topbar { background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 16px 32px; }
 .topbar h1 { margin: 0; font-size: 18px; font-weight: 600; }
 .topbar-sub { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
+.topbar-storage { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 10px; background: var(--color-surface-elev); border: 1px solid var(--color-border); border-radius: 6px; max-width: 100%; overflow: hidden; }
+.topbar-storage-label { font-size: 11px; font-weight: 500; color: var(--color-muted); white-space: nowrap; }
+.topbar-storage-path { font-family: var(--font-mono); font-size: 12px; color: var(--color-text); background: var(--color-code-bg); padding: 2px 8px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 600px; flex-shrink: 1; }
+.topbar-storage-msg { font-size: 11px; color: var(--color-success); min-width: 48px; transition: opacity 0.3s; }
+.btn-icon-sm { background: transparent; border: 1px solid var(--color-border); border-radius: 4px; padding: 2px 7px; font-size: 13px; cursor: pointer; color: var(--color-muted); white-space: nowrap; flex-shrink: 0; }
+.btn-icon-sm:hover { background: var(--color-primary-bg); border-color: var(--color-primary); color: var(--color-primary); }
 .container { max-width: 1100px; margin: 0 auto; padding: 24px 32px; }
 
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); }
 .tab { padding: 8px 18px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--color-muted); cursor: pointer; font-size: 14px; }
 .tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); font-weight: 500; }
 .tab:hover { color: var(--color-text); }
+
+/* Platform segment：顶部平台切换 */
+.platform-segment { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); }
+.platform-segment-label { font-size: 12px; color: var(--color-muted); font-weight: 500; }
+.platform-segment-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.platform-chip { padding: 5px 14px; border: 1px solid var(--color-border); background: var(--color-surface-elev); border-radius: 999px; color: var(--color-text); font-size: 12px; cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s; }
+.platform-chip:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.platform-chip.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; font-weight: 500; }
+.platform-chip:disabled, .platform-chip.disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* 历史区按平台过滤 */
+.hist-filter { display: flex; align-items: center; gap: 10px; margin: 8px 0 14px; flex-wrap: wrap; }
+.hist-filter-label { font-size: 11px; color: var(--color-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+.hist-filter-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.hist-filter-chip { padding: 3px 10px; border: 1px solid var(--color-border); background: var(--color-surface-elev); border-radius: 999px; color: var(--color-muted); font-size: 11px; cursor: pointer; }
+.hist-filter-chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.hist-filter-chip.active { background: var(--color-primary-bg); border-color: var(--color-primary); color: var(--color-primary); font-weight: 500; }
+
+/* Job 卡片状态 + platform badge 容器（竖排） */
+.job .badges { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.job .badge.platform { background: rgba(91, 140, 255, 0.10); color: var(--color-primary); border: 1px solid rgba(91, 140, 255, 0.35); }
+.job .badge.platform.android { background: rgba(16, 185, 129, 0.10); color: var(--color-success); border-color: rgba(16, 185, 129, 0.35); }
+.job .badge.platform.ios { background: rgba(245, 158, 11, 0.10); color: var(--color-warning); border-color: rgba(245, 158, 11, 0.35); }
 
 .panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 18px; position: relative; }
 .panel-title { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
@@ -393,6 +532,166 @@ const SCRIPT = `
     return data;
   }
 
+  // ---------- Platform 状态 ----------
+  // 注入自 server：window.__KINGSDK__.{defaultPlatform, platforms}
+  var KS = (window.__KINGSDK__ || { defaultPlatform: 'harmony', platforms: [] });
+  var PLATFORM_DEFS = KS.platforms || [];
+  var currentPlatform = KS.defaultPlatform || 'harmony';
+  var historyFilter = 'all'; // 'all' | 'harmony' | 'android' | 'ios'
+  /** 缓存每个平台 extras 列表（首次拉取后存下，避免 segment 来回切重复网络请求） */
+  var extrasCache = Object.create(null);
+
+  function platformDef(id) {
+    for (var i = 0; i < PLATFORM_DEFS.length; i++) if (PLATFORM_DEFS[i].id === id) return PLATFORM_DEFS[i];
+    return null;
+  }
+  function platformLabel(id) {
+    var d = platformDef(id);
+    return d ? d.label : id;
+  }
+
+  /**
+   * 切换当前平台：
+   *  - 更新 segment active class
+   *  - 更新 .container 的 data-platform（便于将来 CSS 区分）
+   *  - 更新各 [data-browse-target] 按钮的 data-filter
+   *  - 更新 analyze 输入框 placeholder
+   *  - 清空所有路径输入 + 反查状态（避免拿着 .hap 路径切到 Android 误用）
+   *  - 拉新的 extras 列表替换两个 host
+   */
+  async function setPlatform(next) {
+    if (!next || next === currentPlatform) return;
+    var def = platformDef(next);
+    if (!def || !def.enabled) return;
+    currentPlatform = next;
+
+    $$('.platform-chip').forEach(function(c){
+      c.classList.toggle('active', c.getAttribute('data-platform') === next);
+    });
+    var container = $('#container');
+    if (container) container.setAttribute('data-platform', next);
+
+    $$('button[data-browse-target]').forEach(function(b){
+      b.setAttribute('data-filter', def.fileFilter);
+    });
+    var analyzeInput = $('#analyze-path');
+    if (analyzeInput) {
+      analyzeInput.value = '';
+      analyzeInput.setAttribute('placeholder', def.placeholder);
+    }
+    var leftInput = $('#compare-left');
+    var rightInput = $('#compare-right');
+    if (leftInput) leftInput.value = '';
+    if (rightInput) rightInput.value = '';
+    $$('.row-status').forEach(function(s){ s.textContent = ''; s.className = 'row-status'; });
+    $$('.error').forEach(function(e){ e.hidden = true; e.textContent = ''; });
+
+    await loadAndRenderExtras(next);
+  }
+
+  /**
+   * 拉取并渲染 extras（两个 host：analyze / compare）。
+   * 网络异常时打日志 + 在 host 留个 placeholder 提示，但不阻断主流程。
+   */
+  async function loadAndRenderExtras(p) {
+    try {
+      var list = extrasCache[p];
+      if (!list) {
+        var data = await jsonFetch('/api/extras?platform=' + encodeURIComponent(p));
+        list = (data && Array.isArray(data.extras)) ? data.extras : [];
+        extrasCache[p] = list;
+      }
+      ['analyze', 'compare'].forEach(function(kind){
+        var host = document.querySelector('[data-extras-host="' + kind + '"]');
+        if (!host) return;
+        host.innerHTML = renderExtrasBlockClient(list, kind);
+      });
+    } catch (e) {
+      console.warn('[workbench] 拉取 extras 失败:', e);
+      ['analyze', 'compare'].forEach(function(kind){
+        var host = document.querySelector('[data-extras-host="' + kind + '"]');
+        if (host) host.innerHTML = '<div class="extras-block"><div class="extras-title muted">该平台暂无可选深度分析</div></div>';
+      });
+    }
+  }
+
+  /** 客户端版本的 extras 渲染（与 server 端 renderExtrasBlock 输出形态保持一致） */
+  function renderExtrasBlockClient(extras, kind) {
+    if (!extras || extras.length === 0) return '';
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function(c){
+        return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+      });
+    }
+    var items = extras.map(function(e){
+      var id = 'extra-' + kind + '-' + esc(e.id);
+      return '<label class="extras-item" for="' + id + '">'
+        + '<input type="checkbox" id="' + id + '" data-extra-' + kind + '="' + esc(e.id) + '" checked />'
+        + '<div class="extras-item-text">'
+        +   '<div class="extras-item-name">' + esc(e.name) + ' <code>' + esc(e.id) + '</code></div>'
+        +   '<div class="extras-item-desc">' + esc(e.description) + '</div>'
+        + '</div>'
+        + '</label>';
+    }).join('');
+    return '<div class="extras-block" data-extras-block="' + kind + '">'
+      + '<div class="extras-title">可选深度分析（多选 · 默认开启，取消勾选可加速本次任务）</div>'
+      + '<div class="extras-list">' + items + '</div>'
+      + '</div>';
+  }
+
+  // 绑定 platform segment 点击
+  $$('.platform-chip').forEach(function(c){
+    c.addEventListener('click', function(){
+      var id = c.getAttribute('data-platform');
+      setPlatform(id);
+    });
+  });
+
+  // 历史过滤 chip
+  $$('.hist-filter-chip').forEach(function(c){
+    c.addEventListener('click', function(){
+      var v = c.getAttribute('data-hist-filter') || 'all';
+      historyFilter = v;
+      $$('.hist-filter-chip').forEach(function(x){ x.classList.toggle('active', x === c); });
+      // 不重新拉，仅用最近一次 list 重渲染
+      if (lastJobsList) renderJobs(lastJobsList);
+    });
+  });
+
+  // ---------- 复制 & 打开历史目录 ----------
+  (function() {
+    var copyBtn = $('#btn-copy-cache-dir');
+    var openBtn = $('#btn-open-cache-dir');
+    var msg = $('#cache-dir-msg');
+    var path = $('#cache-dir-path').textContent;
+    var msgTimer;
+    function showMsg(text, ok) {
+      msg.textContent = text;
+      msg.style.color = ok ? 'var(--color-success)' : 'var(--color-danger)';
+      clearTimeout(msgTimer);
+      msgTimer = setTimeout(function(){ msg.textContent = ''; }, 2000);
+    }
+    copyBtn.addEventListener('click', function() {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(path).then(function(){ showMsg('已复制', true); }, function(){ showMsg('复制失败', false); });
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = path; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+          document.body.removeChild(ta); showMsg('已复制', true);
+        } catch(e) { showMsg('复制失败', false); }
+      }
+    });
+    openBtn.addEventListener('click', async function() {
+      try {
+        await jsonFetch('/api/open-cache-dir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+        showMsg('已打开', true);
+      } catch(e) {
+        showMsg(e.message || '打开失败', false);
+      }
+    });
+  })();
+
   // ---------- Tab 切换 ----------
   $$('.tab').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -419,10 +718,10 @@ const SCRIPT = `
     if (!path) { errBox.hidden = false; errBox.textContent = '请填路径或点"浏览…"选择'; return; }
     var extras = collectExtras('analyze');
     try {
-      var body = { path: path };
+      var body = { path: path, platform: currentPlatform };
       if (extras.length > 0) body.extras = extras;
       var r = await jsonFetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      console.log('[workbench] analyze job started', r, 'extras=', extras);
+      console.log('[workbench] analyze job started', r, 'platform=', currentPlatform, 'extras=', extras);
       refreshJobs();
     } catch (e) {
       errBox.hidden = false; errBox.textContent = e.message;
@@ -437,10 +736,10 @@ const SCRIPT = `
     if (!leftPath || !rightPath) { errBox.hidden = false; errBox.textContent = '两侧路径都需要填'; return; }
     var extras = collectExtras('compare');
     try {
-      var body = { leftPath: leftPath, rightPath: rightPath };
+      var body = { leftPath: leftPath, rightPath: rightPath, platform: currentPlatform };
       if (extras.length > 0) body.extras = extras;
       var r = await jsonFetch('/api/compare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      console.log('[workbench] compare job started', r, 'extras=', extras);
+      console.log('[workbench] compare job started', r, 'platform=', currentPlatform, 'extras=', extras);
       refreshJobs();
     } catch (e) {
       errBox.hidden = false; errBox.textContent = e.message;
@@ -449,10 +748,13 @@ const SCRIPT = `
 
   // ---------- 历史轮询 ----------
   var jobsBox = $('#jobs');
+  /** 缓存最近一次拉到的 list，供历史 filter chip 切换时本地重渲染 */
+  var lastJobsList = null;
   async function refreshJobs() {
     try {
       var data = await jsonFetch('/api/jobs');
-      renderJobs(data.jobs || []);
+      lastJobsList = data.jobs || [];
+      renderJobs(lastJobsList);
     } catch (e) {
       jobsBox.innerHTML = '';
       jobsBox.appendChild(el('div', { class: 'error' }, '加载历史失败: ' + e.message));
@@ -460,11 +762,17 @@ const SCRIPT = `
   }
   function renderJobs(list) {
     jobsBox.innerHTML = '';
-    if (list.length === 0) {
-      jobsBox.appendChild(el('div', { class: 'muted' }, '暂无任务。试试上面的"开始分析"或"开始对比"按钮。'));
+    var filtered = (historyFilter === 'all')
+      ? list
+      : list.filter(function(j){ return (j.platform || 'harmony') === historyFilter; });
+    if (filtered.length === 0) {
+      var emptyMsg = (historyFilter === 'all')
+        ? '暂无任务。试试上面的"开始分析"或"开始对比"按钮。'
+        : '当前筛选（' + platformLabel(historyFilter) + '）下暂无任务。';
+      jobsBox.appendChild(el('div', { class: 'muted' }, emptyMsg));
       return;
     }
-    list.forEach(function(j) {
+    filtered.forEach(function(j) {
       var sub = j.kind + ' · ' + j.inputs.join('  ←→  ');
 
       // 时间行：开始 / 完成（或"运行中"）/ 耗时，三段式更醒目
@@ -533,8 +841,12 @@ const SCRIPT = `
       }, '×');
       delBtn.addEventListener('click', function() { onDeleteJob(j, delBtn); });
 
+      var jobPlatform = j.platform || 'harmony';
       var card = el('div', { class: 'job' }, [
-        el('span', { class: 'badge ' + j.status }, j.status),
+        el('div', { class: 'badges' }, [
+          el('span', { class: 'badge ' + j.status }, j.status),
+          el('span', { class: 'badge platform ' + jobPlatform, title: '平台：' + platformLabel(jobPlatform) }, platformLabel(jobPlatform)),
+        ]),
         middle,
         el('div', { class: 'actions-col' }, [
           el('div', { class: 'links' }, linkGroups),

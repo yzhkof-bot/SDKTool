@@ -1,9 +1,9 @@
 import type {
   Analyzer,
   AnalyzerContext,
-  HapAbcInfo,
-  HapReport,
-} from '../../shared/schema.js';
+  HarmonyAbcInfo,
+  PackageReport,
+} from '../../../shared/schema.js';
 
 /**
  * ArkTS / JS 字节码分析。
@@ -20,7 +20,7 @@ export const abcAnalyzer: Analyzer = {
   id: 'abc',
   name: 'ABC',
   enabledByDefault: true,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const abc = computeAbc(ctx);
     return { abc };
   },
@@ -31,13 +31,13 @@ export const abcAnalyzer: Analyzer = {
 const MAIN_ABC = 'ets/modules.abc';
 const MAIN_SOURCEMAP = 'ets/sourceMaps.map';
 
-function computeAbc(ctx: AnalyzerContext): HapAbcInfo {
+function computeAbc(ctx: AnalyzerContext): HarmonyAbcInfo {
   const fileEntries = ctx.hap.entries.filter((e) => !e.isDirectory);
 
   const main = fileEntries.find((e) => e.path === MAIN_ABC);
   const mainMap = fileEntries.find((e) => e.path === MAIN_SOURCEMAP);
 
-  const out: HapAbcInfo = {
+  const out: HarmonyAbcInfo = {
     extraAbcFiles: [],
   };
 

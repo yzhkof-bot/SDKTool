@@ -1,10 +1,10 @@
 import type {
   Analyzer,
   AnalyzerContext,
-  HapDependenciesInfo,
-  HapReport,
-} from '../../shared/schema.js';
-import { isRecord } from '../../shared/utils.js';
+  HarmonyDependenciesInfo,
+  PackageReport,
+} from '../../../shared/schema.js';
+import { isRecord } from '../../../shared/utils.js';
 
 import { readModuleJson, readPackInfo } from './_shared.js';
 
@@ -29,11 +29,11 @@ export const dependencyAnalyzer: Analyzer = {
   id: 'dependency',
   name: 'Dependency',
   enabledByDefault: true,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const { value: moduleJson } = await readModuleJson(ctx);
     const { value: packInfo } = await readPackInfo(ctx);
 
-    const deps: HapDependenciesInfo = { hsp: [], har: [] };
+    const deps: HarmonyDependenciesInfo = { hsp: [], har: [] };
 
     if (moduleJson === undefined) {
       return { dependencies: deps };

@@ -3,11 +3,11 @@ import { createHash } from 'node:crypto';
 import type {
   Analyzer,
   AnalyzerContext,
-  HapAbcDetailEntry,
-  HapAbcDetailsInfo,
-  HapAbcStrings,
-  HapReport,
-} from '../../shared/schema.js';
+  HarmonyAbcDetailEntry,
+  HarmonyAbcDetailsInfo,
+  HarmonyAbcStrings,
+  PackageReport,
+} from '../../../shared/schema.js';
 
 /**
  * 可选深度分析：解析每个 .abc 文件（PANDA / Ark Bytecode）。
@@ -35,7 +35,7 @@ export const abcDetailsAnalyzer: Analyzer = {
   id: 'abcDetails',
   name: 'ABC Details',
   enabledByDefault: false,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const targets = ctx.hap.entries.filter(
       (e) => !e.isDirectory && e.path.toLowerCase().endsWith('.abc'),
     );
@@ -43,12 +43,12 @@ export const abcDetailsAnalyzer: Analyzer = {
     // viewer 通过 paginated() 分页展示，不依赖 analyzer 截断。
     const stringLimit = clampLimit(ctx.options.abcStringExtractLimit, 0);
 
-    const entries: HapAbcDetailEntry[] = [];
+    const entries: HarmonyAbcDetailEntry[] = [];
     for (const e of targets) {
       try {
         const buf = await ctx.hap.readFile(e.path);
         const head = parsePandaHeader(buf);
-        const entry: HapAbcDetailEntry = { path: e.path, bytes: buf.length, ...head };
+        const entry: HarmonyAbcDetailEntry = { path: e.path, bytes: buf.length, ...head };
         if (head.magic === 'PANDA') {
           entry.strings = extractStrings(buf, stringLimit);
         }
@@ -74,7 +74,7 @@ export const abcDetailsAnalyzer: Analyzer = {
 
     entries.sort((a, b) => a.path.localeCompare(b.path));
 
-    const info: HapAbcDetailsInfo = { entries, scanned: entries.length };
+    const info: HarmonyAbcDetailsInfo = { entries, scanned: entries.length };
     return { abcDetails: info };
   },
 };
@@ -152,7 +152,7 @@ const MAX_STR_LEN = 1024;
  *
  * 复杂度：O(n)，对 8 MiB modules.abc 实测 < 100ms。
  */
-function extractStrings(buf: Buffer, limit: number): HapAbcStrings {
+function extractStrings(buf: Buffer, limit: number): HarmonyAbcStrings {
   const seen = new Set<string>();
   const all: string[] = [];
 

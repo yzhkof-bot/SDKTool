@@ -1,85 +1,124 @@
-import type { Analyzer } from '../../shared/schema.js';
-
-import { abcAnalyzer } from './abc.js';
-import { abcDetailsAnalyzer } from './abcDetails.js';
-import { basicInfoAnalyzer } from './basicInfo.js';
-import { dependencyAnalyzer } from './dependency.js';
-import { filesAnalyzer } from './files.js';
-import { il2cppMetadataAnalyzer } from './il2cppMetadata.js';
-import { nativeLibAnalyzer } from './nativeLib.js';
-import { nativeSymbolsAnalyzer } from './nativeSymbols.js';
-import { permissionAnalyzer } from './permission.js';
-import { rawfileAnalyzer } from './rawfile.js';
-import { resourceAnalyzer } from './resource.js';
-import { signatureAnalyzer } from './signature.js';
-import { sizeAnalyzer } from './size.js';
-
 /**
- * 内置 analyzer 注册表。
+ * Analyzer 注册表 - 按平台组装。
  *
- * CLI 与 pipeline 都从这里取默认列表；外部调用者可以传 analyzers 参数完全替代。
- * 顺序仅影响 only 列表 / 报告字段呈现顺序，不影响 pipeline 并发语义。
+ * 对外职责：
+ *  1. 按 platform 返回该平台对应的"默认 analyzer 集合"（pipeline 跑哪些）
+ *  2. 按 platform 返回该平台对应的"可选深度 analyzer 元信息"（UI 渲染多选项 / CLI --extras 帮助）
+ *  3. 向后兼容：保留 `builtinAnalyzers` 与 `EXTRA_ANALYZERS` 两个老导出，
+ *     语义按 HarmonyOS 行为不变，npm 包的现有调用方零迁移。
  *
- * `enabledByDefault: false` 的项是"可选深度分析"，需要用 `--extras` (CLI) 或 workbench 多选启用。
+ * 一期约定：
+ *  - HarmonyOS = harmony/* + common/*（所有跨平台 analyzer 在 hap 上原本就跑）
+ *  - Android   = android/* + common/*（android/* 一期为空，等 todo #7 落地）
+ *  - iOS       = （暂未支持，目前返回空）
  */
-export const builtinAnalyzers: Analyzer[] = [
-  basicInfoAnalyzer,
-  sizeAnalyzer,
+
+import type { Analyzer, Platform } from '../../shared/schema.js';
+import { DEFAULT_PLATFORM } from '../../shared/schema.js';
+
+import {
+  androidApkSignatureAnalyzer,
+  androidDefaultAnalyzers,
+  androidDexAnalyzer,
+  androidDexDetailsAnalyzer,
+  androidExtraAnalyzerMeta,
+  androidExtraAnalyzers,
+  androidManifestAnalyzer,
+  androidPermissionAnalyzer,
+} from './android/index.js';
+import {
+  commonDefaultAnalyzers,
+  commonExtraAnalyzerMeta,
+  commonExtraAnalyzers,
   filesAnalyzer,
-  permissionAnalyzer,
-  resourceAnalyzer,
-  rawfileAnalyzer,
-  nativeLibAnalyzer,
-  abcAnalyzer,
-  signatureAnalyzer,
-  dependencyAnalyzer,
-  // ↓ 可选深度分析（默认关闭）
-  nativeSymbolsAnalyzer,
-  abcDetailsAnalyzer,
   il2cppMetadataAnalyzer,
-];
+  nativeLibAnalyzer,
+  nativeSymbolsAnalyzer,
+  sizeAnalyzer,
+} from './common/index.js';
+import {
+  abcAnalyzer,
+  abcDetailsAnalyzer,
+  basicInfoAnalyzer,
+  dependencyAnalyzer,
+  harmonyDefaultAnalyzers,
+  harmonyExtraAnalyzerMeta,
+  harmonyExtraAnalyzers,
+  permissionAnalyzer,
+  rawfileAnalyzer,
+  resourceAnalyzer,
+  signatureAnalyzer,
+} from './harmony/index.js';
+import type { ExtraAnalyzerMeta } from './meta.js';
 
 /**
- * 可选深度分析 analyzer 元信息（供 CLI / workbench UI 渲染多选项使用）。
+ * 按平台返回完整的 analyzer 注册表（默认 + 可选）。
+ * pipeline 还会根据 options.only / options.extras 进一步筛选。
  */
-export interface ExtraAnalyzerMeta {
-  id: string;
-  name: string;
-  description: string;
+export function getAllAnalyzers(platform: Platform = DEFAULT_PLATFORM): Analyzer[] {
+  switch (platform) {
+    case 'harmony':
+      return [...harmonyDefaultAnalyzers, ...commonDefaultAnalyzers, ...harmonyExtraAnalyzers, ...commonExtraAnalyzers];
+    case 'android':
+      return [...androidDefaultAnalyzers, ...commonDefaultAnalyzers, ...androidExtraAnalyzers, ...commonExtraAnalyzers];
+    case 'ios':
+      return [];
+    default:
+      return [];
+  }
 }
 
-export const EXTRA_ANALYZERS: ExtraAnalyzerMeta[] = [
-  {
-    id: 'nativeSymbols',
-    name: 'Native 深度分析 (.so)',
-    description:
-      '逐 so 解剖 ELF：符号表 / 节区分布 / DT_NEEDED 依赖 / 安全编译选项 (NX/RELRO/PIE/Canary/FORTIFY) / 符号版本需求 (GLIBC 等) / build-id + 编译器 / .rodata 字符串池',
-  },
-  {
-    id: 'abcDetails',
-    name: 'ABC 内部细节 (.abc)',
-    description: '解析每个 .abc 的 PANDA 头（magic / version / file_size / num_classes）+ SHA-256，便于发现 size 不变但内容已变的 abc',
-  },
-  {
-    id: 'il2cppMetadata',
-    name: 'IL2CPP 元数据 (Unity 游戏)',
-    description:
-      '解析 global-metadata.dat：Unity 版本指纹 / Assembly 列表 / 类名+方法名+字段名全集 / C# 字符串字面量池。仅对 Unity 游戏 hap 有意义',
-  },
-];
+/** 按平台返回可选深度 analyzer 的元信息（UI 渲染多选用） */
+export function getExtraAnalyzerMeta(platform: Platform = DEFAULT_PLATFORM): ExtraAnalyzerMeta[] {
+  switch (platform) {
+    case 'harmony':
+      return [...commonExtraAnalyzerMeta, ...harmonyExtraAnalyzerMeta];
+    case 'android':
+      return [...commonExtraAnalyzerMeta, ...androidExtraAnalyzerMeta];
+    case 'ios':
+      return [];
+    default:
+      return [];
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 向后兼容导出：保持老 API 形态，行为按 HarmonyOS                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @deprecated 旧入口，行为等价于 getAllAnalyzers('harmony')。新代码请改用 getAllAnalyzers(platform)。
+ */
+export const builtinAnalyzers: Analyzer[] = getAllAnalyzers('harmony');
+
+/**
+ * @deprecated 旧入口，行为等价于 getExtraAnalyzerMeta('harmony')。
+ * 老 CLI / 老 workbench 直接 import 它能继续工作。
+ */
+export const EXTRA_ANALYZERS: ExtraAnalyzerMeta[] = getExtraAnalyzerMeta('harmony');
+
+export type { ExtraAnalyzerMeta } from './meta.js';
 
 export {
+  // harmony
   abcAnalyzer,
   abcDetailsAnalyzer,
   basicInfoAnalyzer,
   dependencyAnalyzer,
-  filesAnalyzer,
-  il2cppMetadataAnalyzer,
-  nativeLibAnalyzer,
-  nativeSymbolsAnalyzer,
   permissionAnalyzer,
   rawfileAnalyzer,
   resourceAnalyzer,
   signatureAnalyzer,
+  // common
+  filesAnalyzer,
+  il2cppMetadataAnalyzer,
+  nativeLibAnalyzer,
+  nativeSymbolsAnalyzer,
   sizeAnalyzer,
+  // android
+  androidApkSignatureAnalyzer,
+  androidDexAnalyzer,
+  androidDexDetailsAnalyzer,
+  androidManifestAnalyzer,
+  androidPermissionAnalyzer,
 };

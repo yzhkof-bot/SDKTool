@@ -16,7 +16,7 @@ import {
   fromTo,
 } from '../../src/viewer/diff/helpers.js';
 import { mountDiffApp } from '../../src/viewer/diff/app.js';
-import { SCHEMA_VERSION, type HapDiffReport } from '../../src/shared/schema.js';
+import { SCHEMA_VERSION, type PackageDiffReport } from '../../src/shared/schema.js';
 
 /* -------------------------------------------------------------------------- */
 /* helpers                                                                     */
@@ -62,7 +62,7 @@ describe('viewer/diff/helpers', () => {
 /* mountDiffApp - 不崩烟测                                                     */
 /* -------------------------------------------------------------------------- */
 
-function emptyDiff(): HapDiffReport {
+function emptyDiff(): PackageDiffReport {
   return {
     schemaVersion: SCHEMA_VERSION,
     generatedAt: '2026-05-09T00:00:00.000Z',
@@ -100,7 +100,7 @@ function emptyDiff(): HapDiffReport {
   };
 }
 
-function richDiff(): HapDiffReport {
+function richDiff(): PackageDiffReport {
   return {
     ...emptyDiff(),
     summary: {
@@ -114,6 +114,86 @@ function richDiff(): HapDiffReport {
       permissionsRemoved: 1,
       versionLine: '1.0.0 (100) → 1.1.0 (110)',
       identical: false,
+    },
+    dex: {
+      added: [{ path: 'classes3.dex', bytes: 1024, magic: 'DEX', version: '038' }],
+      removed: [],
+      changed: [
+        {
+          path: 'classes.dex',
+          fromBytes: 2048,
+          toBytes: 3072,
+          bytesDelta: 1024,
+          fromMagic: 'DEX',
+          toMagic: 'DEX',
+          fromVersion: '035',
+          toVersion: '035',
+          stringIdsDelta: 5,
+          typeIdsDelta: 2,
+          protoIdsDelta: 1,
+          fieldIdsDelta: 0,
+          methodIdsDelta: 10,
+          classDefsDelta: 1,
+          changed: true,
+        },
+      ],
+      totals: {
+        fileCount: { from: 1, to: 2, delta: 1, ratio: 1 },
+        totalBytes: { from: 2048, to: 4096, delta: 2048, ratio: 1 },
+        methodIdsCount: { from: 100, to: 110, delta: 10, ratio: 0.1 },
+        classDefsCount: { from: 20, to: 21, delta: 1, ratio: 0.05 },
+      },
+    },
+    dexDetails: {
+      totals: { changed: 1, total: 1, methodsAdded: 1, methodsRemoved: 1, methodsChanged: 1 },
+      entries: [
+        {
+          path: 'classes.dex',
+          fromBytes: 2048,
+          toBytes: 3072,
+          fromSha256: 'aa'.repeat(32),
+          toSha256: 'bb'.repeat(32),
+          changed: true,
+          methodsDiff: {
+            added: [
+              {
+                fullName: 'Lcom/king/Foo;->fresh()V',
+                classDescriptor: 'Lcom/king/Foo;',
+                name: 'fresh',
+                proto: '()V',
+                insnsSize: 4,
+              },
+            ],
+            removed: [
+              {
+                fullName: 'Lcom/king/Foo;->gone()V',
+                classDescriptor: 'Lcom/king/Foo;',
+                name: 'gone',
+                proto: '()V',
+                insnsSize: 2,
+              },
+            ],
+            changed: [
+              {
+                fullName: 'Lcom/king/Foo;->resize(I)V',
+                classDescriptor: 'Lcom/king/Foo;',
+                name: 'resize',
+                proto: '(I)V',
+                fromInsnsSize: 4,
+                toInsnsSize: 10,
+                insnsSizeDelta: 6,
+                fromRegisters: 2,
+                toRegisters: 3,
+                fromAccessFlags: 0x0001,
+                toAccessFlags: 0x0001,
+                accessFlagsChanged: false,
+                bodyChanged: true,
+              },
+            ],
+            totals: { added: 1, removed: 1, changed: 1, unchanged: 3 },
+          },
+        },
+      ],
     },
     basic: {
       changed: [
@@ -148,6 +228,55 @@ function richDiff(): HapDiffReport {
       removed: [],
       changed: [{ arch: 'arm64-v8a', name: 'libbar.so', fromBytes: 100, toBytes: 100, delta: 0 }],
     },
+    nativeLibSymbols: {
+      perLib: [
+        {
+          arch: 'arm64-v8a',
+          name: 'libdemo.so',
+          fromMissing: false,
+          toMissing: false,
+          added: [{ name: 'brand', bind: 'GLOBAL', type: 'FUNC', size: 16, imported: false }],
+          removed: [{ name: 'gone', bind: 'GLOBAL', type: 'FUNC', size: 8, imported: false }],
+          changed: [
+            // 同 size 不同 body —— 仅靠 codeSha256 才能识别的核心新信号
+            {
+              name: 'foo',
+              fromSize: 16,
+              toSize: 16,
+              delta: 0,
+              bind: 'GLOBAL',
+              type: 'FUNC',
+              imported: false,
+              bodyChanged: true,
+              fromCodeSha256: 'a'.repeat(64),
+              toCodeSha256: 'b'.repeat(64),
+            },
+            // size 变 body 同
+            {
+              name: 'bar',
+              fromSize: 16,
+              toSize: 32,
+              delta: 16,
+              bind: 'GLOBAL',
+              type: 'FUNC',
+              imported: false,
+              bodyChanged: false,
+            },
+            // 未启用 hash（老 report）—— 字段缺省，应回退到"未计 sha256"
+            {
+              name: 'legacy',
+              fromSize: 24,
+              toSize: 28,
+              delta: 4,
+              bind: 'GLOBAL',
+              type: 'FUNC',
+              imported: false,
+            },
+          ],
+          totals: { added: 1, removed: 1, changed: 3, unchanged: 5 },
+        },
+      ],
+    },
     abc: {
       modulesAbc: { fromBytes: 1000, toBytes: 1500, delta: 500, sourceMapChanged: true },
       extra: {
@@ -166,6 +295,24 @@ function richDiff(): HapDiffReport {
         { field: 'notBefore', changed: false },
         { field: 'notAfter', changed: false },
       ],
+      versions: {
+        v1: { from: true, to: false, changed: true },
+        v2: { from: true, to: true, changed: false },
+        v3: { from: false, to: true, changed: true },
+        v31: { from: false, to: false, changed: false },
+        anyChanged: true,
+      },
+      signingBlock: {
+        fromTotalBytes: 200,
+        toTotalBytes: 320,
+        totalBytesDelta: 120,
+        added: [{ idHex: '0xf05368c0', name: 'apk-v3', sizeBytes: 100 }],
+        removed: [],
+        changedSizes: [
+          { idHex: '0x7109871a', name: 'apk-v2', fromSize: 100, toSize: 120, delta: 20 },
+        ],
+        anyChanged: true,
+      },
     },
     dependencies: {
       hsp: { added: ['libNew'], removed: [] },
@@ -202,10 +349,25 @@ describe('mountDiffApp', () => {
     expect(() => mountDiffApp(root, emptyDiff())).not.toThrow();
 
     const navItems = root.querySelectorAll('.nav-item');
-    expect(navItems.length).toBeGreaterThanOrEqual(11); // 概览+11 维度，本期 sidebar 共 12 项
+    expect(navItems.length).toBeGreaterThanOrEqual(12); // 概览+12 维度，加 IL2CPP/DEX 后 sidebar 共 14 项
     const labels = [...navItems].map((n) => n.querySelector('span:first-child')?.textContent);
     expect(labels).toEqual(
-      expect.arrayContaining(['概览', 'Basic', '体积', 'Files', '权限', '资源', 'Rawfile', 'Native', 'ABC', '签名', '依赖', '警告']),
+      expect.arrayContaining([
+        '概览',
+        'Basic',
+        '体积',
+        'Files',
+        '权限',
+        '资源',
+        'Rawfile',
+        'Native',
+        'ABC',
+        'IL2CPP',
+        'DEX',
+        '签名',
+        '依赖',
+        '警告',
+      ]),
     );
 
     document.body.removeChild(root);
@@ -262,6 +424,71 @@ describe('mountDiffApp', () => {
     expect(active.length).toBe(1);
     expect(active[0]!.getAttribute('data-section')).toBe('size');
     window.location.hash = '';
+    document.body.removeChild(root);
+  });
+
+  it('DEX section 渲染：文件级 add/remove/changed + 方法级 fullName + 字符串折叠面板都出', () => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    mountDiffApp(root, richDiff());
+
+    const dexSection = root.querySelector('#section-dex');
+    expect(dexSection).toBeTruthy();
+    const text = dexSection!.textContent ?? '';
+    // 文件级汇总
+    expect(text).toContain('dex 文件级汇总');
+    expect(text).toContain('methodIds 总和');
+    expect(text).toContain('新增 dex');
+    expect(text).toContain('classes3.dex');
+    expect(text).toContain('修改 dex');
+    expect(text).toContain('classes.dex');
+    // 方法级
+    expect(text).toContain('方法级差异');
+    expect(text).toContain('Lcom/king/Foo;->fresh()V');
+    expect(text).toContain('Lcom/king/Foo;->gone()V');
+    expect(text).toContain('Lcom/king/Foo;->resize(I)V');
+    expect(text).toContain('body changed');
+
+    document.body.removeChild(root);
+  });
+
+  it('Native 符号 changed 表渲染：body changed / body 不变 / 未计 sha256 三态 badge 都出', () => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    mountDiffApp(root, richDiff());
+
+    const nativeSection = root.querySelector('#section-nativeLibs');
+    expect(nativeSection).toBeTruthy();
+    const text = nativeSection!.textContent ?? '';
+    // 三态 badge 文案都得在 changed 行里
+    expect(text).toContain('body changed');
+    expect(text).toContain('body 不变');
+    expect(text).toContain('未计 sha256');
+    // 表头 + 关键符号
+    expect(text).toContain('Body');
+    expect(text).toContain('foo');
+    expect(text).toContain('bar');
+    expect(text).toContain('legacy');
+
+    document.body.removeChild(root);
+  });
+
+  it('Signature section 渲染：Android versions v1/v2/v3 + signingBlock pair diff 都出', () => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    mountDiffApp(root, richDiff());
+
+    const sigSection = root.querySelector('#section-signature');
+    expect(sigSection).toBeTruthy();
+    const text = sigSection!.textContent ?? '';
+    expect(text).toContain('Android 签名 Scheme 对比');
+    expect(text).toContain('v1');
+    expect(text).toContain('v2');
+    expect(text).toContain('v3');
+    expect(text).toContain('APK Signing Block 对比');
+    expect(text).toContain('apk-v3');
+    expect(text).toContain('apk-v2');
+
     document.body.removeChild(root);
   });
 });
