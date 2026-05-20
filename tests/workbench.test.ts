@@ -380,6 +380,67 @@ describe('startWorkbenchServer', () => {
     expect((await r.json()).error).toBe('BAD_REQUEST');
   });
 
+  it('磁盘 diff.json 默认 pretty（含换行 + 2 空格缩进），但 viewer html 内嵌仍紧凑', async () => {
+    const hap = await buildFixtureHap();
+    const startResp = await fetch(`${handle.url}api/compare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leftPath: hap, rightPath: hap }),
+    });
+    const { jobId } = await startResp.json();
+    await pollUntilFinished(handle, jobId);
+
+    // /jobs/:id/json 走文件流：磁盘 pretty → 响应 body 含换行
+    const rawDiff = await (await fetch(`${handle.url}jobs/${jobId}/json`)).text();
+    expect(rawDiff.includes('\n')).toBe(true);
+    expect(rawDiff.split('\n').length).toBeGreaterThan(10);
+    // 2 空格缩进 anchor
+    expect(rawDiff).toMatch(/\n {2}"schemaVersion"/);
+    // 仍是合法 JSON
+    expect(() => JSON.parse(rawDiff)).not.toThrow();
+
+    // viewer html 模板内嵌的 __DATA__ 走独立的 serializeForHtml（紧凑），不受影响
+    const rawHtml = await (await fetch(`${handle.url}jobs/${jobId}/html`)).text();
+    const m = rawHtml.match(/<script id="__DATA__"[^>]*>([\s\S]*?)<\/script>/);
+    expect(m).toBeTruthy();
+    const embedded = m![1]!;
+    // 内嵌 JSON 不含 \n（紧凑）；防回归：保证磁盘 pretty 没把模板路径污染掉
+    expect(embedded.includes('\n')).toBe(false);
+
+    // 单侧产物同样默认 pretty
+    const leftRaw = await (await fetch(`${handle.url}jobs/${jobId}/sides/left/json`)).text();
+    expect(leftRaw.includes('\n')).toBe(true);
+    expect(leftRaw).toMatch(/\n {2}"schemaVersion"/);
+  });
+
+  it('显式 prettyJson=false → 磁盘 JSON 退回紧凑单行（极端关心磁盘体积场景）', async () => {
+    const compactCacheDir = await newTmp();
+    const compactHandle = await startWorkbenchServer({
+      port: 0,
+      toolVersion: 'wb-compact',
+      cacheDir: compactCacheDir,
+      log: () => {},
+      prettyJson: false,
+    });
+    try {
+      const hap = await buildFixtureHap();
+      const startResp = await fetch(`${compactHandle.url}api/compare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leftPath: hap, rightPath: hap }),
+      });
+      const { jobId } = await startResp.json();
+      await pollUntilFinished(compactHandle, jobId);
+
+      const rawDiff = await (await fetch(`${compactHandle.url}jobs/${jobId}/json`)).text();
+      // 紧凑：单行（除可能的最后一行尾空白外）
+      expect(rawDiff.split('\n').length).toBeLessThan(3);
+      expect(() => JSON.parse(rawDiff)).not.toThrow();
+    } finally {
+      await compactHandle.close();
+    }
+  });
+
   it('POST /api/compare 同 hap 自比 → identical=true', async () => {
     const hap = await buildFixtureHap();
 

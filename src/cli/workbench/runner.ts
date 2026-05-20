@@ -23,6 +23,18 @@ export interface RunnerDeps {
   extras?: string[];
   /** 应用包平台；未指定时按 'harmony' 处理 */
   platform?: Platform;
+  /**
+   * 磁盘 JSON 产物是否使用缩进（2 空格）。默认 true。
+   *
+   * Why default true：workbench 的 `*.json`（diff.json / report.json /
+   * left.report.json / right.report.json）主要消费者是 AI session 与开发者本地浏览。
+   * 紧凑单行 JSON 让 Read --offset --limit 和 Grep -A/-B/-C 失去意义；
+   * 文件膨胀 2-3× 是值得付的代价。
+   *
+   * viewer html 内嵌的 JSON 走独立的 `serializeForHtml` 路径（紧凑），
+   * 不受本开关影响；server 的 /jobs/:id/json 走文件流，则跟着磁盘一致。
+   */
+  prettyJson?: boolean;
 }
 
 /**
@@ -76,7 +88,7 @@ async function runAnalyzeAsync(id: string, absPath: string, deps: RunnerDeps): P
     });
     const jsonPath = join(dir, 'report.json');
     const htmlPath = join(dir, 'report.html');
-    await writeFile(jsonPath, JSON.stringify(report), 'utf8');
+    await writeFile(jsonPath, stringifyJson(report, deps.prettyJson), 'utf8');
     await writeFile(htmlPath, renderReportHtml(report), 'utf8');
     deps.store.update(id, {
       status: 'done',
@@ -163,11 +175,11 @@ async function runCompareAsync(
     const rightHtmlPath = join(dir, 'right.report.html');
 
     await Promise.all([
-      writeFile(jsonPath, JSON.stringify(diff), 'utf8'),
+      writeFile(jsonPath, stringifyJson(diff, deps.prettyJson), 'utf8'),
       writeFile(htmlPath, renderDiffHtml(diff), 'utf8'),
-      writeFile(leftJsonPath, JSON.stringify(left), 'utf8'),
+      writeFile(leftJsonPath, stringifyJson(left, deps.prettyJson), 'utf8'),
       writeFile(leftHtmlPath, renderReportHtml(left), 'utf8'),
-      writeFile(rightJsonPath, JSON.stringify(right), 'utf8'),
+      writeFile(rightJsonPath, stringifyJson(right, deps.prettyJson), 'utf8'),
       writeFile(rightHtmlPath, renderReportHtml(right), 'utf8'),
     ]);
 
@@ -243,4 +255,12 @@ function assertSamePlatform(left: PackageReport, right: PackageReport, expected:
 
 function baseName(p: string): string {
   return p.split(/[\\/]/).pop() || p;
+}
+
+/**
+ * 统一磁盘 JSON 序列化：默认 pretty（2 空格缩进），便于 AI Read/Grep 按行切片
+ * 与开发者本地查看；显式 `pretty=false` 时退回紧凑单行（极端关心磁盘体积时用）。
+ */
+function stringifyJson(value: unknown, pretty: boolean | undefined): string {
+  return pretty === false ? JSON.stringify(value) : JSON.stringify(value, null, 2);
 }

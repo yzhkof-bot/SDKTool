@@ -26,6 +26,11 @@ export interface WorkbenchServerOptions {
   toolVersion: string;
   cacheDir?: string;
   log?: (text: string) => void;
+  /**
+   * 磁盘 JSON 产物是否使用 2 空格缩进。默认 true（方便 AI Read/Grep 按行切片
+   * 与开发者本地查看）；显式 false 时退回紧凑单行。
+   */
+  prettyJson?: boolean;
 }
 
 export interface WorkbenchServerHandle {
@@ -63,8 +68,9 @@ export async function startWorkbenchServer(
   const store = new JobStore(options.cacheDir ?? defaultCacheDir(port));
   const conversations = new ConversationManager({ store, log });
 
+  const prettyJson = options.prettyJson;
   const server: Server = createServer((req, res) => {
-    handle(req, res, store, conversations, options.toolVersion, log).catch((err) => {
+    handle(req, res, store, conversations, options.toolVersion, log, prettyJson).catch((err) => {
       log(`[workbench] handler error: ${err?.stack ?? err}\n`);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -107,6 +113,7 @@ async function handle(
   conversations: ConversationManager,
   toolVersion: string,
   log: (t: string) => void,
+  prettyJson: boolean | undefined,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x');
   const method = req.method ?? 'GET';
@@ -220,7 +227,14 @@ async function handle(
       return;
     }
     const extras = parseExtras((body as { extras?: unknown }).extras);
-    const id = startAnalyzeJob(path.trim(), { store, toolVersion, log, extras, platform });
+    const id = startAnalyzeJob(path.trim(), {
+      store,
+      toolVersion,
+      log,
+      extras,
+      platform,
+      prettyJson,
+    });
     sendJson(res, 202, { jobId: id });
     return;
   }
@@ -251,6 +265,7 @@ async function handle(
       log,
       extras,
       platform,
+      prettyJson,
     });
     sendJson(res, 202, { jobId: id });
     return;
