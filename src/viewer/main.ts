@@ -1,4 +1,4 @@
-import type { HapReport } from '../shared/schema.js';
+import type { PackageReport } from '../shared/schema.js';
 
 import { mountApp } from './app.js';
 
@@ -27,21 +27,21 @@ function bootstrap(): void {
     return;
   }
 
-  let report: HapReport;
+  let report: PackageReport;
   try {
     const text = dataNode.textContent.trim();
     if (text === '__DATA_PLACEHOLDER__' || text === '') {
       root.appendChild(buildError('报告数据未注入：__DATA__ 仍是占位符。请通过 CLI 生成。'));
       return;
     }
-    report = JSON.parse(text) as HapReport;
+    report = JSON.parse(text) as PackageReport;
   } catch (err) {
     root.appendChild(buildError(`解析报告 JSON 失败: ${err instanceof Error ? err.message : String(err)}`));
     return;
   }
 
   if (!report || typeof report !== 'object' || !report.schemaVersion) {
-    root.appendChild(buildError('报告 JSON 不符合 HapReport schema（缺少 schemaVersion）。'));
+    root.appendChild(buildError('报告 JSON 不符合 PackageReport schema（缺少 schemaVersion）。'));
     return;
   }
 

@@ -1,5 +1,5 @@
 /**
- * Differ：消费两份 HapReport，产出 HapDiffReport。
+ * Differ：消费两份 PackageReport，产出 PackageDiffReport。
  *
  * 设计原则：
  *  1. **纯函数**：不读文件、不依赖 hap/zip，只看入参 JSON 结构，方便单测与异步管道复用。
@@ -11,61 +11,82 @@
 
 import { SCHEMA_VERSION } from '../../shared/schema.js';
 import type {
+  ApkSignatureBlockEntry,
+  ApkSigningBlock,
   DeltaNumber,
-  HapAbcDetailsInfo,
-  HapAbcInfo,
-  HapAbcStrings,
-  HapBasicInfo,
-  HapDependenciesInfo,
-  HapDiffAbc,
-  HapDiffAbcDetailEntry,
-  HapDiffAbcDetails,
-  HapDiffAbcStringSet,
-  HapDiffAbcStrings,
-  HapDiffBasicChange,
-  HapDiffDependencies,
-  HapDiffFiles,
-  HapDiffIl2cppLiterals,
-  HapDiffIl2cppMetadata,
-  HapDiffIl2cppMetadataEntry,
-  HapDiffIl2cppNames,
-  HapDiffNativeLibBuildInfo,
-  HapDiffNativeLibMitigations,
-  HapDiffNativeLibRodataStrings,
-  HapDiffNativeLibSectionItem,
-  HapDiffNativeLibSections,
-  HapDiffNativeLibSymbols,
-  HapDiffNativeLibSymbolsItem,
-  HapDiffNativeLibs,
-  HapDiffPermissions,
-  HapDiffRawfile,
-  HapDiffReport,
-  HapDiffResources,
-  HapDiffSide,
-  HapDiffSignature,
-  HapDiffSize,
-  HapDiffStringSet,
-  HapDiffSummary,
-  HapDiffSymbolChanged,
-  HapFileEntry,
-  HapIl2cppLiterals,
-  HapIl2cppMetadata,
-  HapIl2cppMetadataInfo,
-  HapIl2cppNames,
-  HapNativeLib,
-  HapNativeLibMitigations,
-  HapNativeLibRodataStrings,
-  HapNativeLibSection,
-  HapNativeLibSymbols,
-  HapNativeLibSymbolsInfo,
-  HapNativeLibsInfo,
-  HapNativeSymbol,
-  HapPermission,
-  HapRawfileInfo,
-  HapReport,
-  HapResources,
-  HapSignatureInfo,
-  HapSizeInfo,
+  DexDetailEntry,
+  DexDetailsInfo,
+  DexFileSummary,
+  DexInfo,
+  DexMethodEntry,
+  DexStrings,
+  DiffApkSignatureVersionFlag,
+  DiffApkSignatureVersions,
+  DiffApkSigningBlock,
+  DiffApkSigningBlockEntryChanged,
+  DiffDex,
+  DiffDexDetailEntry,
+  DiffDexDetails,
+  DiffDexFileChanged,
+  DiffDexFileSide,
+  DiffDexMethodChanged,
+  DiffDexMethodSide,
+  DiffDexMethods,
+  DiffDexStrings,
+  HarmonyAbcDetailsInfo,
+  HarmonyAbcInfo,
+  HarmonyAbcStrings,
+  PackageBasicInfo,
+  HarmonyDependenciesInfo,
+  HarmonyDiffAbc,
+  HarmonyDiffAbcDetailEntry,
+  HarmonyDiffAbcDetails,
+  HarmonyDiffAbcStringSet,
+  HarmonyDiffAbcStrings,
+  PackageDiffBasicChange,
+  HarmonyDiffDependencies,
+  PackageDiffFiles,
+  DiffIl2cppLiterals,
+  DiffIl2cppMetadata,
+  DiffIl2cppMetadataEntry,
+  DiffIl2cppNames,
+  DiffNativeLibBuildInfo,
+  DiffNativeLibMitigations,
+  DiffNativeLibRodataStrings,
+  DiffNativeLibSectionItem,
+  DiffNativeLibSections,
+  DiffNativeLibSymbols,
+  DiffNativeLibSymbolsItem,
+  DiffNativeLibs,
+  PackageDiffPermissions,
+  HarmonyDiffRawfile,
+  PackageDiffReport,
+  PackageDiffResources,
+  PackageDiffSide,
+  PackageDiffSignature,
+  PackageDiffSize,
+  DiffStringSet,
+  PackageDiffSummary,
+  DiffSymbolChanged,
+  PackageFileEntry,
+  Il2cppLiterals,
+  Il2cppMetadata,
+  Il2cppMetadataInfo,
+  Il2cppNames,
+  NativeLib,
+  NativeLibMitigations,
+  NativeLibRodataStrings,
+  NativeLibSection,
+  NativeLibSymbols,
+  NativeLibSymbolsInfo,
+  NativeLibsInfo,
+  NativeSymbol,
+  PackagePermission,
+  HarmonyRawfileInfo,
+  PackageReport,
+  PackageResources,
+  PackageSignatureInfo,
+  PackageSizeInfo,
   RawfileCategory,
   ReportWarning,
   SizeCategory,
@@ -81,17 +102,20 @@ export interface DiffOptions {
 }
 
 /**
- * Diff 入口。
+ * Diff 入口：对比两份 PackageReport，产出 PackageDiffReport。
+ *
+ * 调用方必须保证两侧 platform 一致；本函数不做平台校验，由 CLI / workbench
+ * runner 在更外层拦截（两个不同平台的包对比目前没有意义）。
  */
-export function diffHapReports(
-  left: HapReport,
-  right: HapReport,
+export function diffPackageReports(
+  left: PackageReport,
+  right: PackageReport,
   options: DiffOptions = {},
-): HapDiffReport {
+): PackageDiffReport {
   const warnings: ReportWarning[] = [];
 
-  const sideLeft: HapDiffSide = { meta: left.meta, basic: left.basic };
-  const sideRight: HapDiffSide = { meta: right.meta, basic: right.basic };
+  const sideLeft: PackageDiffSide = { meta: left.meta, basic: left.basic };
+  const sideRight: PackageDiffSide = { meta: right.meta, basic: right.basic };
 
   const basicChanges = diffBasic(left.basic, right.basic);
   const size = diffSize(left.size, right.size);
@@ -104,6 +128,8 @@ export function diffHapReports(
   const nativeLibSymbols = diffNativeLibSymbols(left.nativeLibSymbols, right.nativeLibSymbols);
   const abcDetails = diffAbcDetails(left.abcDetails, right.abcDetails);
   const il2cppMetadata = diffIl2cppMetadata(left.il2cppMetadata, right.il2cppMetadata);
+  const dex = diffDex(left.dex, right.dex);
+  const dexDetails = diffDexDetails(left.dexDetails, right.dexDetails);
   const signature = diffSignature(left.signature, right.signature);
   const dependencies = diffDependencies(left.dependencies, right.dependencies);
 
@@ -133,6 +159,8 @@ export function diffHapReports(
     ...(nativeLibSymbols ? { nativeLibSymbols } : {}),
     ...(abcDetails ? { abcDetails } : {}),
     ...(il2cppMetadata ? { il2cppMetadata } : {}),
+    ...(dex ? { dex } : {}),
+    ...(dexDetails ? { dexDetails } : {}),
     ...(signature ? { signature } : {}),
     ...(dependencies ? { dependencies } : {}),
     warnings,
@@ -143,7 +171,7 @@ export function diffHapReports(
 /* basic                                                                       */
 /* -------------------------------------------------------------------------- */
 
-const BASIC_FIELDS: ReadonlyArray<keyof HapBasicInfo> = [
+const BASIC_FIELDS: ReadonlyArray<keyof PackageBasicInfo> = [
   'bundleName',
   'bundleType',
   'versionCode',
@@ -156,11 +184,11 @@ const BASIC_FIELDS: ReadonlyArray<keyof HapBasicInfo> = [
 ];
 
 function diffBasic(
-  left?: HapBasicInfo,
-  right?: HapBasicInfo,
-): HapDiffBasicChange[] | undefined {
+  left?: PackageBasicInfo,
+  right?: PackageBasicInfo,
+): PackageDiffBasicChange[] | undefined {
   if (!left && !right) return undefined;
-  const changed: HapDiffBasicChange[] = [];
+  const changed: PackageDiffBasicChange[] = [];
   for (const field of BASIC_FIELDS) {
     const a = left?.[field];
     const b = right?.[field];
@@ -191,7 +219,7 @@ function shallowEqual(a: unknown, b: unknown): boolean {
 /* size                                                                        */
 /* -------------------------------------------------------------------------- */
 
-function diffSize(left?: HapSizeInfo, right?: HapSizeInfo): HapDiffSize | undefined {
+function diffSize(left?: PackageSizeInfo, right?: PackageSizeInfo): PackageDiffSize | undefined {
   if (!left && !right) return undefined;
   const lTotal = left?.total ?? 0;
   const rTotal = right?.total ?? 0;
@@ -228,10 +256,10 @@ function diffSize(left?: HapSizeInfo, right?: HapSizeInfo): HapDiffSize | undefi
 /* -------------------------------------------------------------------------- */
 
 function diffFiles(
-  left?: HapFileEntry[],
-  right?: HapFileEntry[],
+  left?: PackageFileEntry[],
+  right?: PackageFileEntry[],
   warnings?: ReportWarning[],
-): HapDiffFiles | undefined {
+): PackageDiffFiles | undefined {
   if (!left && !right) return undefined;
   if (!left || !right) {
     warnings?.push({
@@ -245,9 +273,9 @@ function diffFiles(
   const lMap = keyBy(left, (f) => f.path);
   const rMap = keyBy(right, (f) => f.path);
 
-  const added: HapDiffFiles['added'] = [];
-  const removed: HapDiffFiles['removed'] = [];
-  const changed: HapDiffFiles['changed'] = [];
+  const added: PackageDiffFiles['added'] = [];
+  const removed: PackageDiffFiles['removed'] = [];
+  const changed: PackageDiffFiles['changed'] = [];
   let unchanged = 0;
 
   for (const f of right) {
@@ -294,16 +322,16 @@ function diffFiles(
 /* -------------------------------------------------------------------------- */
 
 function diffPermissions(
-  left?: HapPermission[],
-  right?: HapPermission[],
-): HapDiffPermissions | undefined {
+  left?: PackagePermission[],
+  right?: PackagePermission[],
+): PackageDiffPermissions | undefined {
   if (!left && !right) return undefined;
   const l = left ?? [];
   const r = right ?? [];
   const lMap = keyBy(l, (p) => p.name);
   const rMap = keyBy(r, (p) => p.name);
-  const added: HapPermission[] = [];
-  const removed: HapPermission[] = [];
+  const added: PackagePermission[] = [];
+  const removed: PackagePermission[] = [];
   let unchanged = 0;
   for (const p of r) {
     if (!lMap.has(p.name)) added.push(p);
@@ -317,7 +345,7 @@ function diffPermissions(
   return { added, removed, unchanged };
 }
 
-function sortBySensitive(a: HapPermission, b: HapPermission): number {
+function sortBySensitive(a: PackagePermission, b: PackagePermission): number {
   if (a.sensitive !== b.sensitive) return a.sensitive ? -1 : 1;
   return a.name.localeCompare(b.name);
 }
@@ -327,9 +355,9 @@ function sortBySensitive(a: HapPermission, b: HapPermission): number {
 /* -------------------------------------------------------------------------- */
 
 function diffResources(
-  left?: HapResources,
-  right?: HapResources,
-): HapDiffResources | undefined {
+  left?: PackageResources,
+  right?: PackageResources,
+): PackageDiffResources | undefined {
   if (!left && !right) return undefined;
   const lImg = left?.images ?? { count: 0, bytes: 0, topLargest: [] };
   const rImg = right?.images ?? { count: 0, bytes: 0, topLargest: [] };
@@ -361,9 +389,9 @@ function diffResources(
 /* -------------------------------------------------------------------------- */
 
 function diffRawfile(
-  left?: HapRawfileInfo,
-  right?: HapRawfileInfo,
-): HapDiffRawfile | undefined {
+  left?: HarmonyRawfileInfo,
+  right?: HarmonyRawfileInfo,
+): HarmonyDiffRawfile | undefined {
   if (!left && !right) return undefined;
   const l = left ?? emptyRawfile();
   const r = right ?? emptyRawfile();
@@ -406,7 +434,7 @@ function diffRawfile(
   });
   categories.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 
-  let packages: HapDiffRawfile['packages'];
+  let packages: HarmonyDiffRawfile['packages'];
   if ((l.packages && l.packages.length > 0) || (r.packages && r.packages.length > 0)) {
     const ids = new Set<string>();
     for (const p of l.packages ?? []) ids.add(p.packageId);
@@ -437,7 +465,7 @@ function diffRawfile(
   };
 }
 
-function emptyRawfile(): HapRawfileInfo {
+function emptyRawfile(): HarmonyRawfileInfo {
   return {
     fileCount: 0,
     totalBytes: 0,
@@ -452,14 +480,14 @@ function emptyRawfile(): HapRawfileInfo {
 /* nativeLibs                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function libKey(l: HapNativeLib): string {
+function libKey(l: NativeLib): string {
   return `${l.arch}/${l.name}`;
 }
 
 function diffNativeLibs(
-  left?: HapNativeLibsInfo,
-  right?: HapNativeLibsInfo,
-): HapDiffNativeLibs | undefined {
+  left?: NativeLibsInfo,
+  right?: NativeLibsInfo,
+): DiffNativeLibs | undefined {
   if (!left && !right) return undefined;
   const l = left ?? { architectures: [], libs: [], totalBytes: 0 };
   const r = right ?? { architectures: [], libs: [], totalBytes: 0 };
@@ -467,9 +495,9 @@ function diffNativeLibs(
   const archDiff = listDiff(l.architectures, r.architectures);
   const lMap = keyBy(l.libs, libKey);
   const rMap = keyBy(r.libs, libKey);
-  const added: HapNativeLib[] = [];
-  const removed: HapNativeLib[] = [];
-  const changed: HapDiffNativeLibs['changed'] = [];
+  const added: NativeLib[] = [];
+  const removed: NativeLib[] = [];
+  const changed: DiffNativeLibs['changed'] = [];
 
   for (const lib of r.libs) {
     const prev = lMap.get(libKey(lib));
@@ -504,7 +532,7 @@ function diffNativeLibs(
 /* abc                                                                         */
 /* -------------------------------------------------------------------------- */
 
-function diffAbc(left?: HapAbcInfo, right?: HapAbcInfo): HapDiffAbc | undefined {
+function diffAbc(left?: HarmonyAbcInfo, right?: HarmonyAbcInfo): HarmonyDiffAbc | undefined {
   if (!left && !right) return undefined;
   const l = left ?? { extraAbcFiles: [] };
   const r = right ?? { extraAbcFiles: [] };
@@ -517,9 +545,9 @@ function diffAbc(left?: HapAbcInfo, right?: HapAbcInfo): HapDiffAbc | undefined 
 
   const lMap = keyBy(l.extraAbcFiles, (x) => x.path);
   const rMap = keyBy(r.extraAbcFiles, (x) => x.path);
-  const added: HapDiffAbc['extra']['added'] = [];
-  const removed: HapDiffAbc['extra']['removed'] = [];
-  const changed: HapDiffAbc['extra']['changed'] = [];
+  const added: HarmonyDiffAbc['extra']['added'] = [];
+  const removed: HarmonyDiffAbc['extra']['removed'] = [];
+  const changed: HarmonyDiffAbc['extra']['changed'] = [];
   for (const f of r.extraAbcFiles) {
     const prev = lMap.get(f.path);
     if (!prev) added.push({ path: f.path, bytes: f.bytes });
@@ -554,24 +582,39 @@ function diffAbc(left?: HapAbcInfo, right?: HapAbcInfo): HapDiffAbc | undefined 
 /* nativeLibSymbols（可选深度差异）                                             */
 /* -------------------------------------------------------------------------- */
 
-function symbolKey(s: HapNativeSymbol): string {
+function symbolKey(s: NativeSymbol): string {
   // imported 不同的同名符号视为不同（一个是 dlsym 进来的、一个是自己导出的）
   return `${s.name}\u0001${s.imported ? 'U' : 'D'}`;
 }
 
+/**
+ * 判定一对同名符号的"函数体"是否变化：
+ *   - 两侧都有 codeSha256：严格 string 比较 → true/false
+ *   - 任一侧缺 codeSha256：无法判断 → null
+ *   - 两侧都没 codeSha256：analyzer 未开启 hash → undefined（DiffSymbolChanged.bodyChanged 字段不出现）
+ */
+function computeSymbolBodyChanged(
+  left: string | undefined,
+  right: string | undefined,
+): boolean | null | undefined {
+  if (left !== undefined && right !== undefined) return left !== right;
+  if (left === undefined && right === undefined) return undefined;
+  return null;
+}
+
 function diffOneLib(
-  left: HapNativeLibSymbols | undefined,
-  right: HapNativeLibSymbols | undefined,
+  left: NativeLibSymbols | undefined,
+  right: NativeLibSymbols | undefined,
   key: { arch: string; name: string },
-): HapDiffNativeLibSymbolsItem {
+): DiffNativeLibSymbolsItem {
   const lSyms = left?.symbols ?? [];
   const rSyms = right?.symbols ?? [];
   const lMap = keyBy(lSyms, symbolKey);
   const rMap = keyBy(rSyms, symbolKey);
 
-  const added: HapNativeSymbol[] = [];
-  const removed: HapNativeSymbol[] = [];
-  const changed: HapDiffSymbolChanged[] = [];
+  const added: NativeSymbol[] = [];
+  const removed: NativeSymbol[] = [];
+  const changed: DiffSymbolChanged[] = [];
   let unchanged = 0;
 
   for (const s of rSyms) {
@@ -579,7 +622,11 @@ function diffOneLib(
     const prev = lMap.get(k);
     if (!prev) {
       added.push(s);
-    } else if (prev.size !== s.size) {
+      continue;
+    }
+    const bodyChanged = computeSymbolBodyChanged(prev.codeSha256, s.codeSha256);
+    const sizeChanged = prev.size !== s.size;
+    if (sizeChanged || bodyChanged === true) {
       changed.push({
         name: s.name,
         fromSize: prev.size,
@@ -588,6 +635,9 @@ function diffOneLib(
         bind: s.bind,
         type: s.type,
         imported: s.imported,
+        ...(bodyChanged === undefined ? {} : { bodyChanged }),
+        ...(prev.codeSha256 ? { fromCodeSha256: prev.codeSha256 } : {}),
+        ...(s.codeSha256 ? { toCodeSha256: s.codeSha256 } : {}),
       });
     } else {
       unchanged += 1;
@@ -633,17 +683,17 @@ function diffOneLib(
 
 /* ----- sections diff ----- */
 function diffNativeLibSections(
-  left?: HapNativeLibSection[],
-  right?: HapNativeLibSection[],
-): HapDiffNativeLibSections | undefined {
+  left?: NativeLibSection[],
+  right?: NativeLibSection[],
+): DiffNativeLibSections | undefined {
   if (!left && !right) return undefined;
   const l = left ?? [];
   const r = right ?? [];
   const lMap = keyBy(l, (s) => s.name);
   const rMap = keyBy(r, (s) => s.name);
-  const added: HapDiffNativeLibSectionItem[] = [];
-  const removed: HapDiffNativeLibSectionItem[] = [];
-  const changed: HapDiffNativeLibSectionItem[] = [];
+  const added: DiffNativeLibSectionItem[] = [];
+  const removed: DiffNativeLibSectionItem[] = [];
+  const changed: DiffNativeLibSectionItem[] = [];
   for (const s of r) {
     const prev = lMap.get(s.name);
     if (!prev) {
@@ -666,9 +716,9 @@ function diffNativeLibSections(
 
 /* ----- mitigations diff ----- */
 function diffNativeLibMitigations(
-  left?: HapNativeLibMitigations,
-  right?: HapNativeLibMitigations,
-): HapDiffNativeLibMitigations | undefined {
+  left?: NativeLibMitigations,
+  right?: NativeLibMitigations,
+): DiffNativeLibMitigations | undefined {
   if (!left && !right) return undefined;
   const l = left ?? defaultMitigations();
   const r = right ?? defaultMitigations();
@@ -683,15 +733,15 @@ function diffNativeLibMitigations(
   return { nx, relro, pie, stackCanary, fortify, anyChanged };
 }
 
-function defaultMitigations(): HapNativeLibMitigations {
+function defaultMitigations(): NativeLibMitigations {
   return { nx: false, relro: 'none', pie: false, stackCanary: false, fortify: false };
 }
 
 /* ----- rodata strings diff ----- */
 function diffNativeLibRodataStrings(
-  left?: HapNativeLibRodataStrings,
-  right?: HapNativeLibRodataStrings,
-): HapDiffNativeLibRodataStrings | undefined {
+  left?: NativeLibRodataStrings,
+  right?: NativeLibRodataStrings,
+): DiffNativeLibRodataStrings | undefined {
   if (!left && !right) return undefined;
   const urls = diffStringSet(left?.urls, right?.urls);
   const paths = diffStringSet(left?.paths, right?.paths);
@@ -707,9 +757,9 @@ function diffNativeLibRodataStrings(
 
 /* ----- build-info diff ----- */
 function diffNativeLibBuildInfo(
-  left: HapNativeLibSymbols | undefined,
-  right: HapNativeLibSymbols | undefined,
-): HapDiffNativeLibBuildInfo | undefined {
+  left: NativeLibSymbols | undefined,
+  right: NativeLibSymbols | undefined,
+): DiffNativeLibBuildInfo | undefined {
   const fromBuildId = left?.buildId;
   const toBuildId = right?.buildId;
   const fromComment = left?.comment;
@@ -737,7 +787,7 @@ function diffNativeLibBuildInfo(
 }
 
 /** 仅当任一侧非空时返回 diff；否则返回 undefined */
-function diffStringSetIfAny(left?: string[], right?: string[]): HapDiffStringSet | undefined {
+function diffStringSetIfAny(left?: string[], right?: string[]): DiffStringSet | undefined {
   if ((left === undefined || left.length === 0) && (right === undefined || right.length === 0)) {
     return undefined;
   }
@@ -745,18 +795,18 @@ function diffStringSetIfAny(left?: string[], right?: string[]): HapDiffStringSet
 }
 
 function diffNativeLibSymbols(
-  left?: HapNativeLibSymbolsInfo,
-  right?: HapNativeLibSymbolsInfo,
-): HapDiffNativeLibSymbols | undefined {
+  left?: NativeLibSymbolsInfo,
+  right?: NativeLibSymbolsInfo,
+): DiffNativeLibSymbols | undefined {
   if (!left && !right) return undefined;
 
   // 以 (arch + name) 作 key 求并集
-  const libKeyOf = (s: HapNativeLibSymbols) => `${s.arch}/${s.name}`;
+  const libKeyOf = (s: NativeLibSymbols) => `${s.arch}/${s.name}`;
   const lMap = keyBy(left?.perLib ?? [], libKeyOf);
   const rMap = keyBy(right?.perLib ?? [], libKeyOf);
   const allKeys = new Set<string>([...lMap.keys(), ...rMap.keys()]);
 
-  const perLib: HapDiffNativeLibSymbolsItem[] = [];
+  const perLib: DiffNativeLibSymbolsItem[] = [];
   for (const k of allKeys) {
     const a = lMap.get(k);
     const b = rMap.get(k);
@@ -782,9 +832,9 @@ function diffNativeLibSymbols(
 /* -------------------------------------------------------------------------- */
 
 function diffAbcDetails(
-  left?: HapAbcDetailsInfo,
-  right?: HapAbcDetailsInfo,
-): HapDiffAbcDetails | undefined {
+  left?: HarmonyAbcDetailsInfo,
+  right?: HarmonyAbcDetailsInfo,
+): HarmonyDiffAbcDetails | undefined {
   if (!left && !right) return undefined;
   const lEntries = left?.entries ?? [];
   const rEntries = right?.entries ?? [];
@@ -792,7 +842,7 @@ function diffAbcDetails(
   const rMap = keyBy(rEntries, (e) => e.path);
   const allPaths = new Set<string>([...lMap.keys(), ...rMap.keys()]);
 
-  const entries: HapDiffAbcDetailEntry[] = [];
+  const entries: HarmonyDiffAbcDetailEntry[] = [];
   let changedCount = 0;
   for (const path of allPaths) {
     const a = lMap.get(path);
@@ -844,7 +894,7 @@ function diffAbcDetails(
   };
 }
 
-function diffStringSet(left?: string[], right?: string[]): HapDiffAbcStringSet {
+function diffStringSet(left?: string[], right?: string[]): HarmonyDiffAbcStringSet {
   const l = new Set(left ?? []);
   const r = new Set(right ?? []);
   const added: string[] = [];
@@ -863,9 +913,9 @@ function diffStringSet(left?: string[], right?: string[]): HapDiffAbcStringSet {
 }
 
 function diffAbcStrings(
-  left?: HapAbcStrings,
-  right?: HapAbcStrings,
-): HapDiffAbcStrings | undefined {
+  left?: HarmonyAbcStrings,
+  right?: HarmonyAbcStrings,
+): HarmonyDiffAbcStrings | undefined {
   if (!left && !right) return undefined;
   // 一侧没有：仍然产出（缺失侧当空集），方便看到"新版本新增了所有这些类"的场景
   const classDescriptors = diffStringSet(left?.classDescriptors, right?.classDescriptors);
@@ -885,9 +935,9 @@ function diffAbcStrings(
 /* -------------------------------------------------------------------------- */
 
 function diffIl2cppMetadata(
-  left?: HapIl2cppMetadataInfo,
-  right?: HapIl2cppMetadataInfo,
-): HapDiffIl2cppMetadata | undefined {
+  left?: Il2cppMetadataInfo,
+  right?: Il2cppMetadataInfo,
+): DiffIl2cppMetadata | undefined {
   if (!left && !right) return undefined;
   const lFiles = left?.files ?? [];
   const rFiles = right?.files ?? [];
@@ -895,7 +945,7 @@ function diffIl2cppMetadata(
   const rMap = keyBy(rFiles, (e) => e.path);
   const allPaths = new Set<string>([...lMap.keys(), ...rMap.keys()]);
 
-  const entries: HapDiffIl2cppMetadataEntry[] = [];
+  const entries: DiffIl2cppMetadataEntry[] = [];
   let changedCount = 0;
   for (const path of allPaths) {
     const a = lMap.get(path);
@@ -948,9 +998,9 @@ function diffIl2cppMetadata(
 }
 
 function diffIl2cppNames(
-  left?: HapIl2cppNames,
-  right?: HapIl2cppNames,
-): HapDiffIl2cppNames | undefined {
+  left?: Il2cppNames,
+  right?: Il2cppNames,
+): DiffIl2cppNames | undefined {
   if (!left && !right) return undefined;
   const typeNames = diffStringSet(left?.typeNames, right?.typeNames);
   const namespaces = diffStringSet(left?.namespaces, right?.namespaces);
@@ -967,9 +1017,9 @@ function diffIl2cppNames(
 }
 
 function diffIl2cppLiterals(
-  left?: HapIl2cppLiterals,
-  right?: HapIl2cppLiterals,
-): HapDiffIl2cppLiterals | undefined {
+  left?: Il2cppLiterals,
+  right?: Il2cppLiterals,
+): DiffIl2cppLiterals | undefined {
   if (!left && !right) return undefined;
   const urls = diffStringSet(left?.urls, right?.urls);
   const paths = diffStringSet(left?.paths, right?.paths);
@@ -990,12 +1040,14 @@ function diffIl2cppLiterals(
 const SIGNATURE_FIELDS = ['subject', 'issuer', 'notBefore', 'notAfter'] as const;
 
 function diffSignature(
-  left?: HapSignatureInfo,
-  right?: HapSignatureInfo,
-): HapDiffSignature | undefined {
+  left?: PackageSignatureInfo,
+  right?: PackageSignatureInfo,
+): PackageDiffSignature | undefined {
   if (!left && !right) return undefined;
   const l = left ?? { present: false };
   const r = right ?? { present: false };
+  const versions = diffSignatureVersions(l.versions, r.versions);
+  const signingBlock = diffSigningBlock(l.signingBlock, r.signingBlock);
   return {
     fromPresent: l.present,
     toPresent: r.present,
@@ -1005,7 +1057,387 @@ function diffSignature(
       const b = r[field];
       return { field, from: a, to: b, changed: a !== b };
     }),
+    ...(versions ? { versions } : {}),
+    ...(signingBlock ? { signingBlock } : {}),
   };
+}
+
+function flag(a: boolean, b: boolean): DiffApkSignatureVersionFlag {
+  return { from: a, to: b, changed: a !== b };
+}
+
+function diffSignatureVersions(
+  left?: PackageSignatureInfo['versions'],
+  right?: PackageSignatureInfo['versions'],
+): DiffApkSignatureVersions | undefined {
+  if (!left && !right) return undefined;
+  const blank = { v1: false, v2: false, v3: false, v31: false };
+  const l = left ?? blank;
+  const r = right ?? blank;
+  const v1 = flag(l.v1, r.v1);
+  const v2 = flag(l.v2, r.v2);
+  const v3 = flag(l.v3, r.v3);
+  const v31 = flag(l.v31, r.v31);
+  return {
+    v1,
+    v2,
+    v3,
+    v31,
+    anyChanged: v1.changed || v2.changed || v3.changed || v31.changed,
+  };
+}
+
+function diffSigningBlock(
+  left?: ApkSigningBlock,
+  right?: ApkSigningBlock,
+): DiffApkSigningBlock | undefined {
+  if (!left && !right) return undefined;
+  const fromTotalBytes = left ? left.totalBytes : null;
+  const toTotalBytes = right ? right.totalBytes : null;
+  const totalBytesDelta =
+    fromTotalBytes !== null && toTotalBytes !== null ? toTotalBytes - fromTotalBytes : null;
+
+  const lMap = keyBy(left?.entries ?? [], (e) => e.idHex);
+  const rMap = keyBy(right?.entries ?? [], (e) => e.idHex);
+  const added: ApkSignatureBlockEntry[] = [];
+  const removed: ApkSignatureBlockEntry[] = [];
+  const changedSizes: DiffApkSigningBlockEntryChanged[] = [];
+
+  for (const e of right?.entries ?? []) {
+    const prev = lMap.get(e.idHex);
+    if (!prev) {
+      added.push(e);
+    } else if (prev.sizeBytes !== e.sizeBytes) {
+      changedSizes.push({
+        idHex: e.idHex,
+        name: e.name,
+        fromSize: prev.sizeBytes,
+        toSize: e.sizeBytes,
+        delta: e.sizeBytes - prev.sizeBytes,
+      });
+    }
+  }
+  for (const e of left?.entries ?? []) {
+    if (!rMap.has(e.idHex)) removed.push(e);
+  }
+
+  added.sort((a, b) => a.idHex.localeCompare(b.idHex));
+  removed.sort((a, b) => a.idHex.localeCompare(b.idHex));
+  changedSizes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+  const anyChanged =
+    (totalBytesDelta ?? 0) !== 0 ||
+    added.length + removed.length + changedSizes.length > 0;
+
+  return {
+    fromTotalBytes,
+    toTotalBytes,
+    totalBytesDelta,
+    added,
+    removed,
+    changedSizes,
+    anyChanged,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* dex（Android default analyzer 产物 diff）                                    */
+/* -------------------------------------------------------------------------- */
+
+function dexFileSide(f: DexFileSummary): DiffDexFileSide {
+  return {
+    path: f.path,
+    bytes: f.bytes,
+    magic: f.magic,
+    version: f.version,
+  };
+}
+
+/** 两侧都有 dex 时减；任一侧解析失败（null）则 delta 也为 null */
+function nullableDelta(a: number | null, b: number | null): number | null {
+  if (a === null || b === null) return null;
+  return b - a;
+}
+
+function diffDex(left?: DexInfo, right?: DexInfo): DiffDex | undefined {
+  if (!left && !right) return undefined;
+  const l = left ?? { fileCount: 0, totalBytes: 0, files: [] };
+  const r = right ?? { fileCount: 0, totalBytes: 0, files: [] };
+
+  const lMap = keyBy(l.files, (f) => f.path);
+  const rMap = keyBy(r.files, (f) => f.path);
+
+  const added: DiffDexFileSide[] = [];
+  const removed: DiffDexFileSide[] = [];
+  const changed: DiffDexFileChanged[] = [];
+
+  for (const f of r.files) {
+    const prev = lMap.get(f.path);
+    if (!prev) {
+      added.push(dexFileSide(f));
+      continue;
+    }
+    const stringIdsDelta = nullableDelta(prev.stringIds, f.stringIds);
+    const typeIdsDelta = nullableDelta(prev.typeIds, f.typeIds);
+    const protoIdsDelta = nullableDelta(prev.protoIds, f.protoIds);
+    const fieldIdsDelta = nullableDelta(prev.fieldIds, f.fieldIds);
+    const methodIdsDelta = nullableDelta(prev.methodIds, f.methodIds);
+    const classDefsDelta = nullableDelta(prev.classDefs, f.classDefs);
+    const headerCountChanged =
+      (stringIdsDelta ?? 0) !== 0 ||
+      (typeIdsDelta ?? 0) !== 0 ||
+      (protoIdsDelta ?? 0) !== 0 ||
+      (fieldIdsDelta ?? 0) !== 0 ||
+      (methodIdsDelta ?? 0) !== 0 ||
+      (classDefsDelta ?? 0) !== 0;
+    const isChanged =
+      prev.bytes !== f.bytes ||
+      prev.magic !== f.magic ||
+      prev.version !== f.version ||
+      headerCountChanged;
+    if (isChanged) {
+      changed.push({
+        path: f.path,
+        fromBytes: prev.bytes,
+        toBytes: f.bytes,
+        bytesDelta: f.bytes - prev.bytes,
+        fromMagic: prev.magic,
+        toMagic: f.magic,
+        fromVersion: prev.version,
+        toVersion: f.version,
+        stringIdsDelta,
+        typeIdsDelta,
+        protoIdsDelta,
+        fieldIdsDelta,
+        methodIdsDelta,
+        classDefsDelta,
+        changed: true,
+      });
+    }
+  }
+  for (const f of l.files) {
+    if (!rMap.has(f.path)) removed.push(dexFileSide(f));
+  }
+
+  added.sort((a, b) => b.bytes - a.bytes);
+  removed.sort((a, b) => b.bytes - a.bytes);
+  changed.sort((a, b) => Math.abs(b.bytesDelta) - Math.abs(a.bytesDelta));
+
+  const sumIds = (files: DexFileSummary[], pick: (f: DexFileSummary) => number | null) =>
+    files.reduce((acc, f) => acc + (pick(f) ?? 0), 0);
+
+  return {
+    added,
+    removed,
+    changed,
+    totals: {
+      fileCount: numberDelta(l.fileCount, r.fileCount),
+      totalBytes: numberDelta(l.totalBytes, r.totalBytes),
+      methodIdsCount: numberDelta(
+        sumIds(l.files, (f) => f.methodIds),
+        sumIds(r.files, (f) => f.methodIds),
+      ),
+      classDefsCount: numberDelta(
+        sumIds(l.files, (f) => f.classDefs),
+        sumIds(r.files, (f) => f.classDefs),
+      ),
+    },
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* dexDetails（字符串集合差异；9d 起将接 method-level）                          */
+/* -------------------------------------------------------------------------- */
+
+function diffDexDetails(
+  left?: DexDetailsInfo,
+  right?: DexDetailsInfo,
+): DiffDexDetails | undefined {
+  if (!left && !right) return undefined;
+  const lEntries: DexDetailEntry[] = left?.entries ?? [];
+  const rEntries: DexDetailEntry[] = right?.entries ?? [];
+  const lMap = keyBy(lEntries, (e) => e.path);
+  const rMap = keyBy(rEntries, (e) => e.path);
+  const allPaths = new Set<string>([...lMap.keys(), ...rMap.keys()]);
+
+  const entries: DiffDexDetailEntry[] = [];
+  let changedCount = 0;
+  let methodsAdded = 0;
+  let methodsRemoved = 0;
+  let methodsChanged = 0;
+
+  for (const path of allPaths) {
+    const a = lMap.get(path);
+    const b = rMap.get(path);
+    const fromBytes = a ? a.bytes : null;
+    const toBytes = b ? b.bytes : null;
+    const fromSha256 = a ? a.sha256 || null : null;
+    const toSha256 = b ? b.sha256 || null : null;
+    const sha256Changed =
+      !!fromSha256 && !!toSha256 && fromSha256 !== toSha256;
+    const changed = !a || !b || fromBytes !== toBytes || sha256Changed;
+    if (changed) changedCount += 1;
+    const stringsDiff = diffDexStrings(a?.strings, b?.strings);
+    const methodsDiff = diffDexMethodsOfDex(a?.methods, b?.methods);
+    if (methodsDiff) {
+      methodsAdded += methodsDiff.totals.added;
+      methodsRemoved += methodsDiff.totals.removed;
+      methodsChanged += methodsDiff.totals.changed;
+    }
+    entries.push({
+      path,
+      fromBytes,
+      toBytes,
+      fromSha256,
+      toSha256,
+      changed,
+      ...(stringsDiff ? { stringsDiff } : {}),
+      ...(methodsDiff ? { methodsDiff } : {}),
+    });
+  }
+
+  entries.sort((a, b) => {
+    if (a.changed !== b.changed) return a.changed ? -1 : 1;
+    return a.path.localeCompare(b.path);
+  });
+
+  return {
+    entries,
+    totals: {
+      changed: changedCount,
+      total: entries.length,
+      methodsAdded,
+      methodsRemoved,
+      methodsChanged,
+    },
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* dex method-level diff（9d）                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 把一个 DexMethodEntry 压成 add/remove 列表项格式（剔除 differ 不关心的字段）。
+ */
+function methodSideOf(m: DexMethodEntry): DiffDexMethodSide {
+  return {
+    fullName: m.fullName,
+    classDescriptor: m.classDescriptor,
+    name: m.name,
+    proto: m.proto,
+    insnsSize: m.insnsSize,
+  };
+}
+
+/**
+ * 对单 dex 文件的方法集合做 diff：
+ *   - 一侧 methods 字段缺失（dex 文件本身被新增/删除或未跑深度抽取） → undefined，
+ *     由调用方决定是否填空 methodsDiff（一般空字段更友好）
+ *   - fullName 作为方法主键（全 dex 唯一；同名 overload 已经在 proto 中区分）
+ *   - 同 fullName 但 insnsSize / registers / accessFlags / insnsSha256 任一变化 → changed
+ *
+ * 排序：
+ *   - added / removed：按 fullName 字典序
+ *   - changed：按 |insnsSizeDelta| 降序；null delta 排在最后
+ */
+function diffDexMethodsOfDex(
+  left?: DexMethodEntry[],
+  right?: DexMethodEntry[],
+): DiffDexMethods | undefined {
+  if (!left && !right) return undefined;
+  const l = left ?? [];
+  const r = right ?? [];
+  // 仅一侧有 methods 时也产出 diff（让 UI 能直接展示"新增/删除了所有方法"）
+  // ；双侧都为 undefined 时上面已返回。
+  const lMap = keyBy(l, (m) => m.fullName);
+  const rMap = keyBy(r, (m) => m.fullName);
+
+  const added: DiffDexMethodSide[] = [];
+  const removed: DiffDexMethodSide[] = [];
+  const changed: DiffDexMethodChanged[] = [];
+  let unchanged = 0;
+
+  for (const m of r) {
+    const prev = lMap.get(m.fullName);
+    if (!prev) {
+      added.push(methodSideOf(m));
+      continue;
+    }
+    const insnsSizeDelta = nullableDelta(prev.insnsSize, m.insnsSize);
+    const accessFlagsChanged = prev.accessFlags !== m.accessFlags;
+    const registersChanged = prev.registers !== m.registers;
+    // bodyChanged：仅当两侧都有 sha256 才能判断；否则返回 null（待 hashBodies 开启后才有）
+    let bodyChanged: boolean | null;
+    if (prev.insnsSha256 !== null && m.insnsSha256 !== null) {
+      bodyChanged = prev.insnsSha256 !== m.insnsSha256;
+    } else {
+      bodyChanged = null;
+    }
+    const sizeChanged = (insnsSizeDelta ?? 0) !== 0;
+    if (sizeChanged || accessFlagsChanged || registersChanged || bodyChanged === true) {
+      changed.push({
+        fullName: m.fullName,
+        classDescriptor: m.classDescriptor,
+        name: m.name,
+        proto: m.proto,
+        fromInsnsSize: prev.insnsSize,
+        toInsnsSize: m.insnsSize,
+        insnsSizeDelta,
+        fromRegisters: prev.registers,
+        toRegisters: m.registers,
+        fromAccessFlags: prev.accessFlags,
+        toAccessFlags: m.accessFlags,
+        accessFlagsChanged,
+        bodyChanged,
+      });
+    } else {
+      unchanged += 1;
+    }
+  }
+  for (const m of l) {
+    if (!rMap.has(m.fullName)) removed.push(methodSideOf(m));
+  }
+
+  added.sort((a, b) => a.fullName.localeCompare(b.fullName));
+  removed.sort((a, b) => a.fullName.localeCompare(b.fullName));
+  changed.sort((a, b) => {
+    const da = a.insnsSizeDelta === null ? -1 : Math.abs(a.insnsSizeDelta);
+    const db = b.insnsSizeDelta === null ? -1 : Math.abs(b.insnsSizeDelta);
+    if (da !== db) return db - da;
+    return a.fullName.localeCompare(b.fullName);
+  });
+
+  return {
+    added,
+    removed,
+    changed,
+    totals: {
+      added: added.length,
+      removed: removed.length,
+      changed: changed.length,
+      unchanged,
+    },
+  };
+}
+
+function diffDexStrings(
+  left?: DexStrings,
+  right?: DexStrings,
+): DiffDexStrings | undefined {
+  if (!left && !right) return undefined;
+  const classDescriptors = diffStringSet(left?.classDescriptors, right?.classDescriptors);
+  const methodSignatures = diffStringSet(left?.methodSignatures, right?.methodSignatures);
+  const sourceFiles = diffStringSet(left?.sourceFiles, right?.sourceFiles);
+  const identifiers = diffStringSet(left?.identifiers, right?.identifiers);
+  const other = diffStringSet(left?.other, right?.other);
+  const anyChanged =
+    classDescriptors.added.length + classDescriptors.removed.length > 0 ||
+    methodSignatures.added.length + methodSignatures.removed.length > 0 ||
+    sourceFiles.added.length + sourceFiles.removed.length > 0 ||
+    identifiers.added.length + identifiers.removed.length > 0 ||
+    other.added.length + other.removed.length > 0;
+  return { classDescriptors, methodSignatures, sourceFiles, identifiers, other, anyChanged };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1013,9 +1445,9 @@ function diffSignature(
 /* -------------------------------------------------------------------------- */
 
 function diffDependencies(
-  left?: HapDependenciesInfo,
-  right?: HapDependenciesInfo,
-): HapDiffDependencies | undefined {
+  left?: HarmonyDependenciesInfo,
+  right?: HarmonyDependenciesInfo,
+): HarmonyDiffDependencies | undefined {
   if (!left && !right) return undefined;
   const l = left ?? { hsp: [], har: [] };
   const r = right ?? { hsp: [], har: [] };
@@ -1032,12 +1464,12 @@ function diffDependencies(
 /* -------------------------------------------------------------------------- */
 
 function buildSummary(args: {
-  left: HapReport;
-  right: HapReport;
-  size?: HapDiffSize;
-  files?: HapDiffFiles;
-  permissions?: HapDiffPermissions;
-}): HapDiffSummary {
+  left: PackageReport;
+  right: PackageReport;
+  size?: PackageDiffSize;
+  files?: PackageDiffFiles;
+  permissions?: PackageDiffPermissions;
+}): PackageDiffSummary {
   const totalSizeDelta = args.size?.total.delta ?? 0;
   const compressedDelta = args.size?.compressed.delta ?? 0;
   const fileCountDelta = args.size?.fileCount.delta ?? 0;
@@ -1072,9 +1504,9 @@ function buildSummary(args: {
   };
 }
 
-function buildVersionLine(l?: HapBasicInfo, r?: HapBasicInfo): string | undefined {
+function buildVersionLine(l?: PackageBasicInfo, r?: PackageBasicInfo): string | undefined {
   if (!l && !r) return undefined;
-  const fmt = (b?: HapBasicInfo) =>
+  const fmt = (b?: PackageBasicInfo) =>
     b ? `${b.versionName ?? '?'} (${b.versionCode ?? '?'})` : '—';
   return `${fmt(l)} → ${fmt(r)}`;
 }
@@ -1087,3 +1519,11 @@ function newer(a?: string, b?: string): string {
 
 /** 仅供测试断言用，避免外部直接 import 内部类型 */
 export type { DeltaNumber };
+
+/**
+ * @deprecated 用 {@link diffPackageReports}。
+ *
+ * 历史 API 名字（一期 tool 只跑 .hap 时叫 diffHapReports）。alias 保留给外部
+ * 调用者一个迁移窗口，行为与 diffPackageReports 完全一致。
+ */
+export const diffHapReports = diffPackageReports;

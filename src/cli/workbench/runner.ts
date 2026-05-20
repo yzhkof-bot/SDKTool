@@ -2,9 +2,14 @@ import { existsSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 
-import { analyzeHap } from '../../core/index.js';
-import { diffHapReports } from '../../core/differ/index.js';
-import { SCHEMA_VERSION, type HapReport } from '../../shared/schema.js';
+import { analyzePackage } from '../../core/index.js';
+import { diffPackageReports } from '../../core/differ/index.js';
+import {
+  DEFAULT_PLATFORM,
+  SCHEMA_VERSION,
+  type PackageReport,
+  type Platform,
+} from '../../shared/schema.js';
 import { renderDiffHtml, renderReportHtml } from '../utils/render.js';
 
 import type { JobStore } from './store.js';
@@ -16,6 +21,8 @@ export interface RunnerDeps {
   log: (text: string) => void;
   /** 可选深度分析 analyzer id 列表（参见 EXTRA_ANALYZERS） */
   extras?: string[];
+  /** 应用包平台；未指定时按 'harmony' 处理 */
+  platform?: Platform;
 }
 
 /**
@@ -24,12 +31,13 @@ export interface RunnerDeps {
  * 逻辑：
  *  1. 立即创建 pending job
  *  2. 校验路径（不存在/非文件 → 直接置 error）
- *  3. 后台 analyzeHap，写产物到 store.jobDir(id) 下的 report.json / report.html
+ *  3. 后台 analyzePackage，写产物到 store.jobDir(id) 下的 report.json / report.html
  *  4. 把产物 URL 回写 job.outputs
  */
 export function startAnalyzeJob(absPath: string, deps: RunnerDeps): string {
   const label = baseName(absPath);
-  const job = deps.store.create('analyze', [absPath], label);
+  const platform = deps.platform ?? DEFAULT_PLATFORM;
+  const job = deps.store.create('analyze', [absPath], label, platform);
 
   // 同步快校验，错误直接落 error 状态，避免后台无人处理的 race
   if (!existsSync(absPath)) {
@@ -55,14 +63,16 @@ export function startAnalyzeJob(absPath: string, deps: RunnerDeps): string {
 }
 
 async function runAnalyzeAsync(id: string, absPath: string, deps: RunnerDeps): Promise<void> {
+  const platform = deps.platform ?? DEFAULT_PLATFORM;
   deps.store.update(id, { status: 'running' });
-  deps.log(`[workbench] analyze start ${id} ${absPath}${deps.extras?.length ? ` (extras=${deps.extras.join(',')})` : ''}\n`);
+  deps.log(`[workbench] analyze start ${id} [${platform}] ${absPath}${deps.extras?.length ? ` (extras=${deps.extras.join(',')})` : ''}\n`);
   try {
     const dir = deps.store.jobDir(id);
     await mkdir(dir, { recursive: true });
-    const report = await analyzeHap(absPath, {
+    const report = await analyzePackage(absPath, {
       toolVersion: deps.toolVersion,
       extras: deps.extras,
+      platform,
     });
     const jsonPath = join(dir, 'report.json');
     const htmlPath = join(dir, 'report.html');
@@ -97,7 +107,8 @@ export function startCompareJob(
   deps: RunnerDeps,
 ): string {
   const label = `${baseName(leftPath)} vs ${baseName(rightPath)}`;
-  const job = deps.store.create('compare', [leftPath, rightPath], label);
+  const platform = deps.platform ?? DEFAULT_PLATFORM;
+  const job = deps.store.create('compare', [leftPath, rightPath], label, platform);
 
   for (const p of [leftPath, rightPath]) {
     if (!existsSync(p)) {
@@ -128,21 +139,23 @@ async function runCompareAsync(
   rightPath: string,
   deps: RunnerDeps,
 ): Promise<void> {
+  const platform = deps.platform ?? DEFAULT_PLATFORM;
   deps.store.update(id, { status: 'running' });
-  deps.log(`[workbench] compare start ${id} ${leftPath} <-> ${rightPath}${deps.extras?.length ? ` (extras=${deps.extras.join(',')})` : ''}\n`);
+  deps.log(`[workbench] compare start ${id} [${platform}] ${leftPath} <-> ${rightPath}${deps.extras?.length ? ` (extras=${deps.extras.join(',')})` : ''}\n`);
   try {
     const dir = deps.store.jobDir(id);
     await mkdir(dir, { recursive: true });
     const [left, right] = await Promise.all([
-      loadOrAnalyze(leftPath, deps.toolVersion, deps.extras),
-      loadOrAnalyze(rightPath, deps.toolVersion, deps.extras),
+      loadOrAnalyze(leftPath, deps.toolVersion, deps.extras, platform),
+      loadOrAnalyze(rightPath, deps.toolVersion, deps.extras, platform),
     ]);
-    const diff = diffHapReports(left, right, { toolVersion: deps.toolVersion });
+    assertSamePlatform(left, right, platform);
+    const diff = diffPackageReports(left, right, { toolVersion: deps.toolVersion });
 
     // 主产物：diff
     const jsonPath = join(dir, 'diff.json');
     const htmlPath = join(dir, 'diff.html');
-    // 副产物：两侧单独分析报告（复用 analyze 的 HapReport + viewer 模板，
+    // 副产物：两侧单独分析报告（复用 analyze 的 PackageReport + viewer 模板，
     // 让前端可以从对比项点进去看单包结果，无需再单独跑一次 analyze）
     const leftJsonPath = join(dir, 'left.report.json');
     const leftHtmlPath = join(dir, 'left.report.html');
@@ -193,20 +206,39 @@ async function loadOrAnalyze(
   input: string,
   toolVersion: string,
   extras?: string[],
-): Promise<HapReport> {
+  platform?: Platform,
+): Promise<PackageReport> {
   const ext = extname(input).toLowerCase();
   if (ext === '.json') {
     const text = await readFile(resolve(input), 'utf8');
     const parsed = JSON.parse(text);
     if (!parsed?.schemaVersion || !parsed?.meta) {
-      throw new Error(`JSON 文件 ${input} 不是有效 HapReport（缺少 schemaVersion / meta）`);
+      throw new Error(`JSON 文件 ${input} 不是有效 PackageReport（缺少 schemaVersion / meta）`);
     }
     if (parsed.schemaVersion !== SCHEMA_VERSION) {
       // 静默接受跨版本（与 compare 命令行为一致）
     }
-    return parsed as HapReport;
+    return parsed as PackageReport;
   }
-  return analyzeHap(input, { toolVersion, extras });
+  return analyzePackage(input, { toolVersion, extras, platform });
+}
+
+/**
+ * 强校验两侧 platform 一致。允许的情况：
+ *  - 两侧都 == 期望 platform
+ *  - 一侧/两侧没声明 platform（老报告）→ 默认 'harmony'，再与期望平台比较
+ *
+ * 不一致直接抛错（runner 会捕获并落 error 状态），避免出现 "hap vs apk" 这种
+ * 跨平台无意义对比。
+ */
+function assertSamePlatform(left: PackageReport, right: PackageReport, expected: Platform): void {
+  const lp = left.platform ?? DEFAULT_PLATFORM;
+  const rp = right.platform ?? DEFAULT_PLATFORM;
+  if (lp !== expected || rp !== expected) {
+    throw new Error(
+      `compare 两侧 platform 不一致：left=${lp}, right=${rp}, expected=${expected}`,
+    );
+  }
 }
 
 function baseName(p: string): string {

@@ -5,9 +5,9 @@ import {
   renderReportHtml,
   serializeForHtml,
 } from '../src/cli/utils/render.js';
-import type { HapReport } from '../src/shared/schema.js';
+import type { PackageReport } from '../src/shared/schema.js';
 
-const SAMPLE_REPORT: HapReport = {
+const SAMPLE_REPORT: PackageReport = {
   schemaVersion: '1.0',
   meta: {
     file: '/tmp/demo.hap',
@@ -59,7 +59,7 @@ describe('renderReportHtml', () => {
     expect(html).toContain('\\u2029');
   });
 
-  it('默认模板（构建后）含 __DATA__ 占位且替换后可解析为 HapReport', async () => {
+  it('默认模板（构建后）含 __DATA__ 占位且替换后可解析为 PackageReport', async () => {
     const { existsSync } = await import('node:fs');
     const { resolve } = await import('node:path');
     const tplPath = resolve('templates/report.template.html');
@@ -105,7 +105,7 @@ describe('renderReportHtml', () => {
   });
 
   it('JSON 包含 $ / `$1` 等模式时不被当作 replace 的 backreference', () => {
-    const r: HapReport = {
+    const r: PackageReport = {
       ...SAMPLE_REPORT,
       meta: { ...SAMPLE_REPORT.meta, file: '$1$&$$/foo' },
     };
@@ -136,7 +136,7 @@ describe('serializeForHtml', () => {
     expect(parsed.x).toBe('<!-- y -->');
   });
 
-  it('回归：HapReport 含大量含 `-->` / `<!--` 的字符串时整份 JSON 仍可被 viewer 端 JSON.parse', () => {
+  it('回归：PackageReport 含大量含 `-->` / `<!--` 的字符串时整份 JSON 仍可被 viewer 端 JSON.parse', () => {
     // 模拟从 .rodata / abc 字符串池里抽出来、恰好含 HTML 注释 token 的字符串集合
     const hostile = {
       strings: [

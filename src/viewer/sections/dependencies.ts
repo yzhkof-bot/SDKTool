@@ -1,8 +1,8 @@
-import type { HapReport } from '../../shared/schema.js';
+import type { PackageReport } from '../../shared/schema.js';
 
 import { emptyState, h, table } from '../helpers.js';
 
-export function renderDependencies(report: HapReport): HTMLElement {
+export function renderDependencies(report: PackageReport): HTMLElement {
   const d = report.dependencies;
   if (!d) return emptyState('无 dependencies 数据');
 

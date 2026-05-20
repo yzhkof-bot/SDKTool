@@ -1,8 +1,8 @@
 import type {
-  HapIl2cppLiterals,
-  HapIl2cppMetadata,
-  HapIl2cppNames,
-  HapReport,
+  Il2cppLiterals,
+  Il2cppMetadata,
+  Il2cppNames,
+  PackageReport,
 } from '../../shared/schema.js';
 
 import {
@@ -19,7 +19,7 @@ import {
 const NAMES_PAGE_SIZE = 100;
 const LITERALS_PAGE_SIZE = 100;
 
-export function renderIl2cpp(report: HapReport): HTMLElement {
+export function renderIl2cpp(report: PackageReport): HTMLElement {
   const info = report.il2cppMetadata;
   if (!info || info.files.length === 0) {
     return emptyState('未启用 IL2CPP 元数据深度分析（仅 Unity 游戏 hap 有意义；可在生成报告时勾选 "IL2CPP 元数据"）');
@@ -53,13 +53,13 @@ export function renderIl2cpp(report: HapReport): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderMagicBadge(magic: HapIl2cppMetadata['magic']): HTMLElement {
+function renderMagicBadge(magic: Il2cppMetadata['magic']): HTMLElement {
   if (magic === 'IL2CPP') return badge('IL2CPP', 'success');
   if (magic === 'ENCRYPTED') return badge('已加密 / 非标准 sanity', 'warning');
   return badge('解析失败', 'danger');
 }
 
-function renderOneFile(f: HapIl2cppMetadata): HTMLElement {
+function renderOneFile(f: Il2cppMetadata): HTMLElement {
   const head = h(
     'h3',
     { class: 'panel-title' },
@@ -92,7 +92,7 @@ function renderOneFile(f: HapIl2cppMetadata): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderNamesPanel(names: HapIl2cppNames): HTMLElement {
+function renderNamesPanel(names: Il2cppNames): HTMLElement {
   return h(
     'div',
     { class: 'panel' },
@@ -114,7 +114,7 @@ function renderNamesPanel(names: HapIl2cppNames): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderLiteralsPanel(lit: HapIl2cppLiterals): HTMLElement {
+function renderLiteralsPanel(lit: Il2cppLiterals): HTMLElement {
   return h(
     'div',
     { class: 'panel' },

@@ -1,29 +1,35 @@
 /**
  * Diff viewer 的所有 section 渲染函数。
  *
- * 集中在一个文件以保持 IIFE bundle 紧凑，每个 export 都是 `(d: HapDiffReport) => HTMLElement`。
+ * 集中在一个文件以保持 IIFE bundle 紧凑，每个 export 都是 `(d: PackageDiffReport) => HTMLElement`。
  * 渲染原则：
  *  - 任意维度可能为 undefined（双方都没该数据时 differ 不输出），统一用 emptyState 占位
  *  - 表格优先使用 ../helpers.ts 中的 table()，传 columnClasses 让 num / path 列对齐
  */
 
 import type {
-  HapDiffAbcDetailEntry,
-  HapDiffAbcStringSet,
-  HapDiffAbcStrings,
-  HapDiffBasicChange,
-  HapDiffIl2cppLiterals,
-  HapDiffIl2cppMetadataEntry,
-  HapDiffIl2cppNames,
-  HapDiffNativeLibBuildInfo,
-  HapDiffNativeLibMitigations,
-  HapDiffNativeLibRodataStrings,
-  HapDiffNativeLibSections,
-  HapDiffNativeLibSymbolsItem,
-  HapDiffReport,
-  HapDiffStringSet,
-  HapDiffSymbolChanged,
-  HapNativeSymbol,
+  DiffApkSignatureVersions,
+  DiffApkSigningBlock,
+  DiffDex,
+  DiffDexDetailEntry,
+  DiffDexMethods,
+  DiffDexStrings,
+  HarmonyDiffAbcDetailEntry,
+  HarmonyDiffAbcStringSet,
+  HarmonyDiffAbcStrings,
+  PackageDiffBasicChange,
+  DiffIl2cppLiterals,
+  DiffIl2cppMetadataEntry,
+  DiffIl2cppNames,
+  DiffNativeLibBuildInfo,
+  DiffNativeLibMitigations,
+  DiffNativeLibRodataStrings,
+  DiffNativeLibSections,
+  DiffNativeLibSymbolsItem,
+  PackageDiffReport,
+  DiffStringSet,
+  DiffSymbolChanged,
+  NativeSymbol,
 } from '../../shared/schema.js';
 
 import type { Child } from '../helpers.js';
@@ -53,7 +59,7 @@ import {
 /* overview                                                                   */
 /* -------------------------------------------------------------------------- */
 
-export function renderOverview(d: HapDiffReport): HTMLElement {
+export function renderOverview(d: PackageDiffReport): HTMLElement {
   const summary = d.summary;
   const cards = h(
     'div',
@@ -141,7 +147,7 @@ function summaryCard(
   ) as HTMLElement;
 }
 
-function sideCard(label: string, side: HapDiffReport['left']): HTMLElement {
+function sideCard(label: string, side: PackageDiffReport['left']): HTMLElement {
   const file = side.meta.file;
   const fileName = file.split(/[\\/]/).pop() || file;
   const versionStr = side.basic
@@ -164,12 +170,12 @@ function sideCard(label: string, side: HapDiffReport['left']): HTMLElement {
 /* basic                                                                       */
 /* -------------------------------------------------------------------------- */
 
-export function renderBasic(d: HapDiffReport): HTMLElement {
+export function renderBasic(d: PackageDiffReport): HTMLElement {
   if (!d.basic) return shell('Basic Info', emptyState('两侧均无 basic 信息'));
   if (d.basic.changed.length === 0) {
     return shell('Basic Info', emptyState('basic 字段未发生变化'));
   }
-  const rows = d.basic.changed.map((c: HapDiffBasicChange) => [c.field, fromTo(c.from, c.to)]);
+  const rows = d.basic.changed.map((c: PackageDiffBasicChange) => [c.field, fromTo(c.from, c.to)]);
   return shell(
     'Basic Info',
     h(
@@ -184,7 +190,7 @@ export function renderBasic(d: HapDiffReport): HTMLElement {
 /* size                                                                        */
 /* -------------------------------------------------------------------------- */
 
-export function renderSize(d: HapDiffReport): HTMLElement {
+export function renderSize(d: PackageDiffReport): HTMLElement {
   if (!d.size) return shell('体积', emptyState('两侧均无 size 信息'));
   const s = d.size;
 
@@ -245,7 +251,7 @@ export function renderSize(d: HapDiffReport): HTMLElement {
 
 const FILE_TOP_LIMIT = 100;
 
-export function renderFiles(d: HapDiffReport): HTMLElement {
+export function renderFiles(d: PackageDiffReport): HTMLElement {
   if (!d.files) return shell('Files', emptyState('一侧报告未包含 files 列表，逐文件对比已跳过'));
   const f = d.files;
   const summary = h(
@@ -333,7 +339,7 @@ export function renderFiles(d: HapDiffReport): HTMLElement {
 /* permissions                                                                 */
 /* -------------------------------------------------------------------------- */
 
-export function renderPermissions(d: HapDiffReport): HTMLElement {
+export function renderPermissions(d: PackageDiffReport): HTMLElement {
   if (!d.permissions) return shell('权限', emptyState('两侧均无权限信息'));
   const p = d.permissions;
   const sensitiveAdded = p.added.filter((x) => x.sensitive).length;
@@ -387,7 +393,7 @@ export function renderPermissions(d: HapDiffReport): HTMLElement {
 /* resources                                                                   */
 /* -------------------------------------------------------------------------- */
 
-export function renderResources(d: HapDiffReport): HTMLElement {
+export function renderResources(d: PackageDiffReport): HTMLElement {
   if (!d.resources) return shell('资源', emptyState('两侧均无 resources 信息'));
   const r = d.resources;
 
@@ -445,7 +451,7 @@ export function renderResources(d: HapDiffReport): HTMLElement {
 /* rawfile                                                                     */
 /* -------------------------------------------------------------------------- */
 
-export function renderRawfile(d: HapDiffReport): HTMLElement {
+export function renderRawfile(d: PackageDiffReport): HTMLElement {
   if (!d.rawfile) return shell('Rawfile', emptyState('两侧均无 rawfile 信息'));
   const r = d.rawfile;
 
@@ -544,7 +550,7 @@ export function renderRawfile(d: HapDiffReport): HTMLElement {
 /* nativeLibs                                                                  */
 /* -------------------------------------------------------------------------- */
 
-export function renderNativeLibs(d: HapDiffReport): HTMLElement {
+export function renderNativeLibs(d: PackageDiffReport): HTMLElement {
   if (!d.nativeLibs) return shell('Native', emptyState('两侧均无 nativeLibs 信息'));
   const n = d.nativeLibs;
 
@@ -629,7 +635,7 @@ const SYMBOL_DIFF_PAGE_SIZE = 50;
 const SECTION_DIFF_PAGE_SIZE = 50;
 const STRING_DIFF_PAGE_SIZE = 100;
 
-function libHasDeepChange(l: HapDiffNativeLibSymbolsItem): boolean {
+function libHasDeepChange(l: DiffNativeLibSymbolsItem): boolean {
   return (
     l.totals.added + l.totals.removed + l.totals.changed > 0 ||
     (l.sectionsDiff?.anyChanged ?? false) ||
@@ -641,7 +647,7 @@ function libHasDeepChange(l: HapDiffNativeLibSymbolsItem): boolean {
   );
 }
 
-function renderNativeLibSymbolsDiff(d: HapDiffReport): HTMLElement | null {
+function renderNativeLibSymbolsDiff(d: PackageDiffReport): HTMLElement | null {
   const sym = d.nativeLibSymbols;
   if (!sym || sym.perLib.length === 0) return null;
 
@@ -719,7 +725,7 @@ function renderNativeLibSymbolsDiff(d: HapDiffReport): HTMLElement | null {
   ) as HTMLElement;
 }
 
-function renderTinyFlags(l: HapDiffNativeLibSymbolsItem): HTMLElement {
+function renderTinyFlags(l: DiffNativeLibSymbolsItem): HTMLElement {
   const parts: HTMLElement[] = [];
   if (l.sectionsDiff?.anyChanged) parts.push(badge('sections', 'warning'));
   if (l.neededDiff && l.neededDiff.added.length + l.neededDiff.removed.length > 0) {
@@ -735,7 +741,7 @@ function renderTinyFlags(l: HapDiffNativeLibSymbolsItem): HTMLElement {
   return h('span', null, ...parts.flatMap((b) => [b, ' '])) as HTMLElement;
 }
 
-function renderOneLibDeepDiff(lib: HapDiffNativeLibSymbolsItem): HTMLElement {
+function renderOneLibDeepDiff(lib: DiffNativeLibSymbolsItem): HTMLElement {
   return h(
     'details',
     { class: 'panel sub-panel' },
@@ -758,7 +764,7 @@ function renderOneLibDeepDiff(lib: HapDiffNativeLibSymbolsItem): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderBuildInfoDiff(bi: HapDiffNativeLibBuildInfo | undefined): HTMLElement | null {
+function renderBuildInfoDiff(bi: DiffNativeLibBuildInfo | undefined): HTMLElement | null {
   if (!bi || !bi.anyChanged) return null;
   return h(
     'div',
@@ -781,7 +787,7 @@ function renderBuildInfoDiff(bi: HapDiffNativeLibBuildInfo | undefined): HTMLEle
   ) as HTMLElement;
 }
 
-function renderMitigationsDiff(m: HapDiffNativeLibMitigations | undefined): HTMLElement | null {
+function renderMitigationsDiff(m: DiffNativeLibMitigations | undefined): HTMLElement | null {
   if (!m || !m.anyChanged) return null;
   const flagRow = (
     label: string,
@@ -830,7 +836,7 @@ function relroBadge(v: 'full' | 'partial' | 'none'): HTMLElement {
   return badge('none', 'danger');
 }
 
-function renderNeededDiff(nd: HapDiffStringSet | undefined): HTMLElement | null {
+function renderNeededDiff(nd: DiffStringSet | undefined): HTMLElement | null {
   if (!nd || nd.added.length + nd.removed.length === 0) return null;
   return h(
     'div',
@@ -844,7 +850,7 @@ function renderNeededDiff(nd: HapDiffStringSet | undefined): HTMLElement | null 
   ) as HTMLElement;
 }
 
-function renderGlibcDiff(gd: HapDiffStringSet | undefined): HTMLElement | null {
+function renderGlibcDiff(gd: DiffStringSet | undefined): HTMLElement | null {
   if (!gd || gd.added.length + gd.removed.length === 0) return null;
   return h(
     'div',
@@ -858,7 +864,7 @@ function renderGlibcDiff(gd: HapDiffStringSet | undefined): HTMLElement | null {
   ) as HTMLElement;
 }
 
-function renderSectionsDiff(sd: HapDiffNativeLibSections | undefined): HTMLElement | null {
+function renderSectionsDiff(sd: DiffNativeLibSections | undefined): HTMLElement | null {
   if (!sd || !sd.anyChanged) return null;
   const changedRows = sd.changed.map((s) => [
     h('code', null, s.name),
@@ -913,7 +919,7 @@ function renderSectionsDiff(sd: HapDiffNativeLibSections | undefined): HTMLEleme
   ) as HTMLElement;
 }
 
-function renderRodataDiff(rd: HapDiffNativeLibRodataStrings | undefined): HTMLElement | null {
+function renderRodataDiff(rd: DiffNativeLibRodataStrings | undefined): HTMLElement | null {
   if (!rd || !rd.anyChanged) return null;
   return h(
     'div',
@@ -926,7 +932,7 @@ function renderRodataDiff(rd: HapDiffNativeLibRodataStrings | undefined): HTMLEl
   ) as HTMLElement;
 }
 
-function renderRodataGroupDiff(label: string, set: HapDiffStringSet): HTMLElement | null {
+function renderRodataGroupDiff(label: string, set: DiffStringSet): HTMLElement | null {
   if (set.added.length + set.removed.length === 0) return null;
   return h(
     'details',
@@ -944,7 +950,7 @@ function renderRodataGroupDiff(label: string, set: HapDiffStringSet): HTMLElemen
 }
 
 /** 渲染一对 added/removed 字符串列表，每块独立分页（每页 100） */
-function renderStringDiffPair(set: HapDiffStringSet): HTMLElement {
+function renderStringDiffPair(set: DiffStringSet): HTMLElement {
   return h(
     'div',
     null,
@@ -985,23 +991,23 @@ function renderStringDiffPair(set: HapDiffStringSet): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderSymbolsDiff(lib: HapDiffNativeLibSymbolsItem): HTMLElement | null {
+function renderSymbolsDiff(lib: DiffNativeLibSymbolsItem): HTMLElement | null {
   if (lib.totals.added + lib.totals.removed + lib.totals.changed === 0) return null;
-  const addedRows = lib.added.map((s: HapNativeSymbol) => [
+  const addedRows = lib.added.map((s: NativeSymbol) => [
     h('code', null, s.name),
     s.type,
     s.bind,
     s.imported ? 'UND' : 'def',
     formatBytes(s.size),
   ]);
-  const removedRows = lib.removed.map((s: HapNativeSymbol) => [
+  const removedRows = lib.removed.map((s: NativeSymbol) => [
     h('code', null, s.name),
     s.type,
     s.bind,
     s.imported ? 'UND' : 'def',
     formatBytes(s.size),
   ]);
-  const changedRows = lib.changed.map((s: HapDiffSymbolChanged) => [
+  const changedRows = lib.changed.map((s: DiffSymbolChanged) => [
     h('code', null, s.name),
     s.type,
     s.bind,
@@ -1009,6 +1015,11 @@ function renderSymbolsDiff(lib: HapDiffNativeLibSymbolsItem): HTMLElement | null
     formatBytes(s.fromSize),
     formatBytes(s.toSize),
     deltaBytes(s.delta),
+    s.bodyChanged === true
+      ? badge('body changed', 'warning')
+      : s.bodyChanged === false
+        ? badge('body 不变', 'success')
+        : badge('未计 sha256', 'info'),
   ]);
 
   return h(
@@ -1051,9 +1062,9 @@ function renderSymbolsDiff(lib: HapDiffNativeLibSymbolsItem): HTMLElement | null
           null,
           h('h3', { class: 'panel-title' }, `修改 (${lib.totals.changed})（按 |Δ| 降序）`),
           paginatedTable(
-            ['Symbol', 'Type', 'Bind', '可见性', 'Baseline', 'Candidate', 'Delta'],
+            ['Symbol', 'Type', 'Bind', '可见性', 'Baseline', 'Candidate', 'Delta', 'Body'],
             changedRows,
-            ['path', undefined, undefined, undefined, 'num', 'num', 'num'],
+            ['path', undefined, undefined, undefined, 'num', 'num', 'num', undefined],
             { pageSize: SYMBOL_DIFF_PAGE_SIZE },
           ),
         )
@@ -1065,7 +1076,7 @@ function renderSymbolsDiff(lib: HapDiffNativeLibSymbolsItem): HTMLElement | null
 /* abc                                                                         */
 /* -------------------------------------------------------------------------- */
 
-export function renderAbc(d: HapDiffReport): HTMLElement {
+export function renderAbc(d: PackageDiffReport): HTMLElement {
   if (!d.abc) return shell('ABC', emptyState('两侧均无 abc 信息'));
   const a = d.abc;
   const fromS = a.modulesAbc.fromBytes !== null ? formatBytes(a.modulesAbc.fromBytes) : '∅';
@@ -1130,7 +1141,7 @@ export function renderAbc(d: HapDiffReport): HTMLElement {
   );
 }
 
-function renderAbcDetailsDiff(d: HapDiffReport): HTMLElement | null {
+function renderAbcDetailsDiff(d: PackageDiffReport): HTMLElement | null {
   const det = d.abcDetails;
   if (!det || det.entries.length === 0) return null;
 
@@ -1141,7 +1152,7 @@ function renderAbcDetailsDiff(d: HapDiffReport): HTMLElement | null {
     countCard('内容/版本变化', det.totals.changed, 'warn'),
   );
 
-  const rows = det.entries.map((e: HapDiffAbcDetailEntry) => [
+  const rows = det.entries.map((e: HarmonyDiffAbcDetailEntry) => [
     h('code', null, e.path),
     e.changed ? badge('changed', 'warning') : badge('unchanged', 'success'),
     cellPair(e.fromBytes, e.toBytes, formatBytesOrDash),
@@ -1172,7 +1183,7 @@ function renderAbcDetailsDiff(d: HapDiffReport): HTMLElement | null {
   ) as HTMLElement;
 }
 
-function renderAbcStringsDiffPanel(path: string, sd: HapDiffAbcStrings): HTMLElement {
+function renderAbcStringsDiffPanel(path: string, sd: HarmonyDiffAbcStrings): HTMLElement {
   const totalAdded =
     sd.classDescriptors.added.length +
     sd.moduleRecords.added.length +
@@ -1201,7 +1212,7 @@ function renderAbcStringsDiffPanel(path: string, sd: HapDiffAbcStrings): HTMLEle
   ) as HTMLElement;
 }
 
-function renderStringDiffGroup(label: string, set: HapDiffAbcStringSet): HTMLElement | null {
+function renderStringDiffGroup(label: string, set: HarmonyDiffAbcStringSet): HTMLElement | null {
   if (set.added.length === 0 && set.removed.length === 0) return null;
   return h(
     'details',
@@ -1237,7 +1248,7 @@ function cellPair<T>(a: T, b: T, fmt: (v: T) => string): HTMLElement {
 /* il2cpp metadata（Unity 游戏专用深度差异）                                   */
 /* -------------------------------------------------------------------------- */
 
-export function renderIl2cpp(d: HapDiffReport): HTMLElement {
+export function renderIl2cpp(d: PackageDiffReport): HTMLElement {
   if (!d.il2cppMetadata) {
     return shell(
       'IL2CPP 元数据',
@@ -1298,7 +1309,7 @@ export function renderIl2cpp(d: HapDiffReport): HTMLElement {
   );
 }
 
-function renderUnityRangeChange(e: HapDiffIl2cppMetadataEntry): HTMLElement {
+function renderUnityRangeChange(e: DiffIl2cppMetadataEntry): HTMLElement {
   const same = (e.fromUnityVersionRange ?? '') === (e.toUnityVersionRange ?? '');
   if (same) return h('span', { class: 'delta-zero' }, e.fromUnityVersionRange ?? '—') as HTMLElement;
   return h(
@@ -1310,7 +1321,7 @@ function renderUnityRangeChange(e: HapDiffIl2cppMetadataEntry): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderOneIl2cppDiffPanel(e: HapDiffIl2cppMetadataEntry): HTMLElement {
+function renderOneIl2cppDiffPanel(e: DiffIl2cppMetadataEntry): HTMLElement {
   const namesAdded = sumNamesAdded(e.namesDiff);
   const namesRemoved = sumNamesRemoved(e.namesDiff);
   const literalsAdded = sumLiteralsAdded(e.literalsDiff);
@@ -1333,7 +1344,7 @@ function renderOneIl2cppDiffPanel(e: HapDiffIl2cppMetadataEntry): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderIl2cppNamesDiff(nd: HapDiffIl2cppNames): HTMLElement | null {
+function renderIl2cppNamesDiff(nd: DiffIl2cppNames): HTMLElement | null {
   if (!nd.anyChanged) return null;
   return h(
     'div',
@@ -1347,7 +1358,7 @@ function renderIl2cppNamesDiff(nd: HapDiffIl2cppNames): HTMLElement | null {
   ) as HTMLElement;
 }
 
-function renderIl2cppLiteralsDiff(ld: HapDiffIl2cppLiterals): HTMLElement | null {
+function renderIl2cppLiteralsDiff(ld: DiffIl2cppLiterals): HTMLElement | null {
   if (!ld.anyChanged) return null;
   return h(
     'div',
@@ -1360,8 +1371,8 @@ function renderIl2cppLiteralsDiff(ld: HapDiffIl2cppLiterals): HTMLElement | null
   ) as HTMLElement;
 }
 
-/** 通用 HapDiffStringSet 渲染（区别于 HapDiffAbcStringSet 的 renderStringDiffGroup） */
-function renderStringDiffGroupG(label: string, set: HapDiffStringSet): HTMLElement | null {
+/** 通用 DiffStringSet 渲染（区别于 HarmonyDiffAbcStringSet 的 renderStringDiffGroup） */
+function renderStringDiffGroupG(label: string, set: DiffStringSet): HTMLElement | null {
   if (set.added.length === 0 && set.removed.length === 0) return null;
   return h(
     'details',
@@ -1378,7 +1389,7 @@ function renderStringDiffGroupG(label: string, set: HapDiffStringSet): HTMLEleme
   ) as HTMLElement;
 }
 
-function sumNamesAdded(nd: HapDiffIl2cppNames | undefined): number {
+function sumNamesAdded(nd: DiffIl2cppNames | undefined): number {
   if (!nd) return 0;
   return (
     nd.typeNames.added.length +
@@ -1388,7 +1399,7 @@ function sumNamesAdded(nd: HapDiffIl2cppNames | undefined): number {
     nd.other.added.length
   );
 }
-function sumNamesRemoved(nd: HapDiffIl2cppNames | undefined): number {
+function sumNamesRemoved(nd: DiffIl2cppNames | undefined): number {
   if (!nd) return 0;
   return (
     nd.typeNames.removed.length +
@@ -1398,11 +1409,11 @@ function sumNamesRemoved(nd: HapDiffIl2cppNames | undefined): number {
     nd.other.removed.length
   );
 }
-function sumLiteralsAdded(ld: HapDiffIl2cppLiterals | undefined): number {
+function sumLiteralsAdded(ld: DiffIl2cppLiterals | undefined): number {
   if (!ld) return 0;
   return ld.urls.added.length + ld.paths.added.length + ld.sqlLike.added.length + ld.other.added.length;
 }
-function sumLiteralsRemoved(ld: HapDiffIl2cppLiterals | undefined): number {
+function sumLiteralsRemoved(ld: DiffIl2cppLiterals | undefined): number {
   if (!ld) return 0;
   return (
     ld.urls.removed.length +
@@ -1416,7 +1427,7 @@ function sumLiteralsRemoved(ld: HapDiffIl2cppLiterals | undefined): number {
 /* signature                                                                   */
 /* -------------------------------------------------------------------------- */
 
-export function renderSignature(d: HapDiffReport): HTMLElement {
+export function renderSignature(d: PackageDiffReport): HTMLElement {
   if (!d.signature) return shell('签名', emptyState('两侧均无 signature 信息'));
   const s = d.signature;
   const presence = h(
@@ -1446,14 +1457,427 @@ export function renderSignature(d: HapDiffReport): HTMLElement {
       h('h3', { class: 'panel-title' }, '证书字段对比'),
       table(['字段', 'Baseline', 'Candidate', '状态'], fieldsRows, [undefined, 'path', 'path', undefined]),
     ),
+    renderSignatureVersions(s.versions),
+    renderSigningBlock(s.signingBlock),
   );
+}
+
+/**
+ * Android：v1/v2/v3/v3.1 签名 scheme diff 渲染。
+ * 双侧都无 versions 时调用方传 undefined，本函数直接返回 null（HarmonyOS 路径）。
+ */
+function renderSignatureVersions(v: DiffApkSignatureVersions | undefined): HTMLElement | null {
+  if (!v) return null;
+  const flagCell = (label: string, p: { from: boolean; to: boolean; changed: boolean }) => [
+    label,
+    p.from ? badge('有', 'success') : badge('无', 'info'),
+    p.to ? badge('有', 'success') : badge('无', 'info'),
+    p.changed ? badge('changed', 'warning') : badge('unchanged', 'info'),
+  ];
+  return h(
+    'div',
+    { class: 'panel' },
+    h('h3', { class: 'panel-title' }, 'Android 签名 Scheme 对比 (v1 / v2 / v3 / v3.1)'),
+    table(
+      ['Scheme', 'Baseline', 'Candidate', '状态'],
+      [flagCell('v1', v.v1), flagCell('v2', v.v2), flagCell('v3', v.v3), flagCell('v3.1', v.v31)],
+      [undefined, undefined, undefined, undefined],
+    ),
+    h(
+      'p',
+      { class: 'panel-desc' },
+      v.anyChanged
+        ? badge('整体有变化', 'warning')
+        : badge('整体未变化', 'success'),
+    ),
+  ) as HTMLElement;
+}
+
+/**
+ * Android：APK Signing Block 内 ID-value pair 的 diff 渲染。
+ * 列出 added / removed / 同 ID 但 value 大小变化的 changedSizes。
+ */
+function renderSigningBlock(sb: DiffApkSigningBlock | undefined): HTMLElement | null {
+  if (!sb) return null;
+  const totalRow = h(
+    'div',
+    { class: 'card-grid' },
+    h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'card-label' }, 'Signing Block 总字节'),
+      h(
+        'div',
+        { class: 'card-value' },
+        sb.fromTotalBytes !== null ? formatBytes(sb.fromTotalBytes) : '—',
+        h('span', { class: 'card-sub', style: 'margin: 0 4px;' }, '→'),
+        sb.toTotalBytes !== null ? formatBytes(sb.toTotalBytes) : '—',
+        ' ',
+        sb.totalBytesDelta !== null ? deltaBytes(sb.totalBytesDelta) : badge('—', 'info'),
+      ),
+    ),
+    countCard('新增 pair', sb.added.length, 'pos'),
+    countCard('删除 pair', sb.removed.length, 'neg'),
+    countCard('大小变化 pair', sb.changedSizes.length, 'warn'),
+  );
+
+  const addedRows = sb.added.map((e) => [h('code', null, e.idHex), e.name, formatBytes(e.sizeBytes)]);
+  const removedRows = sb.removed.map((e) => [
+    h('code', null, e.idHex),
+    e.name,
+    formatBytes(e.sizeBytes),
+  ]);
+  const changedRows = sb.changedSizes.map((e) => [
+    h('code', null, e.idHex),
+    e.name,
+    formatBytes(e.fromSize),
+    formatBytes(e.toSize),
+    deltaBytes(e.delta),
+  ]);
+
+  return h(
+    'div',
+    { class: 'panel' },
+    h('h3', { class: 'panel-title' }, 'APK Signing Block 对比'),
+    totalRow,
+    sb.added.length > 0
+      ? h(
+          'div',
+          { class: 'panel sub-panel' },
+          h('h3', { class: 'panel-title' }, `新增 pair (${sb.added.length})`),
+          table(['ID (hex)', 'Name', 'Size'], addedRows, [undefined, undefined, 'num']),
+        )
+      : null,
+    sb.removed.length > 0
+      ? h(
+          'div',
+          { class: 'panel sub-panel' },
+          h('h3', { class: 'panel-title' }, `删除 pair (${sb.removed.length})`),
+          table(['ID (hex)', 'Name', 'Size'], removedRows, [undefined, undefined, 'num']),
+        )
+      : null,
+    sb.changedSizes.length > 0
+      ? h(
+          'div',
+          { class: 'panel sub-panel' },
+          h('h3', { class: 'panel-title' }, `大小变化 pair (${sb.changedSizes.length})`),
+          table(
+            ['ID (hex)', 'Name', 'Baseline', 'Candidate', 'Delta'],
+            changedRows,
+            [undefined, undefined, 'num', 'num', 'num'],
+          ),
+        )
+      : null,
+  ) as HTMLElement;
+}
+
+/* -------------------------------------------------------------------------- */
+/* dex（Android default analyzer 产物 + 可选 dexDetails 深度）                  */
+/* -------------------------------------------------------------------------- */
+
+const DEX_METHOD_DIFF_PAGE_SIZE = 50;
+
+export function renderDex(d: PackageDiffReport): HTMLElement {
+  if (!d.dex && !d.dexDetails) {
+    return shell('DEX', emptyState('两侧均无 dex 信息（HarmonyOS 报告 / 非 Android 包）'));
+  }
+  return shell(
+    'DEX',
+    renderDexFileLevel(d.dex),
+    renderDexDetailsDiff(d.dexDetails),
+  );
+}
+
+function renderDexFileLevel(dx: DiffDex | undefined): HTMLElement | null {
+  if (!dx) return null;
+  const summary = h(
+    'div',
+    { class: 'card-grid' },
+    h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'card-label' }, 'dex 文件数'),
+      h('div', { class: 'card-value' }, deltaWithRatio(dx.totals.fileCount, (v) => v.toLocaleString())),
+    ),
+    h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'card-label' }, 'dex 总字节'),
+      h('div', { class: 'card-value' }, deltaWithRatio(dx.totals.totalBytes, formatBytes)),
+    ),
+    h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'card-label' }, 'methodIds 总和'),
+      h(
+        'div',
+        { class: 'card-value' },
+        deltaWithRatio(dx.totals.methodIdsCount, (v) => v.toLocaleString()),
+      ),
+    ),
+    h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'card-label' }, 'classDefs 总和'),
+      h(
+        'div',
+        { class: 'card-value' },
+        deltaWithRatio(dx.totals.classDefsCount, (v) => v.toLocaleString()),
+      ),
+    ),
+  );
+
+  const addedRows = dx.added.map((f) => [h('code', null, f.path), formatBytes(f.bytes), f.magic, f.version ?? '—']);
+  const removedRows = dx.removed.map((f) => [h('code', null, f.path), formatBytes(f.bytes), f.magic, f.version ?? '—']);
+  const changedRows = dx.changed.map((f) => [
+    h('code', null, f.path),
+    formatBytes(f.fromBytes),
+    formatBytes(f.toBytes),
+    deltaBytes(f.bytesDelta),
+    nullableCountDelta(f.methodIdsDelta),
+    nullableCountDelta(f.classDefsDelta),
+    nullableCountDelta(f.stringIdsDelta),
+  ]);
+
+  return h(
+    'div',
+    null,
+    h(
+      'div',
+      { class: 'panel' },
+      h('h3', { class: 'panel-title' }, 'dex 文件级汇总'),
+      summary,
+    ),
+    dx.added.length > 0
+      ? h(
+          'div',
+          { class: 'panel' },
+          h('h3', { class: 'panel-title' }, `新增 dex (${dx.added.length})`),
+          table(['路径', '体积', 'Magic', 'Version'], addedRows, ['path', 'num', undefined, undefined]),
+        )
+      : null,
+    dx.removed.length > 0
+      ? h(
+          'div',
+          { class: 'panel' },
+          h('h3', { class: 'panel-title' }, `删除 dex (${dx.removed.length})`),
+          table(['路径', '体积', 'Magic', 'Version'], removedRows, ['path', 'num', undefined, undefined]),
+        )
+      : null,
+    dx.changed.length > 0
+      ? h(
+          'div',
+          { class: 'panel' },
+          h('h3', { class: 'panel-title' }, `修改 dex (${dx.changed.length})`),
+          table(
+            ['路径', 'Baseline', 'Candidate', 'Δ Bytes', 'Δ methodIds', 'Δ classDefs', 'Δ stringIds'],
+            changedRows,
+            ['path', 'num', 'num', 'num', 'num', 'num', 'num'],
+          ),
+        )
+      : null,
+    dx.added.length + dx.removed.length + dx.changed.length === 0
+      ? emptyState('dex 文件级别无变化')
+      : null,
+  ) as HTMLElement;
+}
+
+function nullableCountDelta(d: number | null): HTMLElement {
+  if (d === null) return badge('—', 'info') as HTMLElement;
+  return deltaCount(d);
+}
+
+/**
+ * dexDetails 深度差异：每个 dex 一行，展开后看 strings + methods 子 diff。
+ * 仅当任一 dex 有 methodsDiff / stringsDiff 时渲染。
+ */
+function renderDexDetailsDiff(det: PackageDiffReport['dexDetails']): HTMLElement | null {
+  if (!det || det.entries.length === 0) return null;
+  const totals = det.totals;
+  const summary = h(
+    'div',
+    { class: 'card-grid' },
+    countCard('dex 总数', totals.total, 'mute'),
+    countCard('内容变化 dex', totals.changed, 'warn'),
+    countCard('方法新增', totals.methodsAdded, 'pos'),
+    countCard('方法删除', totals.methodsRemoved, 'neg'),
+    countCard('方法修改', totals.methodsChanged, 'warn'),
+  );
+
+  const overviewRows = det.entries.map((e) => [
+    h('code', null, e.path),
+    e.changed ? badge('changed', 'warning') : badge('unchanged', 'success'),
+    cellPair(e.fromBytes, e.toBytes, formatBytesOrDash),
+    cellPair(e.fromSha256, e.toSha256, (v) => (v ? shortHash(v) : '—')),
+    methodsCountChip(e),
+  ]);
+
+  const perDexPanels = det.entries
+    .filter((e) => (e.methodsDiff && hasMethodChange(e.methodsDiff)) || (e.stringsDiff && e.stringsDiff.anyChanged))
+    .map((e) => renderOneDexDetailPanel(e));
+
+  return h(
+    'div',
+    { class: 'panel' },
+    h('h3', { class: 'panel-title' }, '可选深度差异 · DEX 字符串池 / 方法表'),
+    summary,
+    table(
+      ['路径', '状态', '体积 B → C', 'SHA-256 B → C', '方法变化'],
+      overviewRows,
+      ['path', undefined, 'num', undefined, undefined],
+    ),
+    perDexPanels.length > 0
+      ? h('h3', { class: 'panel-title', style: 'margin-top:14px' }, '逐 dex 方法 / 字符串差异')
+      : null,
+    ...perDexPanels,
+  ) as HTMLElement;
+}
+
+function methodsCountChip(e: DiffDexDetailEntry): HTMLElement {
+  if (!e.methodsDiff) return h('span', { class: 'delta-zero' }, '—') as HTMLElement;
+  const t = e.methodsDiff.totals;
+  if (t.added + t.removed + t.changed === 0) {
+    return h('span', { class: 'delta-zero' }, '0+/0−/0~') as HTMLElement;
+  }
+  return h(
+    'span',
+    null,
+    h('span', { class: 'delta-pos' }, `+${t.added}`),
+    ' / ',
+    h('span', { class: 'delta-neg' }, `−${t.removed}`),
+    ' / ',
+    h('span', { class: 'delta-zero' }, `~${t.changed}`),
+  ) as HTMLElement;
+}
+
+function hasMethodChange(md: DiffDexMethods): boolean {
+  return md.totals.added + md.totals.removed + md.totals.changed > 0;
+}
+
+function renderOneDexDetailPanel(e: DiffDexDetailEntry): HTMLElement {
+  const md = e.methodsDiff;
+  const sd = e.stringsDiff;
+  const methodCounts = md
+    ? `方法 +${md.totals.added} −${md.totals.removed} ~${md.totals.changed}`
+    : '';
+  const stringCounts =
+    sd && sd.anyChanged
+      ? `字符串 ` +
+        `类+${sd.classDescriptors.added.length} 类−${sd.classDescriptors.removed.length} / ` +
+        `签名+${sd.methodSignatures.added.length} 签名−${sd.methodSignatures.removed.length}`
+      : '';
+
+  return h(
+    'details',
+    { class: 'panel sub-panel', open: '' },
+    h(
+      'summary',
+      null,
+      h('strong', null, e.path),
+      ' · ',
+      methodCounts,
+      methodCounts && stringCounts ? ' · ' : '',
+      stringCounts,
+    ),
+    md ? renderDexMethodsDiff(md) : null,
+    sd ? renderDexStringsDiff(sd) : null,
+  ) as HTMLElement;
+}
+
+function renderDexMethodsDiff(md: DiffDexMethods): HTMLElement | null {
+  if (!hasMethodChange(md)) return null;
+  const addedRows = md.added.map((m) => [
+    h('code', { title: m.fullName }, m.fullName),
+    m.insnsSize !== null ? m.insnsSize.toLocaleString() : badge('abstract', 'info'),
+  ]);
+  const removedRows = md.removed.map((m) => [
+    h('code', { title: m.fullName }, m.fullName),
+    m.insnsSize !== null ? m.insnsSize.toLocaleString() : badge('abstract', 'info'),
+  ]);
+  const changedRows = md.changed.map((m) => [
+    h('code', { title: m.fullName }, m.fullName),
+    m.fromInsnsSize !== null ? m.fromInsnsSize.toLocaleString() : '—',
+    m.toInsnsSize !== null ? m.toInsnsSize.toLocaleString() : '—',
+    m.insnsSizeDelta !== null ? deltaCount(m.insnsSizeDelta) : badge('—', 'info'),
+    m.bodyChanged === true
+      ? badge('body changed', 'warning')
+      : m.bodyChanged === false
+        ? badge('body 不变', 'success')
+        : badge('未计 sha256', 'info'),
+    m.accessFlagsChanged
+      ? badge(`flags 0x${m.fromAccessFlags.toString(16)}→0x${m.toAccessFlags.toString(16)}`, 'warning')
+      : '—',
+  ]);
+
+  return h(
+    'div',
+    { class: 'panel sub-panel' },
+    h('h3', { class: 'panel-title' }, '方法级差异'),
+    md.added.length > 0
+      ? h(
+          'div',
+          null,
+          h('h3', { class: 'panel-title' }, `新增方法 (${md.added.length})`),
+          paginatedTable(
+            ['Method (fullName)', 'insns 大小'],
+            addedRows,
+            ['path', 'num'],
+            { pageSize: DEX_METHOD_DIFF_PAGE_SIZE },
+          ),
+        )
+      : null,
+    md.removed.length > 0
+      ? h(
+          'div',
+          null,
+          h('h3', { class: 'panel-title' }, `删除方法 (${md.removed.length})`),
+          paginatedTable(
+            ['Method (fullName)', 'insns 大小'],
+            removedRows,
+            ['path', 'num'],
+            { pageSize: DEX_METHOD_DIFF_PAGE_SIZE },
+          ),
+        )
+      : null,
+    md.changed.length > 0
+      ? h(
+          'div',
+          null,
+          h(
+            'h3',
+            { class: 'panel-title' },
+            `修改方法 (${md.changed.length})（按 |insnsSize Δ| 降序）`,
+          ),
+          paginatedTable(
+            ['Method (fullName)', 'B', 'C', 'Δ insns', 'Body', 'AccessFlags'],
+            changedRows,
+            ['path', 'num', 'num', 'num', undefined, undefined],
+            { pageSize: DEX_METHOD_DIFF_PAGE_SIZE },
+          ),
+        )
+      : null,
+  ) as HTMLElement;
+}
+
+function renderDexStringsDiff(sd: DiffDexStrings): HTMLElement | null {
+  if (!sd.anyChanged) return null;
+  return h(
+    'div',
+    { class: 'panel sub-panel' },
+    h('h3', { class: 'panel-title' }, 'DEX 字符串池差异（按分类）'),
+    renderStringDiffGroupG('类描述符 (L...;)', sd.classDescriptors),
+    renderStringDiffGroupG('方法签名 (...)..', sd.methodSignatures),
+    renderStringDiffGroupG('源文件', sd.sourceFiles),
+    renderStringDiffGroupG('标识符', sd.identifiers),
+    renderStringDiffGroupG('其它', sd.other),
+  ) as HTMLElement;
 }
 
 /* -------------------------------------------------------------------------- */
 /* dependencies                                                                */
 /* -------------------------------------------------------------------------- */
 
-export function renderDependencies(d: HapDiffReport): HTMLElement {
+export function renderDependencies(d: PackageDiffReport): HTMLElement {
   if (!d.dependencies) return shell('依赖', emptyState('两侧均无 dependencies 信息'));
   const dep = d.dependencies;
   const empty = dep.hsp.added.length === 0 && dep.hsp.removed.length === 0 && dep.har.added.length === 0 && dep.har.removed.length === 0;
@@ -1479,7 +1903,7 @@ export function renderDependencies(d: HapDiffReport): HTMLElement {
 /* warnings                                                                    */
 /* -------------------------------------------------------------------------- */
 
-export function renderWarnings(d: HapDiffReport): HTMLElement {
+export function renderWarnings(d: PackageDiffReport): HTMLElement {
   if (!d.warnings || d.warnings.length === 0) {
     return shell('警告', emptyState('差异计算过程未触发警告'));
   }

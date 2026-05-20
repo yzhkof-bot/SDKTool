@@ -3,10 +3,10 @@ import { X509Certificate } from 'node:crypto';
 import type {
   Analyzer,
   AnalyzerContext,
-  HapEntry,
-  HapReport,
-  HapSignatureInfo,
-} from '../../shared/schema.js';
+  PackageEntry,
+  PackageReport,
+  PackageSignatureInfo,
+} from '../../../shared/schema.js';
 
 /**
  * 签名信息分析（仅读不验证）。
@@ -28,14 +28,14 @@ export const signatureAnalyzer: Analyzer = {
   id: 'signature',
   name: 'Signature',
   enabledByDefault: true,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const sigEntries = findSignatureEntries(ctx.hap.entries);
     if (sigEntries.length === 0) {
-      const signature: HapSignatureInfo = { present: false };
+      const signature: PackageSignatureInfo = { present: false };
       return { signature };
     }
 
-    const out: HapSignatureInfo = { present: true };
+    const out: PackageSignatureInfo = { present: true };
 
     // 优先解析 PKCS#7 容器（.RSA/.EC/.DSA/.p7b）
     const containers = sigEntries.filter((e) => CONTAINER_RE.test(e.path));
@@ -77,7 +77,7 @@ export const signatureAnalyzer: Analyzer = {
 const SIGNATURE_RE = /^META-INF\/.+\.(rsa|ec|dsa|sf|mf|p7b)$/i;
 const CONTAINER_RE = /\.(rsa|ec|dsa|p7b)$/i;
 
-function findSignatureEntries(entries: HapEntry[]): HapEntry[] {
+function findSignatureEntries(entries: PackageEntry[]): PackageEntry[] {
   return entries.filter((e) => !e.isDirectory && SIGNATURE_RE.test(e.path));
 }
 

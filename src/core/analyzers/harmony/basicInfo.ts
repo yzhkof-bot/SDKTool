@@ -1,10 +1,10 @@
 import type {
   Analyzer,
   AnalyzerContext,
-  HapBasicInfo,
-  HapReport,
-} from '../../shared/schema.js';
-import { isRecord, toStringArray } from '../../shared/utils.js';
+  PackageBasicInfo,
+  PackageReport,
+} from '../../../shared/schema.js';
+import { isRecord, toStringArray } from '../../../shared/utils.js';
 
 import { readModuleJson, readPackInfo } from './_shared.js';
 
@@ -20,7 +20,7 @@ export const basicInfoAnalyzer: Analyzer = {
   id: 'basic',
   name: 'Basic Info',
   enabledByDefault: true,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const { value: moduleJson } = await readModuleJson(ctx);
     const { value: packInfo } = await readPackInfo(ctx);
 
@@ -44,7 +44,7 @@ export const basicInfoAnalyzer: Analyzer = {
 
 /* ------------------------------------------------------------------ */
 
-function extractBasicInfo(moduleJson: unknown, ctx: AnalyzerContext): HapBasicInfo {
+function extractBasicInfo(moduleJson: unknown, ctx: AnalyzerContext): PackageBasicInfo {
   const root = isRecord(moduleJson) ? moduleJson : {};
   const app = isRecord(root.app) ? root.app : {};
   const moduleObj = isRecord(root.module) ? root.module : {};
@@ -91,9 +91,9 @@ function extractBasicInfo(moduleJson: unknown, ctx: AnalyzerContext): HapBasicIn
   };
 }
 
-function readAbilities(input: unknown): HapBasicInfo['abilities'] {
+function readAbilities(input: unknown): PackageBasicInfo['abilities'] {
   if (!Array.isArray(input)) return [];
-  const out: HapBasicInfo['abilities'] = [];
+  const out: PackageBasicInfo['abilities'] = [];
   for (const item of input) {
     if (!isRecord(item)) continue;
     const name = readOptionalString(item.name);

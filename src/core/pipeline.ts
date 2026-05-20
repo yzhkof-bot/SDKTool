@@ -2,22 +2,25 @@ import type {
   Analyzer,
   AnalyzeOptions,
   AnalyzerContext,
-  HapReport,
+  PackageReport,
+  Platform,
   ReportWarning,
-  VirtualHap,
+  VirtualPackage,
 } from '../shared/schema.js';
-import { SCHEMA_VERSION } from '../shared/schema.js';
+import { DEFAULT_PLATFORM, SCHEMA_VERSION } from '../shared/schema.js';
 
 export interface PipelineResult {
-  report: HapReport;
+  report: PackageReport;
 }
 
 export interface PipelineInput {
-  hap: VirtualHap;
+  hap: VirtualPackage;
   analyzers: Analyzer[];
   options: AnalyzeOptions;
   /** 由调用方传入：工具版本字符串 */
   toolVersion: string;
+  /** 包平台；不传时按 'harmony' 处理（兼容老调用方） */
+  platform?: Platform;
 }
 
 /**
@@ -28,16 +31,20 @@ export interface PipelineInput {
  * 这样能保证即使某一维度解析失败，其余维度的数据仍能产出，AI/CI 拿到的 JSON 仍可用。
  */
 export async function runPipeline(input: PipelineInput): Promise<PipelineResult> {
-  const { hap, analyzers, options, toolVersion } = input;
+  const { hap, analyzers, options, toolVersion, platform } = input;
 
   const enabled = pickEnabledAnalyzers(analyzers, options);
   const warnings: ReportWarning[] = [];
 
-  const tasks = enabled.map((analyzer) => runOne(analyzer, hap, options, warnings));
+  const resolvedPlatform: Platform = platform ?? DEFAULT_PLATFORM;
+  const tasks = enabled.map((analyzer) =>
+    runOne(analyzer, hap, options, resolvedPlatform, warnings),
+  );
   const partials = await Promise.all(tasks);
 
-  const merged: HapReport = {
+  const merged: PackageReport = {
     schemaVersion: SCHEMA_VERSION,
+    platform: resolvedPlatform,
     meta: {
       file: hap.filePath,
       fileSize: hap.fileSize,
@@ -87,13 +94,15 @@ function pickEnabledAnalyzers(all: Analyzer[], options: AnalyzeOptions): Analyze
 
 async function runOne(
   analyzer: Analyzer,
-  hap: VirtualHap,
+  hap: VirtualPackage,
   options: AnalyzeOptions,
+  platform: Platform,
   warningsSink: ReportWarning[],
-): Promise<Partial<HapReport>> {
+): Promise<Partial<PackageReport>> {
   const ctx: AnalyzerContext = {
     hap,
     options,
+    platform,
     addWarning: (w) => warningsSink.push({ ...w, source: analyzer.id }),
   };
   try {
@@ -109,8 +118,14 @@ async function runOne(
   }
 }
 
-/** 防止 analyzer 误覆盖 meta / warnings / schemaVersion */
-function stripMeta(partial: Partial<HapReport>): Partial<HapReport> {
-  const { meta: _m, warnings: _w, schemaVersion: _s, ...rest } = partial;
+/** 防止 analyzer 误覆盖 meta / warnings / schemaVersion / platform */
+function stripMeta(partial: Partial<PackageReport>): Partial<PackageReport> {
+  const {
+    meta: _m,
+    warnings: _w,
+    schemaVersion: _s,
+    platform: _p,
+    ...rest
+  } = partial;
   return rest;
 }

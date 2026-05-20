@@ -1,15 +1,15 @@
 import type {
   Analyzer,
   AnalyzerContext,
-  HapEntry,
-  HapReport,
-  HapResources,
-} from '../../shared/schema.js';
+  PackageEntry,
+  PackageReport,
+  PackageResources,
+} from '../../../shared/schema.js';
 import {
   IMAGE_EXTENSIONS,
   MEDIA_EXTENSIONS,
-} from '../../shared/constants.js';
-import { extname } from '../../shared/utils.js';
+} from '../../../shared/constants.js';
+import { extname } from '../../../shared/utils.js';
 
 /**
  * 资源分析：
@@ -30,7 +30,7 @@ export const resourceAnalyzer: Analyzer = {
   id: 'resource',
   name: 'Resource',
   enabledByDefault: true,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const topLimit = 10;
     const resources = computeResources(ctx, topLimit);
     return { resources };
@@ -39,7 +39,7 @@ export const resourceAnalyzer: Analyzer = {
 
 /* ------------------------------------------------------------------ */
 
-function computeResources(ctx: AnalyzerContext, topLimit: number): HapResources {
+function computeResources(ctx: AnalyzerContext, topLimit: number): PackageResources {
   const fileEntries = ctx.hap.entries.filter((e) => !e.isDirectory);
 
   let imagesCount = 0;
@@ -88,7 +88,7 @@ function computeResources(ctx: AnalyzerContext, topLimit: number): HapResources 
     .sort((a, b) => b.bytes - a.bytes)
     .slice(0, topLimit);
 
-  const out: HapResources = {
+  const out: PackageResources = {
     images: { count: imagesCount, bytes: imagesBytes, topLargest },
     strings: { count: stringsCount, locales: [...locales].sort() },
     media: { count: mediaCount, bytes: mediaBytes },
@@ -99,7 +99,7 @@ function computeResources(ctx: AnalyzerContext, topLimit: number): HapResources 
   return out;
 }
 
-function isStringJson(entry: HapEntry): boolean {
+function isStringJson(entry: PackageEntry): boolean {
   // resources/<locale>/element/string.json
   return /\/element\/string\.json$/.test(entry.path);
 }

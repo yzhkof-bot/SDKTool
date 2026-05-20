@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-import { analyzeHap } from '../../core/index.js';
+import { analyzePackage } from '../../core/index.js';
 import { UsageError } from '../errors.js';
 import { renderReportHtml } from '../utils/render.js';
 
@@ -52,7 +52,7 @@ export async function runAnalyzeCommand(
   const extras = parseIdList(opts.extras, '--extras');
   const topFilesLimit = parseTopFiles(opts.topFiles);
 
-  const report = await analyzeHap(absPath, {
+  const report = await analyzePackage(absPath, {
     only,
     extras,
     topFilesLimit,

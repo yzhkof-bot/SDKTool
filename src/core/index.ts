@@ -1,38 +1,54 @@
-import type { Analyzer, AnalyzeOptions, HapReport } from '../shared/schema.js';
+import type { Analyzer, AnalyzeOptions, PackageReport } from '../shared/schema.js';
+import { DEFAULT_PLATFORM } from '../shared/schema.js';
 
-import { builtinAnalyzers } from './analyzers/index.js';
-import { openHap } from './loader/hapLoader.js';
+import { getAllAnalyzers } from './analyzers/index.js';
+import { openPackage } from './loader/index.js';
 import { runPipeline } from './pipeline.js';
 
-export interface AnalyzeHapOptions extends AnalyzeOptions {
-  /** 自定义 analyzer 列表；不传则使用内置全套 */
+export interface AnalyzePackageOptions extends AnalyzeOptions {
+  /** 自定义 analyzer 列表；不传则按 platform 取默认全套（HarmonyOS / Android / ...） */
   analyzers?: Analyzer[];
 }
 
 /**
- * 分析单个 .hap 文件，产出标准化 HapReport。
+ * 分析单个应用包（HarmonyOS .hap / Android .apk 等），产出标准化 PackageReport。
  *
  * 这是核心层对外的唯一主入口，CLI / 第三方代码都通过它调用。
+ * platform 通过 options.platform 指定，未指定时按 'harmony' 处理（向后兼容）。
  */
-export async function analyzeHap(
+export async function analyzePackage(
   filePath: string,
-  options: AnalyzeHapOptions = {},
-): Promise<HapReport> {
-  const hap = await openHap(filePath);
+  options: AnalyzePackageOptions = {},
+): Promise<PackageReport> {
+  const platform = options.platform ?? DEFAULT_PLATFORM;
+  const pkg = await openPackage(filePath, platform);
   try {
     const { report } = await runPipeline({
-      hap,
-      analyzers: options.analyzers ?? builtinAnalyzers,
+      hap: pkg,
+      analyzers: options.analyzers ?? getAllAnalyzers(platform),
       options,
       toolVersion: options.toolVersion ?? 'unknown',
+      platform,
     });
     return report;
   } finally {
-    await hap.close();
+    await pkg.close();
   }
 }
 
-export { openHap } from './loader/hapLoader.js';
+/**
+ * @deprecated 用 {@link AnalyzePackageOptions}（更名以匹配 PackageReport）。
+ * 历史上工具只跑 HarmonyOS .hap，所以叫 AnalyzeHapOptions；现在扩展到 Android/iOS，
+ * 类型本身没变，只是改了名字。alias 保留给外部调用者一个迁移窗口。
+ */
+export type AnalyzeHapOptions = AnalyzePackageOptions;
+
+/**
+ * @deprecated 用 {@link analyzePackage}。同样的入参 / 同样的产出，只是名字更新。
+ */
+export const analyzeHap = analyzePackage;
+
+export { openHap, openApk, openZipPackage, openPackage } from './loader/index.js';
 export { runPipeline } from './pipeline.js';
 export {
   builtinAnalyzers,
@@ -52,5 +68,12 @@ export {
   sizeAnalyzer,
 } from './analyzers/index.js';
 export type { ExtraAnalyzerMeta } from './analyzers/index.js';
-export { diffHapReports } from './differ/index.js';
-export type { Analyzer, AnalyzeOptions, HapReport, HapDiffReport } from '../shared/schema.js';
+export { diffPackageReports, diffHapReports } from './differ/index.js';
+export type {
+  Analyzer,
+  AnalyzeOptions,
+  PackageReport,
+  PackageDiffReport,
+  Platform,
+} from '../shared/schema.js';
+export { DEFAULT_PLATFORM } from '../shared/schema.js';

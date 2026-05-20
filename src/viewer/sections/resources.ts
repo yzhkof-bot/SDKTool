@@ -1,8 +1,8 @@
-import type { HapReport } from '../../shared/schema.js';
+import type { PackageReport } from '../../shared/schema.js';
 
 import { emptyState, formatBytes, h, table } from '../helpers.js';
 
-export function renderResources(report: HapReport): HTMLElement {
+export function renderResources(report: PackageReport): HTMLElement {
   const r = report.resources;
   if (!r) return emptyState('无 resource 数据');
 

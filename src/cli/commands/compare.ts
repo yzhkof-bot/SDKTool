@@ -2,9 +2,9 @@ import { existsSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, resolve } from 'node:path';
 
-import { analyzeHap } from '../../core/index.js';
-import { diffHapReports } from '../../core/differ/index.js';
-import { SCHEMA_VERSION, type HapReport } from '../../shared/schema.js';
+import { analyzePackage } from '../../core/index.js';
+import { diffPackageReports } from '../../core/differ/index.js';
+import { SCHEMA_VERSION, type PackageReport } from '../../shared/schema.js';
 import { UsageError } from '../errors.js';
 import { renderDiffHtml } from '../utils/render.js';
 
@@ -63,7 +63,7 @@ export async function runCompareCommand(
     toolVersion: deps.toolVersion,
   });
 
-  const diff = diffHapReports(leftReport, rightReport, {
+  const diff = diffPackageReports(leftReport, rightReport, {
     toolVersion: deps.toolVersion,
   });
 
@@ -108,9 +108,9 @@ interface AnalyzeArgs {
  * 接受 .hap / .json 任一种输入；对 .json 直接读取并校验 schemaVersion。
  *
  * 校验从宽：只要顶层是 object 且能 JSON.parse、含 meta 字段，就当成已分析报告处理；
- * 否则当作 .hap 走 analyzeHap。这样支持上游用 `kingsdk analyze ./a.hap -o a.json` 产物。
+ * 否则当作 .hap 走 analyzePackage。这样支持上游用 `kingsdk analyze ./a.hap -o a.json` 产物。
  */
-async function loadOrAnalyze(input: string, args: AnalyzeArgs): Promise<HapReport> {
+async function loadOrAnalyze(input: string, args: AnalyzeArgs): Promise<PackageReport> {
   const abs = resolve(input);
   if (!existsSync(abs)) {
     throw new UsageError(`文件不存在: ${abs}`);
@@ -130,7 +130,7 @@ async function loadOrAnalyze(input: string, args: AnalyzeArgs): Promise<HapRepor
     }
     if (!isHapReport(parsed)) {
       throw new UsageError(
-        `JSON 文件 ${abs} 缺少 meta / schemaVersion 字段，无法识别为 HapReport`,
+        `JSON 文件 ${abs} 缺少 meta / schemaVersion 字段，无法识别为 PackageReport`,
       );
     }
     if (parsed.schemaVersion !== SCHEMA_VERSION) {
@@ -143,7 +143,7 @@ async function loadOrAnalyze(input: string, args: AnalyzeArgs): Promise<HapRepor
   }
 
   // 默认走 analyze
-  return analyzeHap(abs, {
+  return analyzePackage(abs, {
     only: args.only,
     extras: args.extras,
     topFilesLimit: args.topFilesLimit,
@@ -151,7 +151,7 @@ async function loadOrAnalyze(input: string, args: AnalyzeArgs): Promise<HapRepor
   });
 }
 
-function isHapReport(v: unknown): v is HapReport {
+function isHapReport(v: unknown): v is PackageReport {
   return (
     typeof v === 'object' &&
     v !== null &&

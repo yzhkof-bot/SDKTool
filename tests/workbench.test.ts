@@ -11,6 +11,7 @@ import {
   type WorkbenchServerHandle,
 } from '../src/cli/workbench/server.js';
 
+import { buildFixtureApk, DEMO_APK_PACKAGE } from './helpers/fixtureApk.js';
 import { buildFixtureHap } from './helpers/fixtureHap.js';
 
 const tmpDirs: string[] = [];
@@ -330,6 +331,33 @@ describe('startWorkbenchServer', () => {
     expect(report.schemaVersion).toBe('1.0');
   });
 
+  it('POST /api/analyze 带 platform=android 跑通 .apk fixture，job + report 都标 android', async () => {
+    const apk = await buildFixtureApk();
+
+    const startResp = await fetch(`${handle.url}api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: apk, platform: 'android' }),
+    });
+    expect(startResp.status).toBe(202);
+    const { jobId } = await startResp.json();
+
+    const job = await pollUntilFinished(handle, jobId);
+    expect(job.status).toBe('done');
+    // job 元数据带 platform
+    expect(job.platform).toBe('android');
+
+    // 拉 json 产物：report.platform=android、androidManifest 解析正确
+    const jsonResp = await fetch(`${handle.url}jobs/${jobId}/json`);
+    expect(jsonResp.status).toBe(200);
+    const report = await jsonResp.json();
+    expect(report.platform).toBe('android');
+    expect(report.androidManifest?.packageName).toBe(DEMO_APK_PACKAGE);
+    // 跨平台字段照样填齐：basic 由 manifest 派生，nativeLibs 走 lib/ 前缀
+    expect(report.basic?.bundleName).toBe(DEMO_APK_PACKAGE);
+    expect(report.nativeLibs?.architectures.sort()).toEqual(['arm64-v8a', 'x86_64']);
+  });
+
   it('POST /api/analyze 路径不存在 → 作业立刻 error', async () => {
     const r = await fetch(`${handle.url}api/analyze`, {
       method: 'POST',
@@ -370,7 +398,7 @@ describe('startWorkbenchServer', () => {
     expect(diff.summary.identical).toBe(true);
   });
 
-  it('compare job 完成后 outputs.sides 暴露左右两侧 URL，并能取到真实 HapReport', async () => {
+  it('compare job 完成后 outputs.sides 暴露左右两侧 URL，并能取到真实 PackageReport', async () => {
     const hap = await buildFixtureHap();
     const startResp = await fetch(`${handle.url}api/compare`, {
       method: 'POST',
@@ -388,12 +416,12 @@ describe('startWorkbenchServer', () => {
     expect(job.outputs?.sides?.right.jsonUrl).toBe(`/jobs/${jobId}/sides/right/json`);
     expect(job.outputs?.sides?.right.sourcePath).toBe(hap);
 
-    // 单侧 JSON 应该是完整的 HapReport（带 schemaVersion + meta），而不是 diff
+    // 单侧 JSON 应该是完整的 PackageReport（带 schemaVersion + meta），而不是 diff
     const leftJson = await (await fetch(`${handle.url}jobs/${jobId}/sides/left/json`)).json();
     expect(leftJson.schemaVersion).toBe('1.0');
     expect(typeof leftJson.meta?.sha256).toBe('string');
     expect(leftJson.meta.file).toBe(hap);
-    // diff JSON 不会有 basic / size / nativeLibs 顶层字段；HapReport 会有
+    // diff JSON 不会有 basic / size / nativeLibs 顶层字段；PackageReport 会有
     expect(leftJson).not.toHaveProperty('summary');
 
     // 单侧 HTML 应该是 viewer 模板（带 #__DATA__ 注入），且不是 diff 模板

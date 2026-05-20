@@ -1,9 +1,109 @@
-import type { SizeCategory } from './schema.js';
+import type { AndroidPermissionLevel, Platform, SizeCategory } from './schema.js';
+
+/**
+ * Android 权限保护等级清单（与官方 Manifest.permission 文档对齐）。
+ *
+ * 清单不必穷举（Android 已声明数百个权限），只覆盖应用最常见的：
+ *   - 全部 dangerous（runtime）权限，让 sensitive 标记尽量准确
+ *   - 几个最常见 normal 权限（INTERNET / NETWORK_STATE / WAKE_LOCK 等），
+ *     让 viewer 在统计图上能给出清晰的 'normal' 计数
+ *   - 少量 signature 级权限作为示例
+ *
+ * 未列出的权限 level=undefined → 视为 'unknown'，sensitive=false。
+ * 不构成完整的 Android 权限百科；后续按需逐步补全。
+ */
+export const ANDROID_PERMISSION_LEVELS: Readonly<Record<string, AndroidPermissionLevel>> =
+  Object.freeze({
+    // ------ Calendar ------
+    'android.permission.READ_CALENDAR': 'dangerous',
+    'android.permission.WRITE_CALENDAR': 'dangerous',
+    // ------ Call Log ------
+    'android.permission.READ_CALL_LOG': 'dangerous',
+    'android.permission.WRITE_CALL_LOG': 'dangerous',
+    'android.permission.PROCESS_OUTGOING_CALLS': 'dangerous',
+    // ------ Camera ------
+    'android.permission.CAMERA': 'dangerous',
+    // ------ Contacts ------
+    'android.permission.READ_CONTACTS': 'dangerous',
+    'android.permission.WRITE_CONTACTS': 'dangerous',
+    'android.permission.GET_ACCOUNTS': 'dangerous',
+    // ------ Location ------
+    'android.permission.ACCESS_FINE_LOCATION': 'dangerous',
+    'android.permission.ACCESS_COARSE_LOCATION': 'dangerous',
+    'android.permission.ACCESS_BACKGROUND_LOCATION': 'dangerous',
+    // ------ Microphone ------
+    'android.permission.RECORD_AUDIO': 'dangerous',
+    // ------ Phone ------
+    'android.permission.READ_PHONE_STATE': 'dangerous',
+    'android.permission.READ_PHONE_NUMBERS': 'dangerous',
+    'android.permission.CALL_PHONE': 'dangerous',
+    'android.permission.ANSWER_PHONE_CALLS': 'dangerous',
+    'android.permission.ADD_VOICEMAIL': 'dangerous',
+    'android.permission.USE_SIP': 'dangerous',
+    'android.permission.ACCEPT_HANDOVER': 'dangerous',
+    // ------ Sensors ------
+    'android.permission.BODY_SENSORS': 'dangerous',
+    'android.permission.BODY_SENSORS_BACKGROUND': 'dangerous',
+    // ------ SMS ------
+    'android.permission.SEND_SMS': 'dangerous',
+    'android.permission.RECEIVE_SMS': 'dangerous',
+    'android.permission.READ_SMS': 'dangerous',
+    'android.permission.RECEIVE_WAP_PUSH': 'dangerous',
+    'android.permission.RECEIVE_MMS': 'dangerous',
+    // ------ Storage (legacy) ------
+    'android.permission.READ_EXTERNAL_STORAGE': 'dangerous',
+    'android.permission.WRITE_EXTERNAL_STORAGE': 'dangerous',
+    // ------ Storage (Android 13+ split) ------
+    'android.permission.READ_MEDIA_IMAGES': 'dangerous',
+    'android.permission.READ_MEDIA_VIDEO': 'dangerous',
+    'android.permission.READ_MEDIA_AUDIO': 'dangerous',
+    'android.permission.READ_MEDIA_VISUAL_USER_SELECTED': 'dangerous',
+    // ------ Activity Recognition ------
+    'android.permission.ACTIVITY_RECOGNITION': 'dangerous',
+    // ------ Notifications (Android 13+) ------
+    'android.permission.POST_NOTIFICATIONS': 'dangerous',
+    // ------ Nearby Devices (Android 12+) ------
+    'android.permission.NEARBY_WIFI_DEVICES': 'dangerous',
+    'android.permission.BLUETOOTH_SCAN': 'dangerous',
+    'android.permission.BLUETOOTH_CONNECT': 'dangerous',
+    'android.permission.BLUETOOTH_ADVERTISE': 'dangerous',
+    // ------ 常见 normal ------
+    'android.permission.INTERNET': 'normal',
+    'android.permission.ACCESS_NETWORK_STATE': 'normal',
+    'android.permission.ACCESS_WIFI_STATE': 'normal',
+    'android.permission.CHANGE_WIFI_STATE': 'normal',
+    'android.permission.WAKE_LOCK': 'normal',
+    'android.permission.FOREGROUND_SERVICE': 'normal',
+    'android.permission.VIBRATE': 'normal',
+    'android.permission.RECEIVE_BOOT_COMPLETED': 'normal',
+    'android.permission.SET_WALLPAPER': 'normal',
+    'android.permission.MODIFY_AUDIO_SETTINGS': 'normal',
+    'android.permission.BLUETOOTH': 'normal',
+    'android.permission.BLUETOOTH_ADMIN': 'normal',
+    'android.permission.NFC': 'normal',
+    // ------ 常见 signature ------
+    'android.permission.READ_VOICEMAIL': 'signature',
+    'android.permission.WRITE_VOICEMAIL': 'signature',
+    'android.permission.BIND_DEVICE_ADMIN': 'signature',
+    'android.permission.BIND_ACCESSIBILITY_SERVICE': 'signature',
+  });
+
+/**
+ * Android 敏感权限集合：所有 level==='dangerous' 的权限名。
+ *
+ * permission analyzer 用它给 PackagePermission.sensitive=true 打标。
+ * 与 ANDROID_PERMISSION_LEVELS 保持唯一来源（自动派生，不必手动维护双份）。
+ */
+export const ANDROID_SENSITIVE_PERMISSIONS: ReadonlySet<string> = new Set(
+  Object.entries(ANDROID_PERMISSION_LEVELS)
+    .filter(([, level]) => level === 'dangerous')
+    .map(([name]) => name),
+);
 
 /**
  * HarmonyOS 敏感权限白名单（按场景大致分组）。
  *
- * 仅用于在报告中给敏感项打 `sensitive: true` 标，不做合规校验。
+ * 仅用于在报告中给 sensitive: true 标，不做合规校验。
  * 列表可以随版本增补，对工具行为不构成 breaking change。
  */
 export const SENSITIVE_PERMISSIONS: ReadonlySet<string> = new Set([
@@ -37,26 +137,87 @@ export const SENSITIVE_PERMISSIONS: ReadonlySet<string> = new Set([
   'ohos.permission.WRITE_CALL_LOG',
 ]);
 
-/** 体积分析的目录归类规则（前缀匹配） */
-export const SIZE_CATEGORY_RULES: ReadonlyArray<{
+export interface SizeCategoryRule {
   prefix: string;
   category: SizeCategory;
-}> = [
-  { prefix: 'ets/', category: 'ets' },
-  { prefix: 'resources/', category: 'resources' },
-  { prefix: 'libs/', category: 'libs' },
-  { prefix: 'META-INF/', category: 'signature' },
-];
+}
 
-/** 体积分析的精确文件归类（顶层配置文件） */
-export const SIZE_CONFIG_FILES: ReadonlySet<string> = new Set([
-  'module.json',
-  'module.json5',
-  'config.json',
-  'pack.info',
-  'rawfile',
-  'resources.index',
-]);
+/**
+ * 体积分析的目录归类规则（前缀匹配，按数组顺序优先级递减）。
+ *
+ * 不同平台用不同前缀：
+ *   - HarmonyOS: ets/ resources/ libs/ META-INF/
+ *   - Android:   classes*.dex 分类靠 SIZE_CATEGORY_FILE_RULES，res/ assets/
+ *                lib/ META-INF/ 走这里
+ *   - iOS:      暂未实现
+ *
+ * 一旦命中前缀就停止。"config" 由 SIZE_CONFIG_FILES_BY_PLATFORM 在前缀都不命中
+ * 时的兜底匹配。
+ */
+export const SIZE_CATEGORY_RULES_BY_PLATFORM: Readonly<Record<Platform, readonly SizeCategoryRule[]>> =
+  Object.freeze({
+    harmony: [
+      { prefix: 'ets/', category: 'ets' },
+      { prefix: 'resources/', category: 'resources' },
+      { prefix: 'libs/', category: 'libs' },
+      { prefix: 'META-INF/', category: 'signature' },
+    ],
+    android: [
+      { prefix: 'res/', category: 'resources' },
+      { prefix: 'assets/', category: 'assets' },
+      { prefix: 'lib/', category: 'libs' },
+      { prefix: 'META-INF/', category: 'signature' },
+    ],
+    ios: [],
+  });
+
+/**
+ * @deprecated 用 {@link SIZE_CATEGORY_RULES_BY_PLATFORM}.harmony；保留这个名字
+ * 让已有 import 不破坏。
+ */
+export const SIZE_CATEGORY_RULES: readonly SizeCategoryRule[] =
+  SIZE_CATEGORY_RULES_BY_PLATFORM.harmony;
+
+/**
+ * 顶层精确文件归类（按平台）。
+ *
+ * Android 没有"顶层配置文件"概念，所有 manifest 类信息都在 AndroidManifest.xml
+ * （二进制），算 'other'；这里只声明 classes*.dex 一类。
+ */
+export const SIZE_CONFIG_FILES_BY_PLATFORM: Readonly<Record<Platform, ReadonlySet<string>>> =
+  Object.freeze({
+    harmony: new Set([
+      'module.json',
+      'module.json5',
+      'config.json',
+      'pack.info',
+      'rawfile',
+      'resources.index',
+    ]),
+    android: new Set<string>(),
+    ios: new Set<string>(),
+  });
+
+/**
+ * @deprecated 用 {@link SIZE_CONFIG_FILES_BY_PLATFORM}.harmony；保留旧名兼容。
+ */
+export const SIZE_CONFIG_FILES: ReadonlySet<string> =
+  SIZE_CONFIG_FILES_BY_PLATFORM.harmony;
+
+/**
+ * Android 平台对"特定文件名"的额外分类规则（前缀规则之后兜底）。
+ *  - classes*.dex / AndroidManifest.xml / resources.arsc 这些都不是普通配置。
+ *
+ * HarmonyOS 走 SIZE_CONFIG_FILES_BY_PLATFORM.harmony 那条路径，不进这里。
+ */
+export const ANDROID_SPECIAL_FILE_CATEGORY: ReadonlyArray<{
+  test: (path: string) => boolean;
+  category: SizeCategory;
+}> = [
+  { test: (p) => /^classes\d*\.dex$/.test(p), category: 'dex' },
+  { test: (p) => p === 'AndroidManifest.xml', category: 'config' },
+  { test: (p) => p === 'resources.arsc', category: 'config' },
+];
 
 /** 图片资源扩展名（小写） */
 export const IMAGE_EXTENSIONS: ReadonlySet<string> = new Set([

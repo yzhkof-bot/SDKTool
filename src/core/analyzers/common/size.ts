@@ -1,18 +1,20 @@
 import type {
   Analyzer,
   AnalyzerContext,
-  HapReport,
-  HapSizeBreakdownItem,
-  HapSizeInfo,
-  HapSizeTopFile,
+  PackageReport,
+  PackageSizeBreakdownItem,
+  PackageSizeInfo,
+  PackageSizeTopFile,
+  Platform,
   SizeCategory,
-} from '../../shared/schema.js';
+} from '../../../shared/schema.js';
 import {
+  ANDROID_SPECIAL_FILE_CATEGORY,
   DEFAULT_TOP_FILES_LIMIT,
-  SIZE_CATEGORY_RULES,
-  SIZE_CONFIG_FILES,
-} from '../../shared/constants.js';
-import { safeRatio } from '../../shared/utils.js';
+  SIZE_CATEGORY_RULES_BY_PLATFORM,
+  SIZE_CONFIG_FILES_BY_PLATFORM,
+} from '../../../shared/constants.js';
+import { safeRatio } from '../../../shared/utils.js';
 
 /**
  * 体积分析：
@@ -26,7 +28,7 @@ export const sizeAnalyzer: Analyzer = {
   id: 'size',
   name: 'Size',
   enabledByDefault: true,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const limit = ctx.options.topFilesLimit ?? DEFAULT_TOP_FILES_LIMIT;
     const size = computeSize(ctx, limit);
     return { size };
@@ -35,15 +37,15 @@ export const sizeAnalyzer: Analyzer = {
 
 /* ------------------------------------------------------------------ */
 
-function computeSize(ctx: AnalyzerContext, topLimit: number): HapSizeInfo {
+function computeSize(ctx: AnalyzerContext, topLimit: number): PackageSizeInfo {
   const fileEntries = ctx.hap.entries.filter((e) => !e.isDirectory);
 
   let total = 0;
   const byCategory = new Map<SizeCategory, { bytes: number; fileCount: number }>();
-  const allFiles: HapSizeTopFile[] = [];
+  const allFiles: PackageSizeTopFile[] = [];
 
   for (const entry of fileEntries) {
-    const category = classify(entry.path);
+    const category = classifySizeCategory(entry.path, ctx.platform);
     total += entry.uncompressedSize;
 
     const bucket = byCategory.get(category) ?? { bytes: 0, fileCount: 0 };
@@ -59,7 +61,7 @@ function computeSize(ctx: AnalyzerContext, topLimit: number): HapSizeInfo {
     });
   }
 
-  const breakdown: HapSizeBreakdownItem[] = [...byCategory.entries()]
+  const breakdown: PackageSizeBreakdownItem[] = [...byCategory.entries()]
     .map(([category, v]) => ({
       category,
       bytes: v.bytes,
@@ -93,16 +95,27 @@ function computeSize(ctx: AnalyzerContext, topLimit: number): HapSizeInfo {
 /**
  * 把 entry 路径分类到 SizeCategory。导出供其它 analyzer（如 files）复用，
  * 避免分类规则散落多处导致行为漂移。
+ *
+ * 第二个参数为 platform：'harmony' 走 SIZE_CATEGORY_RULES_BY_PLATFORM.harmony，
+ * 'android' 在前缀匹配前先看 ANDROID_SPECIAL_FILE_CATEGORY（classes*.dex 等）。
+ * 不传 platform 时按 'harmony' 处理，兼容历史 caller（如 viewer 端的
+ * post-processing）。
  */
-export function classifySizeCategory(path: string): SizeCategory {
-  for (const rule of SIZE_CATEGORY_RULES) {
+export function classifySizeCategory(path: string, platform: Platform = 'harmony'): SizeCategory {
+  if (platform === 'android') {
+    for (const rule of ANDROID_SPECIAL_FILE_CATEGORY) {
+      if (rule.test(path)) return rule.category;
+    }
+  }
+  const rules = SIZE_CATEGORY_RULES_BY_PLATFORM[platform] ?? SIZE_CATEGORY_RULES_BY_PLATFORM.harmony;
+  for (const rule of rules) {
     if (path.startsWith(rule.prefix)) return rule.category;
   }
+  // 顶层配置文件 fallback
   const slash = path.indexOf('/');
   const top = slash < 0 ? path : path.slice(0, slash);
-  if (slash < 0 && SIZE_CONFIG_FILES.has(path)) return 'config';
-  if (slash < 0 && top.endsWith('.json')) return 'config';
+  const configSet = SIZE_CONFIG_FILES_BY_PLATFORM[platform] ?? SIZE_CONFIG_FILES_BY_PLATFORM.harmony;
+  if (slash < 0 && configSet.has(path)) return 'config';
+  if (slash < 0 && top.endsWith('.json') && platform === 'harmony') return 'config';
   return 'other';
 }
-
-const classify = classifySizeCategory;

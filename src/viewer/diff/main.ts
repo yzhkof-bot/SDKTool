@@ -1,4 +1,4 @@
-import type { HapDiffReport } from '../../shared/schema.js';
+import type { PackageDiffReport } from '../../shared/schema.js';
 
 import { mountDiffApp } from './app.js';
 
@@ -15,7 +15,7 @@ function bootstrap(): void {
     return;
   }
 
-  let diff: HapDiffReport;
+  let diff: PackageDiffReport;
   try {
     const text = dataNode.textContent.trim();
     if (text === '__DATA_PLACEHOLDER__' || text === '') {
@@ -24,7 +24,7 @@ function bootstrap(): void {
       );
       return;
     }
-    diff = JSON.parse(text) as HapDiffReport;
+    diff = JSON.parse(text) as PackageDiffReport;
   } catch (err) {
     root.appendChild(
       buildError(`解析 diff JSON 失败: ${err instanceof Error ? err.message : String(err)}`),
@@ -33,7 +33,7 @@ function bootstrap(): void {
   }
 
   if (!diff || typeof diff !== 'object' || !diff.schemaVersion) {
-    root.appendChild(buildError('对比 JSON 不符合 HapDiffReport schema（缺少 schemaVersion）。'));
+    root.appendChild(buildError('对比 JSON 不符合 PackageDiffReport schema（缺少 schemaVersion）。'));
     return;
   }
 

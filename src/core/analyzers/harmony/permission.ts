@@ -1,18 +1,18 @@
 import type {
   Analyzer,
   AnalyzerContext,
-  HapPermission,
-  HapReport,
-} from '../../shared/schema.js';
-import { SENSITIVE_PERMISSIONS } from '../../shared/constants.js';
-import { isRecord } from '../../shared/utils.js';
+  PackagePermission,
+  PackageReport,
+} from '../../../shared/schema.js';
+import { SENSITIVE_PERMISSIONS } from '../../../shared/constants.js';
+import { isRecord } from '../../../shared/utils.js';
 
 import { readModuleJson } from './_shared.js';
 
 /**
  * 权限分析：
  *  - 输入：module.json 的 module.requestPermissions 字段
- *  - 输出：HapPermission[]，每条标注 sensitive
+ *  - 输出：PackagePermission[]，每条标注 sensitive
  *
  * HarmonyOS module.json 中权限通常长这样：
  * {
@@ -27,7 +27,7 @@ export const permissionAnalyzer: Analyzer = {
   id: 'permission',
   name: 'Permission',
   enabledByDefault: true,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const { value: moduleJson } = await readModuleJson(ctx);
     if (moduleJson === undefined) {
       return { permissions: [] };
@@ -40,7 +40,7 @@ export const permissionAnalyzer: Analyzer = {
 
 /* ------------------------------------------------------------------ */
 
-function extractPermissions(moduleJson: unknown, ctx: AnalyzerContext): HapPermission[] {
+function extractPermissions(moduleJson: unknown, ctx: AnalyzerContext): PackagePermission[] {
   if (!isRecord(moduleJson)) return [];
   const moduleObj = isRecord(moduleJson.module) ? moduleJson.module : undefined;
   if (!moduleObj) return [];
@@ -49,7 +49,7 @@ function extractPermissions(moduleJson: unknown, ctx: AnalyzerContext): HapPermi
   const raw = pickArray(moduleObj.requestPermissions) ?? pickArray(moduleObj.reqPermissions);
   if (!raw) return [];
 
-  const out: HapPermission[] = [];
+  const out: PackagePermission[] = [];
   const seen = new Set<string>();
 
   for (const item of raw) {
@@ -65,7 +65,7 @@ function extractPermissions(moduleJson: unknown, ctx: AnalyzerContext): HapPermi
     if (seen.has(name)) continue;
     seen.add(name);
 
-    const entry: HapPermission = {
+    const entry: PackagePermission = {
       name,
       sensitive: SENSITIVE_PERMISSIONS.has(name),
     };

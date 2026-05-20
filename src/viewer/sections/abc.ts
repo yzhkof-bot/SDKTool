@@ -1,10 +1,10 @@
-import type { HapAbcStrings, HapReport } from '../../shared/schema.js';
+import type { HarmonyAbcStrings, PackageReport } from '../../shared/schema.js';
 
 import { badge, emptyState, formatBytes, h, shortHash, table } from '../helpers.js';
 
 const STRING_PREVIEW_LIMIT = 200;
 
-export function renderAbc(report: HapReport): HTMLElement {
+export function renderAbc(report: PackageReport): HTMLElement {
   const a = report.abc;
   if (!a) return emptyState('无 abc 数据');
 
@@ -44,7 +44,7 @@ export function renderAbc(report: HapReport): HTMLElement {
   ) as HTMLElement;
 }
 
-function renderAbcDetails(report: HapReport): HTMLElement | null {
+function renderAbcDetails(report: PackageReport): HTMLElement | null {
   const det = report.abcDetails;
   if (!det || det.entries.length === 0) return null;
 
@@ -77,7 +77,7 @@ function renderAbcDetails(report: HapReport): HTMLElement | null {
   ) as HTMLElement;
 }
 
-function renderAbcStringPanel(path: string, strs: HapAbcStrings): HTMLElement {
+function renderAbcStringPanel(path: string, strs: HarmonyAbcStrings): HTMLElement {
   return h(
     'details',
     { class: 'panel sub-panel' },

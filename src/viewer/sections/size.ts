@@ -1,4 +1,4 @@
-import type { HapReport, SizeCategory } from '../../shared/schema.js';
+import type { PackageReport, SizeCategory } from '../../shared/schema.js';
 
 import { emptyState, formatBytes, formatPercent, h, ratioBar, table } from '../helpers.js';
 
@@ -9,10 +9,13 @@ const CATEGORY_COLORS: Record<SizeCategory, string> = {
   libs: '#f59e0b',
   signature: '#8b5cf6',
   config: '#6b7280',
+  // Android 专属：dex 走深蓝（与 ets 的浅蓝区分），assets 走青蓝（与 resources 区分）
+  dex: '#3b82f6',
+  assets: '#06b6d4',
   other: '#94a3b8',
 };
 
-export function renderSize(report: HapReport): HTMLElement {
+export function renderSize(report: PackageReport): HTMLElement {
   const size = report.size;
   if (!size) return emptyState('无 size 数据');
 

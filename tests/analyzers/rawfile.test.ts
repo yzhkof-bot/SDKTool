@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzeHap } from '../../src/core/index.js';
+import { analyzePackage } from '../../src/core/index.js';
 
 import { buildFixtureHap } from '../helpers/fixtureHap.js';
 
 describe('RawfileAnalyzer', () => {
   it('生成顶层分组、扩展名、类别、Top N、Package 聚合', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['rawfile'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['rawfile'] });
 
     expect(report.rawfile).toBeDefined();
     const rf = report.rawfile!;
@@ -88,7 +88,7 @@ describe('RawfileAnalyzer', () => {
 
   it('topFilesLimit 控制 Top N 数量', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, {
+    const report = await analyzePackage(hap, {
       toolVersion: 't',
       only: ['rawfile'],
       topFilesLimit: 3,
@@ -101,8 +101,8 @@ describe('RawfileAnalyzer', () => {
     // 但我们没有专门的"空 rawfile fixture"——所以这里通过 only:[] + 自定义 analyzer 测不到位。
     // 改为：直接在 analyzer 上跑没有 resources/rawfile/ 的 fixture：
     //   buildFixtureHap 默认会写 14 个 rawfile 条目，因此这个 case 走 unit-style，
-    //   通过 mock 一个空 entries 的 VirtualHap。
-    const { rawfileAnalyzer } = await import('../../src/core/analyzers/rawfile.js');
+    //   通过 mock 一个空 entries 的 VirtualPackage。
+    const { rawfileAnalyzer } = await import('../../src/core/analyzers/harmony/rawfile.js');
     const ctx = {
       hap: {
         filePath: '/tmp/empty.hap',
@@ -121,7 +121,7 @@ describe('RawfileAnalyzer', () => {
   });
 
   it('未命中 builtin/<id>/* 时 packages 字段省略', async () => {
-    const { rawfileAnalyzer } = await import('../../src/core/analyzers/rawfile.js');
+    const { rawfileAnalyzer } = await import('../../src/core/analyzers/harmony/rawfile.js');
     const ctx = {
       hap: {
         filePath: '/tmp/x.hap',

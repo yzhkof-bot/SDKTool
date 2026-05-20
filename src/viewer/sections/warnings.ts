@@ -1,4 +1,4 @@
-import type { HapReport, WarningLevel } from '../../shared/schema.js';
+import type { PackageReport, WarningLevel } from '../../shared/schema.js';
 
 import { emptyState, h, table } from '../helpers.js';
 
@@ -8,7 +8,7 @@ const LEVEL_BADGE: Record<WarningLevel, 'danger' | 'warning' | 'info'> = {
   info: 'info',
 };
 
-export function renderWarnings(report: HapReport): HTMLElement {
+export function renderWarnings(report: PackageReport): HTMLElement {
   const ws = report.warnings;
   if (!ws || ws.length === 0) return emptyState('一切正常，没有任何 warning');
 

@@ -1,4 +1,4 @@
-import type { HapReport, RawfileCategory } from '../../shared/schema.js';
+import type { PackageReport, RawfileCategory } from '../../shared/schema.js';
 
 import { emptyState, formatBytes, formatPercent, h, ratioBar, table } from '../helpers.js';
 
@@ -33,7 +33,7 @@ const GROUP_COLORS = [
   '#6b7280',
 ];
 
-export function renderRawfile(report: HapReport): HTMLElement {
+export function renderRawfile(report: PackageReport): HTMLElement {
   const rf = report.rawfile;
   if (!rf || rf.fileCount === 0) {
     return emptyState('hap 内未发现 resources/rawfile/ 资源') as HTMLElement;

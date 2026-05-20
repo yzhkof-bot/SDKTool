@@ -3,12 +3,12 @@ import { createHash } from 'node:crypto';
 import type {
   Analyzer,
   AnalyzerContext,
-  HapIl2cppLiterals,
-  HapIl2cppMetadata,
-  HapIl2cppMetadataInfo,
-  HapIl2cppNames,
-  HapReport,
-} from '../../shared/schema.js';
+  Il2cppLiterals,
+  Il2cppMetadata,
+  Il2cppMetadataInfo,
+  Il2cppNames,
+  PackageReport,
+} from '../../../shared/schema.js';
 
 /**
  * 可选深度分析：解析 Unity IL2CPP 游戏的 `global-metadata.dat`。
@@ -42,12 +42,12 @@ export const il2cppMetadataAnalyzer: Analyzer = {
   id: 'il2cppMetadata',
   name: 'IL2CPP Metadata',
   enabledByDefault: false,
-  async run(ctx: AnalyzerContext): Promise<Partial<HapReport>> {
+  async run(ctx: AnalyzerContext): Promise<Partial<PackageReport>> {
     const targets = ctx.hap.entries.filter(
       (e) => !e.isDirectory && IL2CPP_METADATA_PATTERN.test(e.path),
     );
 
-    const files: HapIl2cppMetadata[] = [];
+    const files: Il2cppMetadata[] = [];
     for (const e of targets) {
       try {
         const buf = await ctx.hap.readFile(e.path);
@@ -73,7 +73,7 @@ export const il2cppMetadataAnalyzer: Analyzer = {
     }
 
     files.sort((a, b) => a.path.localeCompare(b.path));
-    const info: HapIl2cppMetadataInfo = { files, scanned: files.length };
+    const info: Il2cppMetadataInfo = { files, scanned: files.length };
     return { il2cppMetadata: info };
   },
 };
@@ -94,8 +94,8 @@ interface ParsedMetadata {
   sanityHex: string;
   metadataVersion: number | null;
   unityVersionRange: string | null;
-  names?: HapIl2cppNames;
-  literals?: HapIl2cppLiterals;
+  names?: Il2cppNames;
+  literals?: Il2cppLiterals;
 }
 
 function parseIl2cppMetadata(buf: Buffer): ParsedMetadata {
@@ -202,7 +202,7 @@ function inferUnityVersionRange(v: number): string | null {
 /* -----------------------------------------------------------------------
  * 名字字符串池抽取（含 type/method/field/参数/namespace/assembly 名字）
  * ----------------------------------------------------------------------- */
-function extractNames(slice: Buffer, poolBytes: number): HapIl2cppNames {
+function extractNames(slice: Buffer, poolBytes: number): Il2cppNames {
   const seen = new Set<string>();
   const all: string[] = [];
   let start = 0;
@@ -310,7 +310,7 @@ function extractLiterals(
   table: Buffer,
   data: Buffer,
   poolBytes: number,
-): HapIl2cppLiterals {
+): Il2cppLiterals {
   const seen = new Set<string>();
   const all: string[] = [];
 

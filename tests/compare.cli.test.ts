@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { runCompareCommand } from '../src/cli/commands/compare.js';
 import { UsageError } from '../src/cli/errors.js';
-import { analyzeHap } from '../src/core/index.js';
+import { analyzePackage } from '../src/core/index.js';
 import { SCHEMA_VERSION } from '../src/shared/schema.js';
 
 import { buildFixtureHap } from './helpers/fixtureHap.js';
@@ -64,7 +64,7 @@ describe('CLI compare command (M4)', () => {
 
   it('支持 .json 报告作为输入（cross-format：左 JSON / 右 hap）', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: '0.0.0-test' });
+    const report = await analyzePackage(hap, { toolVersion: '0.0.0-test' });
 
     const dir = await newTmp();
     const reportPath = join(dir, 'left.json');
@@ -105,7 +105,7 @@ describe('CLI compare command (M4)', () => {
     ).rejects.toBeInstanceOf(UsageError);
   });
 
-  it('--html 产出包含 HapDiffReport JSON 的单文件 HTML（依赖 build 过的 templates/diff.template.html）', async () => {
+  it('--html 产出包含 PackageDiffReport JSON 的单文件 HTML（依赖 build 过的 templates/diff.template.html）', async () => {
     if (!existsSync(resolve('templates/diff.template.html'))) {
       console.warn('[skip] templates/diff.template.html 不存在，请先 npm run build');
       return;

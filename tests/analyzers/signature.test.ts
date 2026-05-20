@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzeHap } from '../../src/core/index.js';
+import { analyzePackage } from '../../src/core/index.js';
 
 import { buildFixtureHap } from '../helpers/fixtureHap.js';
 
 describe('SignatureAnalyzer', () => {
   it('META-INF 下存在签名文件时 present=true', async () => {
     const hap = await buildFixtureHap();
-    const report = await analyzeHap(hap, { toolVersion: 't', only: ['signature'] });
+    const report = await analyzePackage(hap, { toolVersion: 't', only: ['signature'] });
     expect(report.signature!.present).toBe(true);
     // fixture 的 CERT.RSA 是假数据，无法解析为 X.509 → subject 缺失，warn
     expect(report.signature!.subject).toBeUndefined();
@@ -24,7 +24,7 @@ describe('SignatureAnalyzer', () => {
     await writeMiniZip(file, [
       { path: 'module.json', content: '{"app":{},"module":{}}' },
     ]);
-    const report = await analyzeHap(file, { toolVersion: 't', only: ['signature'] });
+    const report = await analyzePackage(file, { toolVersion: 't', only: ['signature'] });
     expect(report.signature!.present).toBe(false);
   });
 });
