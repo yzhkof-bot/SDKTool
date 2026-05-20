@@ -8,8 +8,10 @@
  * 工作目录始终锁在 jobDir，让 AI 通过 Read/Grep/Glob 访问 diff.json / report.json。
  *
  * 设计取舍：
- *  - includePartialMessages=false：避免 partial 消息组装复杂度，前端体验是"一段一段大块出"，
- *    可接受；后续要做"打字机"再切到 partial。
+ *  - includePartialMessages=true：开启 SDK 的 stream_event 协议，把 text/thinking
+ *    增量 delta 直接转写成 SSE 给前端做"打字机"效果。
+ *    为了避免重复，最终 AssistantMessage 里的 text/thinking block 会被跳过
+ *    （内容已经由 deltas 覆盖），只保留 tool_use（input 是流式装配完才完整）。
  *  - canUseTool 永远 allow：用户已经明确选了"完整 SDK 默认全套 tool"，不在这里做拦截。
  *  - permissionMode='bypassPermissions'：让 Bash/Write/Edit 无需弹窗，配合 canUseTool 双保险。
  */
@@ -18,6 +20,7 @@ import { unstable_v2_createSession } from '@tencent-ai/agent-sdk';
 import type {
   AssistantMessage,
   Message,
+  PartialAssistantMessage,
   ResultMessage,
   Session as SdkSession,
   UserMessage,
@@ -67,6 +70,8 @@ export class AiSession {
         updatedInput: input,
       }),
       systemPrompt: { append: buildSystemPrompt(opts.promptContext) },
+      // 打开 partial 流式：让 text_delta/thinking_delta 实时往外吐，前端做打字机
+      includePartialMessages: true,
       // settingSources 故意不传 → 不读用户/项目级配置，保证 workbench AI 行为纯由 server 控制
     });
     void opts.log; // SDK Session 暂不支持 stderr 透传；保留参数以便后续替换 provider 时复用
@@ -188,6 +193,8 @@ function translateSdkMessage(msg: Message): SseEvent[] {
   switch (msg.type) {
     case 'assistant':
       return translateAssistant(msg);
+    case 'stream_event':
+      return translatePartial(msg);
     case 'user':
       return translateUserToolResult(msg);
     case 'result':
@@ -199,19 +206,20 @@ function translateSdkMessage(msg: Message): SseEvent[] {
     case 'error':
       return [{ type: 'error', message: msg.error }];
     default:
-      // stream_event / tool_progress / topic / file-history-snapshot 等暂时静默
+      // tool_progress / topic / file-history-snapshot 等暂时静默
       return [];
   }
 }
 
+/**
+ * 终态 AssistantMessage：因为 includePartialMessages=true，text/thinking 已经被
+ * stream_event 增量推送过了，这里只把 tool_use 取出来（它的 input 在 deltas
+ * 阶段是 partial_json，没法用；终态一次给齐才稳）。
+ */
 function translateAssistant(msg: AssistantMessage): SseEvent[] {
   const out: SseEvent[] = [];
   for (const block of msg.message.content) {
-    if (block.type === 'text') {
-      if (block.text) out.push({ type: 'text_delta', text: block.text });
-    } else if (block.type === 'thinking') {
-      if (block.thinking) out.push({ type: 'thinking', text: block.thinking });
-    } else if (block.type === 'tool_use') {
+    if (block.type === 'tool_use') {
       out.push({
         type: 'tool_use',
         id: block.id,
@@ -219,9 +227,29 @@ function translateAssistant(msg: AssistantMessage): SseEvent[] {
         input: block.input,
       });
     }
-    // tool_result / image / redacted_thinking 不在 assistant 里出现，忽略
+    // text/thinking：deltas 已经覆盖，跳过避免重复
+    // tool_result / image / redacted_thinking：不在 assistant 里出现，忽略
   }
   return out;
+}
+
+/**
+ * PartialAssistantMessage（stream_event）→ 增量 SseEvent。
+ * 只关心 content_block_delta 里的 text_delta / thinking_delta；其它（message_start
+ * /content_block_start/_stop/message_delta/_stop）目前不消费——拿不到对应 UI 行为。
+ */
+function translatePartial(msg: PartialAssistantMessage): SseEvent[] {
+  const ev = msg.event;
+  if (ev.type !== 'content_block_delta') return [];
+  const d = ev.delta;
+  if (d.type === 'text_delta') {
+    return d.text ? [{ type: 'text_delta', text: d.text }] : [];
+  }
+  if (d.type === 'thinking_delta') {
+    return d.thinking ? [{ type: 'thinking', text: d.thinking }] : [];
+  }
+  // input_json_delta / signature_delta：当前 UI 不消费
+  return [];
 }
 
 /**

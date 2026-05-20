@@ -32,6 +32,8 @@ interface MessageState {
   node: HTMLElement;
   /** assistant 当前正在写入的 text 容器，便于增量 append */
   textEl?: HTMLElement;
+  /** assistant 当前正在写入的 thinking 容器，便于把 thinking_delta 累积到同一块 */
+  thinkingBodyEl?: HTMLElement;
   /** assistant 正在执行的工具气泡按 id 维护 */
   toolsById?: Map<string, { node: HTMLElement; resultEl?: HTMLElement }>;
 }
@@ -382,14 +384,19 @@ export function createAiPanel(): AiPanelHandle {
         scrollToBottom();
       },
       appendThinking(t: string): void {
-        if (!t.trim()) return;
-        const node = h(
-          'details',
-          { class: 'ai-thinking' },
-          h('summary', null, '💭 推理过程'),
-          h('div', { class: 'ai-thinking-body' }, t),
-        ) as HTMLElement;
-        state.node.appendChild(node);
+        if (!t) return;
+        if (!state.thinkingBodyEl) {
+          const body = h('div', { class: 'ai-thinking-body' }) as HTMLElement;
+          const node = h(
+            'details',
+            { class: 'ai-thinking' },
+            h('summary', null, '💭 推理过程'),
+            body,
+          ) as HTMLElement;
+          state.node.appendChild(node);
+          state.thinkingBodyEl = body;
+        }
+        state.thinkingBodyEl.appendChild(document.createTextNode(t));
         scrollToBottom();
       },
       appendToolUse(id: string, name: string, input: unknown): void {
@@ -415,8 +422,9 @@ export function createAiPanel(): AiPanelHandle {
         state.node.appendChild(node);
         state.toolsById.set(id, { node, resultEl: undefined });
         scrollToBottom();
-        // 新工具开始 → 老的 textEl 不再被增量追加（下一轮 text 会新建一个）
+        // 新工具开始 → 把当前文本/思考块的引用清掉，工具后续的 text/thinking 会落到新块里
         state.textEl = undefined;
+        state.thinkingBodyEl = undefined;
       },
       appendToolResult(id: string, content: string, isError: boolean): void {
         const tool = state.toolsById?.get(id);
