@@ -19,6 +19,7 @@ import {
   ConversationManager,
   SseWriter,
 } from './ai/index.js';
+import type { InlineImage, InlineImageMediaType } from './ai/types.js';
 
 export interface WorkbenchServerOptions {
   port?: number;
@@ -321,18 +322,25 @@ async function handle(
   const convMessages = /^\/api\/ai\/conversations\/([a-z0-9_]+)\/messages$/i.exec(url.pathname);
   if (method === 'POST' && convMessages) {
     const cid = convMessages[1]!;
-    const body = (await readJson(req).catch((e) => ({ __error: e }))) as
-      | { text?: unknown; __error?: Error };
+    const body = (await readJson(req, MESSAGE_BODY_MAX_BYTES).catch((e) => ({ __error: e }))) as
+      | { text?: unknown; images?: unknown; __error?: Error };
     if (body.__error) {
       sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
       return;
     }
     const text = typeof body.text === 'string' ? body.text : '';
-    if (!text.trim()) {
-      sendJson(res, 400, { error: 'BAD_REQUEST', message: 'text 不能为空' });
+    const imagesResult = parseInlineImages(body.images);
+    if (imagesResult.error) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: imagesResult.error });
       return;
     }
-    await streamConversationSse(req, res, conversations, cid, text, log);
+    const images = imagesResult.images;
+    // 文本可空，前提是带了图片；纯空 + 无图直接拒掉
+    if (!text.trim() && images.length === 0) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: 'text 不能为空（或必须附带图片）' });
+      return;
+    }
+    await streamConversationSse(req, res, conversations, cid, text, images, log);
     return;
   }
 
@@ -414,7 +422,7 @@ function handleConversationError(res: ServerResponse, err: unknown): void {
 }
 
 /**
- * SSE 处理：把 ConversationManager.acquire(cid) → sendAndStream(text) 的事件流
+ * SSE 处理：把 ConversationManager.acquire(cid) → sendAndStream(text, images?) 的事件流
  * 转写到 HTTP 响应。客户端断开时尽力中断 SDK 会话以省 token。
  */
 async function streamConversationSse(
@@ -423,6 +431,7 @@ async function streamConversationSse(
   conversations: ConversationManager,
   cid: string,
   text: string,
+  images: InlineImage[],
   log: (t: string) => void,
 ): Promise<void> {
   let entry;
@@ -444,7 +453,8 @@ async function streamConversationSse(
   req.on('close', onClose);
 
   try {
-    for await (const ev of entry.session.sendAndStream(text)) {
+    const imgArg = images.length > 0 ? images : undefined;
+    for await (const ev of entry.session.sendAndStream(text, imgArg)) {
       if (writer.isClosed) break;
       writer.write(ev);
     }
@@ -659,15 +669,73 @@ function parseExtras(raw: unknown): string[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
-/** 安全读 JSON body，最大 256 KiB */
-async function readJson(req: IncomingMessage): Promise<unknown> {
+const DEFAULT_BODY_MAX_BYTES = 256 * 1024;
+/** AI 消息接口要带 base64 图片，放宽到 20 MiB 上限（足够 ~15MiB 原图） */
+const MESSAGE_BODY_MAX_BYTES = 20 * 1024 * 1024;
+/** 单张图片 base64 后最大 8 MiB；约 6 MiB 原图 */
+const MAX_IMAGE_BASE64_BYTES = 8 * 1024 * 1024;
+/** 每条消息最多 6 张图 */
+const MAX_IMAGES_PER_MESSAGE = 6;
+const ALLOWED_IMAGE_MEDIA_TYPES: ReadonlySet<InlineImageMediaType> = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+]);
+
+/**
+ * 校验客户端传来的 images 字段，逐张过滤；返回 [{ images, error? }]。
+ * 不抛异常，把错误归类放进 error 字段，方便调用方一次性 4xx。
+ */
+function parseInlineImages(raw: unknown): { images: InlineImage[]; error?: string } {
+  if (raw == null) return { images: [] };
+  if (!Array.isArray(raw)) return { images: [], error: 'images 必须是数组' };
+  if (raw.length > MAX_IMAGES_PER_MESSAGE) {
+    return { images: [], error: `单条消息最多 ${MAX_IMAGES_PER_MESSAGE} 张图片` };
+  }
+  const out: InlineImage[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const item = raw[i];
+    if (!item || typeof item !== 'object') {
+      return { images: [], error: `images[${i}] 不是对象` };
+    }
+    const obj = item as { mediaType?: unknown; dataBase64?: unknown; name?: unknown };
+    if (typeof obj.mediaType !== 'string' || !ALLOWED_IMAGE_MEDIA_TYPES.has(obj.mediaType as InlineImageMediaType)) {
+      return {
+        images: [],
+        error: `images[${i}].mediaType 必须是 ${[...ALLOWED_IMAGE_MEDIA_TYPES].join(' / ')}`,
+      };
+    }
+    if (typeof obj.dataBase64 !== 'string' || obj.dataBase64.length === 0) {
+      return { images: [], error: `images[${i}].dataBase64 必须是非空字符串` };
+    }
+    if (obj.dataBase64.length > MAX_IMAGE_BASE64_BYTES) {
+      const mb = (MAX_IMAGE_BASE64_BYTES / (1024 * 1024)).toFixed(0);
+      return { images: [], error: `images[${i}] 超过 ${mb} MiB（base64 字符数）上限` };
+    }
+    const inline: InlineImage = {
+      mediaType: obj.mediaType as InlineImageMediaType,
+      dataBase64: obj.dataBase64,
+    };
+    if (typeof obj.name === 'string' && obj.name) inline.name = obj.name;
+    out.push(inline);
+  }
+  return { images: out };
+}
+
+/** 安全读 JSON body，默认 256 KiB；可按路由 override */
+async function readJson(
+  req: IncomingMessage,
+  maxBytes: number = DEFAULT_BODY_MAX_BYTES,
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let total = 0;
     req.on('data', (c: Buffer) => {
       total += c.length;
-      if (total > 256 * 1024) {
-        reject(new Error('请求体超过 256 KiB 上限'));
+      if (total > maxBytes) {
+        const mb = (maxBytes / (1024 * 1024)).toFixed(1);
+        reject(new Error(`请求体超过 ${mb} MiB 上限`));
         req.destroy();
         return;
       }

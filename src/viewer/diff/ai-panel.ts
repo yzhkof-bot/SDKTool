@@ -19,6 +19,31 @@ interface AiBootstrap {
   apiBase: string;
 }
 
+type InlineImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+interface PendingImage {
+  /** UI 用来定位/删除的临时 id */
+  id: string;
+  mediaType: InlineImageMediaType;
+  /** 不含 data:URL 前缀的 base64 */
+  dataBase64: string;
+  /** 完整 dataUrl，方便直接塞 <img src> */
+  dataUrl: string;
+  /** 原始字节数，用来显示大小 */
+  size: number;
+  name?: string;
+}
+
+const ALLOWED_IMAGE_TYPES = new Set<InlineImageMediaType>([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+]);
+/** 单张图原图上限 6 MiB（base64 后约 8 MiB，与后端一致） */
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+const MAX_IMAGES_PER_MESSAGE = 6;
+
 interface AiHealth {
   available: boolean;
   provider: string;
@@ -99,6 +124,9 @@ export function createAiPanel(): AiPanelHandle {
     '×',
   ) as HTMLButtonElement;
 
+  /** 待发送的图片附件容器；默认隐藏，挂图后再展开 */
+  const attachmentsEl = h('div', { class: 'ai-attachments', hidden: 'true' }) as HTMLElement;
+
   const statusEl = h('div', { class: 'ai-status' }) as HTMLElement;
 
   const modelSelect = h('select', {
@@ -130,6 +158,7 @@ export function createAiPanel(): AiPanelHandle {
     h(
       'div',
       { class: 'ai-input-row' },
+      attachmentsEl,
       inputEl,
       h(
         'div',
@@ -138,7 +167,7 @@ export function createAiPanel(): AiPanelHandle {
           'div',
           { class: 'ai-input-hint' },
           h('kbd', null, 'Ctrl/Cmd+Enter'),
-          ' 发送',
+          ' 发送 · 可粘贴图片',
         ),
         h('div', { class: 'ai-input-buttons' }, stopBtn, sendBtn),
       ),
@@ -157,6 +186,9 @@ export function createAiPanel(): AiPanelHandle {
   /** 模型选择；空串表示 auto / 用 CLI 默认。仅在 ensureConversation 时透传给后端。 */
   let selectedModel = '';
   let modelsLoaded = false;
+  /** 待发送的图片附件 */
+  const pendingImages: PendingImage[] = [];
+  let imageSeq = 0;
 
   function setStatus(text: string, kind: 'info' | 'error' | 'ok' = 'info'): void {
     statusEl.textContent = text;
@@ -210,8 +242,112 @@ export function createAiPanel(): AiPanelHandle {
       void onSend();
     }
   });
+  inputEl.addEventListener('paste', (e) => {
+    const cd = e.clipboardData;
+    if (!cd || cd.items.length === 0) return;
+    const imgItems: DataTransferItem[] = [];
+    for (let i = 0; i < cd.items.length; i++) {
+      const item = cd.items[i]!;
+      if (item.kind === 'file' && item.type.startsWith('image/')) imgItems.push(item);
+    }
+    if (imgItems.length === 0) return; // 没图就走默认粘贴行为（粘贴文本）
+    // 含图：不让浏览器把图片字面量粘到 textarea（视觉污染），只做我们的附件流程
+    e.preventDefault();
+    for (const item of imgItems) {
+      const file = item.getAsFile();
+      if (file) void addImageFile(file);
+    }
+  });
   sendBtn.addEventListener('click', () => void onSend());
   stopBtn.addEventListener('click', () => void onStop());
+
+  // ---------------- 图片附件 ----------------
+  async function addImageFile(file: File): Promise<void> {
+    if (pendingImages.length >= MAX_IMAGES_PER_MESSAGE) {
+      setStatus(`最多附加 ${MAX_IMAGES_PER_MESSAGE} 张图片`, 'error');
+      return;
+    }
+    const mediaType = file.type as InlineImageMediaType;
+    if (!ALLOWED_IMAGE_TYPES.has(mediaType)) {
+      setStatus(`不支持的图片类型：${file.type || '(unknown)'}`, 'error');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      const mb = (MAX_IMAGE_BYTES / (1024 * 1024)).toFixed(0);
+      setStatus(`图片大于 ${mb} MiB 上限，已忽略`, 'error');
+      return;
+    }
+    let dataUrl: string;
+    try {
+      dataUrl = await readFileAsDataUrl(file);
+    } catch (e) {
+      setStatus(`读取图片失败：${(e as Error).message}`, 'error');
+      return;
+    }
+    const comma = dataUrl.indexOf(',');
+    const dataBase64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+    const img: PendingImage = {
+      id: `img_${++imageSeq}`,
+      mediaType,
+      dataBase64,
+      dataUrl,
+      size: file.size,
+      ...(file.name ? { name: file.name } : {}),
+    };
+    pendingImages.push(img);
+    renderAttachments();
+    setStatus(`已附加 ${pendingImages.length} 张图片，发送时一起带上`, 'info');
+  }
+
+  function removeImage(id: string): void {
+    const idx = pendingImages.findIndex((x) => x.id === id);
+    if (idx < 0) return;
+    pendingImages.splice(idx, 1);
+    renderAttachments();
+    if (pendingImages.length === 0) setStatus('', 'info');
+  }
+
+  function clearImages(): void {
+    pendingImages.length = 0;
+    renderAttachments();
+  }
+
+  function renderAttachments(): void {
+    attachmentsEl.innerHTML = '';
+    if (pendingImages.length === 0) {
+      attachmentsEl.hidden = true;
+      return;
+    }
+    attachmentsEl.hidden = false;
+    for (const img of pendingImages) {
+      const removeBtn = h(
+        'button',
+        {
+          class: 'ai-attachment-remove',
+          type: 'button',
+          title: '移除',
+        },
+        '×',
+      ) as HTMLButtonElement;
+      removeBtn.addEventListener('click', () => removeImage(img.id));
+      const node = h(
+        'div',
+        { class: 'ai-attachment', title: `${img.mediaType} · ${fmtBytes(img.size)}` },
+        h('img', { src: img.dataUrl, alt: img.name ?? 'pasted image' }),
+        removeBtn,
+      ) as HTMLElement;
+      attachmentsEl.appendChild(node);
+    }
+  }
+
+  function readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(reader.error ?? new Error('FileReader 失败'));
+      reader.readAsDataURL(file);
+    });
+  }
 
   // ---------------- Health ----------------
   async function checkHealth(): Promise<void> {
@@ -341,10 +477,13 @@ export function createAiPanel(): AiPanelHandle {
       return;
     }
     const text = inputEl.value.trim();
-    if (!text) return;
+    if (!text && pendingImages.length === 0) return;
+    // 拷一份"本轮快照"，免得用户在 in-flight 期间又粘了别的图
+    const imagesSnapshot = pendingImages.slice();
     inputEl.value = '';
     autoResize(inputEl);
-    appendUserMessage(text);
+    appendUserMessage(text, imagesSnapshot);
+    clearImages();
 
     sendBtn.disabled = true;
     stopBtn.hidden = false;
@@ -352,7 +491,7 @@ export function createAiPanel(): AiPanelHandle {
 
     try {
       const cid = await ensureConversation();
-      await streamMessage(cid, text);
+      await streamMessage(cid, text, imagesSnapshot);
     } catch (e) {
       const msg = (e as Error).message || String(e);
       appendErrorBubble(msg);
@@ -365,13 +504,28 @@ export function createAiPanel(): AiPanelHandle {
     }
   }
 
-  async function streamMessage(cid: string, text: string): Promise<void> {
+  async function streamMessage(
+    cid: string,
+    text: string,
+    images: PendingImage[],
+  ): Promise<void> {
     const ctrl = new AbortController();
     inflight = ctrl;
+    const body: {
+      text: string;
+      images?: Array<{ mediaType: InlineImageMediaType; dataBase64: string; name?: string }>;
+    } = { text };
+    if (images.length > 0) {
+      body.images = images.map((img) => ({
+        mediaType: img.mediaType,
+        dataBase64: img.dataBase64,
+        ...(img.name ? { name: img.name } : {}),
+      }));
+    }
     const r = await fetch(`${bootstrap!.apiBase}/conversations/${encodeURIComponent(cid)}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(body),
       signal: ctrl.signal,
     });
     if (!r.ok || !r.body) {
@@ -560,12 +714,25 @@ export function createAiPanel(): AiPanelHandle {
   }
 
   // ---------------- 渲染原语 ----------------
-  function appendUserMessage(text: string): void {
-    const node = h(
-      'div',
-      { class: 'ai-message user' },
-      h('div', { class: 'ai-bubble' }, h('div', { class: 'ai-bubble-text' }, text)),
-    ) as HTMLElement;
+  function appendUserMessage(text: string, images: PendingImage[] = []): void {
+    const bubble = h('div', { class: 'ai-bubble' }) as HTMLElement;
+    if (images.length > 0) {
+      const imgRow = h('div', { class: 'ai-bubble-images' }) as HTMLElement;
+      for (const img of images) {
+        imgRow.appendChild(
+          h('img', {
+            src: img.dataUrl,
+            alt: img.name ?? 'image',
+            title: `${img.mediaType} · ${fmtBytes(img.size)}`,
+          }) as HTMLElement,
+        );
+      }
+      bubble.appendChild(imgRow);
+    }
+    if (text) {
+      bubble.appendChild(h('div', { class: 'ai-bubble-text' }, text) as HTMLElement);
+    }
+    const node = h('div', { class: 'ai-message user' }, bubble) as HTMLElement;
     messagesEl.appendChild(node);
     scrollToBottom();
   }
@@ -667,6 +834,13 @@ function fmtDuration(ms: number): string {
   const m = Math.floor(s / 60);
   const rs = Math.round(s - m * 60);
   return `${m}m ${rs}s`;
+}
+
+function fmtBytes(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KiB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MiB`;
 }
 
 function autoResize(el: HTMLTextAreaElement): void {

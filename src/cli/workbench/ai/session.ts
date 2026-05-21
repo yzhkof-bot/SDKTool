@@ -19,6 +19,8 @@
 import { unstable_v2_createSession } from '@tencent-ai/agent-sdk';
 import type {
   AssistantMessage,
+  ContentBlock,
+  ImageMediaType,
   Message,
   PartialAssistantMessage,
   ResultMessage,
@@ -27,7 +29,7 @@ import type {
 } from '@tencent-ai/agent-sdk';
 
 import { buildSystemPrompt, type BuildSystemPromptArgs } from './prompts.js';
-import type { SseEvent } from './types.js';
+import type { InlineImage, SseEvent } from './types.js';
 
 export interface AiSessionOptions {
   jobDir: string;
@@ -111,7 +113,7 @@ export class AiSession {
    * 并发：调用方需保证同一时刻只有一个 sendAndStream 在跑；并发会抛错而不是排队，
    * 避免 SDK 内部状态被打乱（SDK 的 stream() 在一轮结束前不能再被 next()）。
    */
-  async *sendAndStream(text: string): AsyncGenerator<SseEvent> {
+  async *sendAndStream(text: string, images?: InlineImage[]): AsyncGenerator<SseEvent> {
     if (this.closed) {
       yield { type: 'error', message: '会话已关闭，请新建一个对话' };
       yield { type: 'done' };
@@ -140,7 +142,10 @@ export class AiSession {
     yield { type: 'turn_start' };
 
     try {
-      await this.sdk.send(text);
+      const payload = images && images.length > 0
+        ? this.buildUserMessage(text, images)
+        : text;
+      await this.sdk.send(payload);
     } catch (err) {
       this.inFlight = false;
       yield { type: 'error', message: `发送失败：${describeError(err)}` };
@@ -197,6 +202,35 @@ export class AiSession {
     if (this.closed) throw new Error('会话已关闭');
     await this.connect();
     return this.sdk.getAvailableModels();
+  }
+
+  /**
+   * 构造一条多模态用户消息：第一块文本（哪怕空字符串），后面跟 N 张 base64 图。
+   *
+   * SDK 的 send() 接 `string | UserMessage`；带图片必须走对象形式，content 用 ContentBlock[]。
+   * 这里要补全 UserMessage 的几个必填字段（type/session_id/message/parent_tool_use_id），
+   * SDK 内部会以 session_id 关联本会话。
+   */
+  private buildUserMessage(text: string, images: InlineImage[]): UserMessage {
+    const content: ContentBlock[] = [];
+    // 文本块即使是空字符串也保留：多模态消息一般要带个引导文本，避免某些模型把"裸图"当 noise
+    content.push({ type: 'text', text: text || '请基于附图作答。' });
+    for (const img of images) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: img.mediaType as ImageMediaType,
+          data: img.dataBase64,
+        },
+      });
+    }
+    return {
+      type: 'user',
+      session_id: this.sdk.sessionId,
+      message: { role: 'user', content },
+      parent_tool_use_id: null,
+    };
   }
 
   close(): void {

@@ -57,9 +57,24 @@ export interface CreateConversationResponse {
   model?: string;
 }
 
+/** SDK 接受的图片 media type；与 @tencent-ai/agent-sdk 的 ImageMediaType 保持一致 */
+export type InlineImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+/** 单张内联图片（前端粘贴/上传后给后端） */
+export interface InlineImage {
+  /** 图片 MIME 类型 */
+  mediaType: InlineImageMediaType;
+  /** base64 编码后的图片数据（不含 data:URL 前缀） */
+  dataBase64: string;
+  /** 可选展示用名字（粘贴时一般没有，文件上传时有） */
+  name?: string;
+}
+
 /** POST /api/ai/conversations/:id/messages 请求体 */
 export interface SendMessageRequest {
   text: string;
+  /** 可选附件：图片。若空 / 缺省则与之前等价，SDK 走纯文本 send() */
+  images?: InlineImage[];
 }
 
 /**
