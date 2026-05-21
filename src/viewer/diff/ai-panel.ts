@@ -44,6 +44,12 @@ const ALLOWED_IMAGE_TYPES = new Set<InlineImageMediaType>([
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 const MAX_IMAGES_PER_MESSAGE = 6;
 
+/**
+ * 模型默认偏好：列表加载完后会按这里的关键词做模糊匹配（忽略大小写 / `-` / `_` / 空格 / 点号）。
+ * 改这个常量就能换默认模型；找不到匹配项时回落到 auto / 用户当前选择。
+ */
+const PREFERRED_MODEL_HINT = 'opus4.7';
+
 interface AiHealth {
   available: boolean;
   provider: string;
@@ -191,6 +197,8 @@ export function createAiPanel(): AiPanelHandle {
   /** 模型选择；空串表示 auto / 用 CLI 默认。仅在 ensureConversation 时透传给后端。 */
   let selectedModel = '';
   let modelsLoaded = false;
+  /** 是否已经对当前列表应用过偏好默认值；只在第一次列表加载时跑一次，免得覆盖用户后续选择 */
+  let defaultModelApplied = false;
   /** 待发送的图片附件 */
   const pendingImages: PendingImage[] = [];
   let imageSeq = 0;
@@ -408,9 +416,15 @@ export function createAiPanel(): AiPanelHandle {
       const opt = h(
         'option',
         { value: m.modelId, title: m.description ?? '' },
-        m.modelId ? `${m.name}` : m.name, // auto 项保持原样
+        m.name,
       ) as HTMLOptionElement;
       modelSelect.appendChild(opt);
+    }
+    // 第一次拿到真实列表时尝试应用偏好默认（opus4.7）；之后用户改过的话就不再覆盖
+    if (!defaultModelApplied) {
+      defaultModelApplied = true;
+      const preferred = findPreferredModelId(models);
+      if (preferred) selectedModel = preferred;
     }
     modelSelect.value = selectedModel;
     if (modelSelect.value !== selectedModel) {
@@ -418,6 +432,22 @@ export function createAiPanel(): AiPanelHandle {
       selectedModel = modelSelect.value;
     }
     modelSelect.disabled = false;
+  }
+
+  /**
+   * 在模型列表里找名字接近 PREFERRED_MODEL_HINT 的那个。
+   * 匹配策略：忽略大小写以及 `-` / `_` / 空格 / 点号，看 modelId 或 displayName 是否包含目标。
+   */
+  function findPreferredModelId(models: AiModelItem[]): string {
+    const norm = (s: string) => s.toLowerCase().replace(/[\s\-_.]/g, '');
+    const target = norm(PREFERRED_MODEL_HINT);
+    for (const m of models) {
+      if (!m.modelId) continue; // 跳过 auto 项，auto 表示"不指定 model"
+      if (norm(m.modelId).includes(target) || norm(m.name).includes(target)) {
+        return m.modelId;
+      }
+    }
+    return '';
   }
 
   modelSelect.addEventListener('change', () => {
