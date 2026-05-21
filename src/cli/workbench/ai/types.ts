@@ -16,6 +16,29 @@ export interface AiHealthResponse {
   reason?: string;
 }
 
+/** 单个可用模型条目（前后端共用） */
+export interface AiModel {
+  /** SDK 用的 model 标识；空字符串表示"auto / 用 CLI 默认" */
+  modelId: string;
+  /** 给人看的展示名 */
+  name: string;
+  /** 简短说明 */
+  description?: string;
+}
+
+/** /api/ai/models 响应 */
+export interface AiModelsResponse {
+  models: AiModel[];
+  /** true 表示列表来自 SDK 实时拉取；false 表示走的 fallback */
+  fromSdk: boolean;
+}
+
+/** PATCH /api/ai/conversations/:id/model 请求体 */
+export interface SetConversationModelRequest {
+  /** 空字符串表示"恢复 CLI 默认" */
+  model: string;
+}
+
 /** /api/ai/conversations 请求体 */
 export interface CreateConversationRequest {
   /** 必填：workbench job id，会话会落到 jobDir(jobId) 作为 cwd */

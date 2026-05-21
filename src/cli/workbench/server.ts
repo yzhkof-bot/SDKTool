@@ -278,6 +278,17 @@ async function handle(
     return;
   }
 
+  if (method === 'GET' && url.pathname === '/api/ai/models') {
+    try {
+      const force = url.searchParams.get('refresh') === '1';
+      const result = await conversations.getModels(force);
+      sendJson(res, 200, result);
+    } catch (err) {
+      handleConversationError(res, err);
+    }
+    return;
+  }
+
   if (method === 'POST' && url.pathname === '/api/ai/conversations') {
     const body = (await readJson(req).catch((e) => ({ __error: e }))) as
       | { jobId?: unknown; model?: unknown; __error?: Error };
@@ -331,6 +342,29 @@ async function handle(
     try {
       await conversations.interrupt(cid);
       sendJson(res, 200, { interrupted: cid });
+    } catch (err) {
+      handleConversationError(res, err);
+    }
+    return;
+  }
+
+  const convModel = /^\/api\/ai\/conversations\/([a-z0-9_]+)\/model$/i.exec(url.pathname);
+  if (method === 'PATCH' && convModel) {
+    const cid = convModel[1]!;
+    const body = (await readJson(req).catch((e) => ({ __error: e }))) as
+      | { model?: unknown; __error?: Error };
+    if (body.__error) {
+      sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
+      return;
+    }
+    const model = typeof body.model === 'string' ? body.model.trim() : '';
+    if (!model) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: 'model 不能为空' });
+      return;
+    }
+    try {
+      await conversations.setModel(cid, model);
+      sendJson(res, 200, { conversationId: cid, model });
     } catch (err) {
       handleConversationError(res, err);
     }

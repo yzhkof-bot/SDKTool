@@ -26,6 +26,17 @@ interface AiHealth {
   reason?: string;
 }
 
+interface AiModelItem {
+  modelId: string;
+  name: string;
+  description?: string;
+}
+
+interface AiModelsResponse {
+  models: AiModelItem[];
+  fromSdk: boolean;
+}
+
 interface MessageState {
   role: 'user' | 'assistant';
   /** 完整渲染后的 DOM；对 assistant 来说在 stream 过程中会持续 append */
@@ -90,14 +101,29 @@ export function createAiPanel(): AiPanelHandle {
 
   const statusEl = h('div', { class: 'ai-status' }) as HTMLElement;
 
+  const modelSelect = h('select', {
+    class: 'ai-model-select',
+    title: '选择模型（切换会立刻对下一轮生效）',
+  }) as HTMLSelectElement;
+  // 初始占位：加载完之前不可点
+  modelSelect.disabled = true;
+  modelSelect.appendChild(
+    h('option', { value: '' }, '模型加载中…') as HTMLOptionElement,
+  );
+
   const drawer = h(
     'aside',
     { class: 'ai-drawer' },
     h(
       'div',
       { class: 'ai-drawer-header' },
-      h('div', { class: 'ai-drawer-title' }, h('span', { class: 'ai-trigger-icon' }, '✦'), 'AI 分析助手'),
-      closeBtn,
+      h(
+        'div',
+        { class: 'ai-drawer-title' },
+        h('span', { class: 'ai-trigger-icon' }, '✦'),
+        'AI 分析助手',
+      ),
+      h('div', { class: 'ai-drawer-actions' }, modelSelect, closeBtn),
     ),
     statusEl,
     messagesEl,
@@ -128,6 +154,9 @@ export function createAiPanel(): AiPanelHandle {
   let healthMsg = '';
   let inflight: AbortController | null = null;
   let currentAssistant: MessageState | null = null;
+  /** 模型选择；空串表示 auto / 用 CLI 默认。仅在 ensureConversation 时透传给后端。 */
+  let selectedModel = '';
+  let modelsLoaded = false;
 
   function setStatus(text: string, kind: 'info' | 'error' | 'ok' = 'info'): void {
     statusEl.textContent = text;
@@ -148,6 +177,7 @@ export function createAiPanel(): AiPanelHandle {
     drawer.classList.remove('closed');
     document.body.classList.add('ai-drawer-open');
     if (!healthChecked) void checkHealth();
+    if (!modelsLoaded) void loadModels();
     setTimeout(() => inputEl.focus(), 50);
   }
 
@@ -199,8 +229,7 @@ export function createAiPanel(): AiPanelHandle {
         return;
       }
       healthOk = true;
-      const modelHint = data.model ? `（model: ${data.model}）` : '';
-      setStatus(`AI 已就绪 · provider=${data.provider}${modelHint}`, 'ok');
+      setStatus(`AI 已就绪 · provider=${data.provider}`, 'ok');
       sendBtn.disabled = false;
     } catch (e) {
       healthOk = false;
@@ -210,14 +239,85 @@ export function createAiPanel(): AiPanelHandle {
     }
   }
 
+  // ---------------- Models ----------------
+  async function loadModels(): Promise<void> {
+    if (!bootstrap) return;
+    modelsLoaded = true;
+    try {
+      const r = await fetch(`${bootstrap.apiBase}/models`);
+      const data = (await r.json()) as AiModelsResponse;
+      const models = Array.isArray(data?.models) ? data.models : [];
+      renderModelOptions(models);
+    } catch {
+      // fallback：只给 auto
+      renderModelOptions([{ modelId: '', name: 'Auto (CLI 默认)' }]);
+    }
+  }
+
+  function renderModelOptions(models: AiModelItem[]): void {
+    modelSelect.innerHTML = '';
+    if (models.length === 0) {
+      modelSelect.disabled = true;
+      modelSelect.appendChild(
+        h('option', { value: '' }, '(无可用模型)') as HTMLOptionElement,
+      );
+      return;
+    }
+    for (const m of models) {
+      const opt = h(
+        'option',
+        { value: m.modelId, title: m.description ?? '' },
+        m.modelId ? `${m.name}` : m.name, // auto 项保持原样
+      ) as HTMLOptionElement;
+      modelSelect.appendChild(opt);
+    }
+    modelSelect.value = selectedModel;
+    if (modelSelect.value !== selectedModel) {
+      // selectedModel 不在列表里：回落到第一项
+      selectedModel = modelSelect.value;
+    }
+    modelSelect.disabled = false;
+  }
+
+  modelSelect.addEventListener('change', () => {
+    const next = modelSelect.value;
+    if (next === selectedModel) return;
+    selectedModel = next;
+    // 有活会话 → 立刻 PATCH，对下一轮 send 生效；
+    // 没有会话 → 留到 ensureConversation 时随 body 一起传过去
+    if (conversationId && next) {
+      void patchConversationModel(conversationId, next);
+    }
+  });
+
+  async function patchConversationModel(cid: string, model: string): Promise<void> {
+    try {
+      const r = await fetch(`${bootstrap!.apiBase}/conversations/${encodeURIComponent(cid)}/model`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model }),
+      });
+      if (!r.ok) {
+        const data = (await r.json().catch(() => null)) as { message?: string } | null;
+        setStatus(`切换模型失败：${data?.message ?? `HTTP ${r.status}`}`, 'error');
+        return;
+      }
+      setStatus(`已切换到 ${model} · 下一轮生效`, 'ok');
+    } catch (e) {
+      setStatus(`切换模型失败：${(e as Error).message}`, 'error');
+    }
+  }
+
   // ---------------- 创建会话 + 发送 ----------------
   async function ensureConversation(): Promise<string> {
     if (conversationId) return conversationId;
     if (!bootstrap) throw new Error('未在 workbench 模式下，无法创建会话');
+    const body: { jobId: string; model?: string } = { jobId: bootstrap.jobId };
+    if (selectedModel) body.model = selectedModel;
     const r = await fetch(`${bootstrap.apiBase}/conversations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobId: bootstrap.jobId }),
+      body: JSON.stringify(body),
     });
     const data = (await r.json()) as { conversationId?: string; error?: string; message?: string };
     if (!r.ok || !data.conversationId) {

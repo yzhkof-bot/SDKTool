@@ -47,7 +47,7 @@ export interface AiSessionInfo {
 export class AiSession {
   private readonly sdk: SdkSession;
   private readonly jobDir: string;
-  private readonly model?: string;
+  private model?: string;
   private connected = false;
   private connectingPromise: Promise<void> | null = null;
   private closed = false;
@@ -168,6 +168,35 @@ export class AiSession {
     } catch {
       // SDK 文档说 interrupt 可能在某些状态下 reject；这里吞掉，上层只关心"尽力中断"
     }
+  }
+
+  /**
+   * 切换底层模型；对下一轮 send() 生效。
+   *
+   * 行为细节：
+   *  - 还没 connect 的 session 直接更新本地 model，下一次 connect/send 时由 SDK 用新值；
+   *    实际上 SDK 是按 constructor 时的 model 走的，所以我们只能在 connect 之后调用 setModel。
+   *    因此这里若未 connect 就先 connect，再发控制请求。
+   *  - 期间不打断 inFlight：调用方自己决定是否要先 interrupt()。
+   */
+  async setModel(model: string): Promise<void> {
+    if (!model.trim()) throw new Error('model 不能为空');
+    if (this.closed) throw new Error('会话已关闭');
+    await this.connect();
+    await this.sdk.setModel(model);
+    this.model = model;
+  }
+
+  /**
+   * 拉取 CLI 端可用模型列表（@experimental，需要 CLI 支持 get_available_models 控制请求）。
+   * 失败时把异常抛给上层，上层决定 fallback。
+   */
+  async listAvailableModels(): Promise<
+    Array<{ modelId: string; name: string; description?: string }>
+  > {
+    if (this.closed) throw new Error('会话已关闭');
+    await this.connect();
+    return this.sdk.getAvailableModels();
   }
 
   close(): void {

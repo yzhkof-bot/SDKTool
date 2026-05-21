@@ -15,8 +15,19 @@ import { existsSync } from 'node:fs';
 
 import { AiSession } from './session.js';
 import type { BuildSystemPromptArgs } from './prompts.js';
+import type { AiModel } from './types.js';
 import type { JobStore } from '../store.js';
 import type { WorkbenchJob } from '../../../shared/schema.js';
+
+/**
+ * 兜底模型列表：当 SDK getAvailableModels() 失败（CLI 太老 / 不支持 control 请求）时返回。
+ * 把"auto"作为第一项让前端可以"不传 model 用 CLI 默认"。
+ */
+const FALLBACK_MODELS: AiModel[] = [
+  { modelId: '', name: 'Auto (CLI 默认)', description: '使用 codebuddy 当前默认模型' },
+];
+
+const MODELS_CACHE_TTL_MS = 60 * 60 * 1000;
 
 interface Entry {
   id: string;
@@ -44,6 +55,10 @@ export class ConversationManager {
   private readonly ttlMs: number;
   private readonly maxConcurrent: number;
   private gcTimer: NodeJS.Timeout | null = null;
+  /** 模型列表缓存；SDK 调用要拉起一个 CLI 子进程，开销大且模型几乎不变 */
+  private modelsCache: { list: AiModel[]; fetchedAt: number; fromSdk: boolean } | null = null;
+  /** 同一时刻只允许一个 getModels 飞行，避免并发拉起多个 CLI */
+  private modelsInFlight: Promise<AiModel[]> | null = null;
 
   constructor(opts: ConversationManagerOptions) {
     this.store = opts.store;
@@ -143,6 +158,109 @@ export class ConversationManager {
     const entry = this.map.get(id);
     if (!entry) throw new ConversationError('NOT_FOUND', `conversation ${id} 不存在`, 404);
     await entry.session.interrupt();
+  }
+
+  /**
+   * 切换某条会话的模型；对下一轮 send 生效。
+   * 若会话正 busy，调用方应该自己先 interrupt；我们这里不强制。
+   */
+  async setModel(id: string, model: string): Promise<void> {
+    const entry = this.map.get(id);
+    if (!entry) throw new ConversationError('NOT_FOUND', `conversation ${id} 不存在`, 404);
+    if (entry.session.isClosed) {
+      throw new ConversationError('CLOSED', `conversation ${id} 已关闭`, 410);
+    }
+    try {
+      await entry.session.setModel(model);
+      entry.lastTouchedAt = Date.now();
+      this.log(`[ai] conversation ${id} switched model → ${model}\n`);
+    } catch (err) {
+      throw new ConversationError(
+        'SET_MODEL_FAILED',
+        `切换模型失败：${err instanceof Error ? err.message : String(err)}`,
+        500,
+      );
+    }
+  }
+
+  /**
+   * 列出 CLI 端可用模型；带 1h 缓存。
+   *
+   * 实现：拉起一个"采集型"会话——cwd 借用任意已完成 job 的目录，或 store.rootDir；
+   * connect 后调 SDK.getAvailableModels() → 缓存 → close。SDK 不支持就走 fallback。
+   *
+   * 没有任何已完成 job 时不强行起 session（CLI 子进程开销大），直接返回 fallback。
+   * 已有 job 后下次刷新会拿到真实列表。
+   */
+  async getModels(force = false): Promise<{ models: AiModel[]; fromSdk: boolean }> {
+    if (!force && this.modelsCache) {
+      const fresh = Date.now() - this.modelsCache.fetchedAt < MODELS_CACHE_TTL_MS;
+      if (fresh) {
+        return { models: this.modelsCache.list, fromSdk: this.modelsCache.fromSdk };
+      }
+    }
+    if (this.modelsInFlight) {
+      const list = await this.modelsInFlight;
+      return { models: list, fromSdk: this.modelsCache?.fromSdk ?? false };
+    }
+    this.modelsInFlight = this.fetchModelsFromSdk().finally(() => {
+      this.modelsInFlight = null;
+    });
+    const list = await this.modelsInFlight;
+    return { models: list, fromSdk: this.modelsCache?.fromSdk ?? false };
+  }
+
+  private async fetchModelsFromSdk(): Promise<AiModel[]> {
+    // 找一个已完成 job 的 jobDir 作为采集会话的 cwd；
+    // 没有就直接 fallback，避免为了列模型起一个未挂载产物的 CLI 子进程。
+    const probeJobDir = this.pickAnyJobDir();
+    if (!probeJobDir) {
+      this.log('[ai] no job available to probe models, using fallback list\n');
+      const list = FALLBACK_MODELS;
+      this.modelsCache = { list, fetchedAt: Date.now(), fromSdk: false };
+      return list;
+    }
+    const probe = new AiSession({
+      jobDir: probeJobDir,
+      promptContext: {
+        jobDir: probeJobDir,
+        jobKind: 'analyze',
+        jobLabel: '__models_probe__',
+        jobInputs: [],
+      },
+      log: this.log,
+    });
+    try {
+      const raw = await probe.listAvailableModels();
+      const sdkList: AiModel[] = raw.map((m) => ({
+        modelId: m.modelId,
+        name: m.name,
+        ...(m.description ? { description: m.description } : {}),
+      }));
+      // 头部插一个"auto"作为"不指定 model"的语义
+      const list: AiModel[] = [FALLBACK_MODELS[0]!, ...sdkList];
+      this.modelsCache = { list, fetchedAt: Date.now(), fromSdk: true };
+      this.log(`[ai] models fetched ${sdkList.length} via SDK\n`);
+      return list;
+    } catch (err) {
+      this.log(
+        `[ai] getAvailableModels failed: ${err instanceof Error ? err.message : err}, using fallback\n`,
+      );
+      const list = FALLBACK_MODELS;
+      this.modelsCache = { list, fetchedAt: Date.now(), fromSdk: false };
+      return list;
+    } finally {
+      probe.close();
+    }
+  }
+
+  private pickAnyJobDir(): string | undefined {
+    for (const job of this.store.list(50)) {
+      if (job.status !== 'done') continue;
+      const dir = this.store.jobDir(job.id);
+      if (existsSync(dir)) return dir;
+    }
+    return undefined;
   }
 
   close(id: string): boolean {
