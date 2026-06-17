@@ -9,6 +9,13 @@ import { getExtraAnalyzerMeta } from '../../core/analyzers/index.js';
 import { DEFAULT_PLATFORM, type Platform } from '../../shared/schema.js';
 
 import { browseDirectory, BrowseError } from './browse.js';
+import {
+  DEVOPS_BUILD_STATUSES,
+  DevopsError,
+  listArtifacts,
+  listBuilds,
+  type DevopsBuildStatus,
+} from './devops.js';
 import { locateByMeta } from './locate.js';
 import { startAnalyzeJob, startCompareJob } from './runner.js';
 import { JobStore, defaultCacheDir } from './store.js';
@@ -49,6 +56,8 @@ export interface WorkbenchServerHandle {
  *   GET  /healthz                       存活检查
  *   GET  /api/extras?platform=          按平台返回可选深度 analyzer 元信息
  *   GET  /api/browse?dir=...            服务端目录浏览（零拷贝选 hap）
+ *   GET  /api/devops/builds?page&pageSize&status   蓝盾流水线构建历史
+ *   GET  /api/devops/artifacts?buildId  蓝盾某次构建的制品列表
  *   GET  /api/jobs                      job 列表
  *   GET  /api/jobs/:id                  单个 job
  *   POST /api/analyze                   { path, platform?, extras? } → 启动分析作业
@@ -175,6 +184,51 @@ async function handle(
     }
     const result = await locateByMeta({ name, size });
     sendJson(res, 200, result);
+    return;
+  }
+
+  // 蓝盾构建历史（首页左侧栏）
+  if (method === 'GET' && url.pathname === '/api/devops/builds') {
+    const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
+    const pageSize = Number.parseInt(url.searchParams.get('pageSize') ?? '20', 10);
+    const statusRaw = url.searchParams.get('status');
+    let status: DevopsBuildStatus | undefined;
+    if (statusRaw) {
+      if (!(DEVOPS_BUILD_STATUSES as readonly string[]).includes(statusRaw)) {
+        sendJson(res, 400, {
+          error: 'BAD_REQUEST',
+          message: `status 取值非法，允许：${DEVOPS_BUILD_STATUSES.join(' | ')}`,
+        });
+        return;
+      }
+      status = statusRaw as DevopsBuildStatus;
+    }
+    try {
+      const result = await listBuilds({
+        page: Number.isFinite(page) ? page : 1,
+        pageSize: Number.isFinite(pageSize) ? pageSize : 20,
+        status,
+      });
+      sendJson(res, 200, result);
+    } catch (e) {
+      handleDevopsError(res, e);
+    }
+    return;
+  }
+
+  // 蓝盾某次构建的制品列表
+  if (method === 'GET' && url.pathname === '/api/devops/artifacts') {
+    const buildId = url.searchParams.get('buildId') ?? '';
+    if (!buildId.trim()) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: '缺少 buildId 查询参数' });
+      return;
+    }
+    try {
+      const artifacts = await listArtifacts(buildId);
+      sendJson(res, 200, { buildId: buildId.trim(), artifacts });
+    } catch (e) {
+      handleDevopsError(res, e);
+    }
     return;
   }
 
@@ -415,6 +469,15 @@ async function handle(
 function handleConversationError(res: ServerResponse, err: unknown): void {
   if (err instanceof ConversationError) {
     sendJson(res, err.statusCode, { error: err.code, message: err.message });
+    return;
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  sendJson(res, 500, { error: 'INTERNAL', message });
+}
+
+function handleDevopsError(res: ServerResponse, err: unknown): void {
+  if (err instanceof DevopsError) {
+    sendJson(res, err.statusCode, { error: 'DEVOPS_FAILED', message: err.message });
     return;
   }
   const message = err instanceof Error ? err.message : String(err);

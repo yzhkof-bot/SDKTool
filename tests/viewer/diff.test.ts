@@ -238,20 +238,7 @@ function richDiff(): PackageDiffReport {
           added: [{ name: 'brand', bind: 'GLOBAL', type: 'FUNC', size: 16, imported: false }],
           removed: [{ name: 'gone', bind: 'GLOBAL', type: 'FUNC', size: 8, imported: false }],
           changed: [
-            // 同 size 不同 body —— 仅靠 codeSha256 才能识别的核心新信号
-            {
-              name: 'foo',
-              fromSize: 16,
-              toSize: 16,
-              delta: 0,
-              bind: 'GLOBAL',
-              type: 'FUNC',
-              imported: false,
-              bodyChanged: true,
-              fromCodeSha256: 'a'.repeat(64),
-              toCodeSha256: 'b'.repeat(64),
-            },
-            // size 变 body 同
+            // size 变 + body 也变 —— size-changed 是主信号；body badge 显示 'body changed'
             {
               name: 'bar',
               fromSize: 16,
@@ -260,9 +247,20 @@ function richDiff(): PackageDiffReport {
               bind: 'GLOBAL',
               type: 'FUNC',
               imported: false,
+              bodyChanged: true,
+            },
+            // size 变 + body 不变 —— 罕见但合法（末尾对齐 padding 调整）
+            {
+              name: 'pad',
+              fromSize: 12,
+              toSize: 16,
+              delta: 4,
+              bind: 'GLOBAL',
+              type: 'FUNC',
+              imported: false,
               bodyChanged: false,
             },
-            // 未启用 hash（老 report）—— 字段缺省，应回退到"未计 sha256"
+            // 未启用 hash（老 report）—— 字段缺省，回退到"未计 sha256"
             {
               name: 'legacy',
               fromSize: 24,
@@ -273,7 +271,9 @@ function richDiff(): PackageDiffReport {
               imported: false,
             },
           ],
-          totals: { added: 1, removed: 1, changed: 3, unchanged: 5 },
+          // size 一致但 hash 不同的"漂移项"已下线（PC-rel 重链接噪声占主导）：
+          // 这里只验 differ 不再把它们当 changed/不再产 bodyHashOnly 名单。
+          totals: { added: 1, removed: 1, changed: 3, unchanged: 7 },
         },
       ],
     },
@@ -452,7 +452,7 @@ describe('mountDiffApp', () => {
     document.body.removeChild(root);
   });
 
-  it('Native 符号 changed 表渲染：body changed / body 不变 / 未计 sha256 三态 badge 都出', () => {
+  it('Native 符号 changed 表渲染：size-changed 主路径 + 三态 body badge 都出', () => {
     const root = document.createElement('div');
     document.body.appendChild(root);
     mountDiffApp(root, richDiff());
@@ -460,15 +460,37 @@ describe('mountDiffApp', () => {
     const nativeSection = root.querySelector('#section-nativeLibs');
     expect(nativeSection).toBeTruthy();
     const text = nativeSection!.textContent ?? '';
-    // 三态 badge 文案都得在 changed 行里
+    // size-changed 主信号
+    expect(text).toContain('bar');
+    expect(text).toContain('pad');
+    expect(text).toContain('legacy');
+    // 三态 body badge
     expect(text).toContain('body changed');
     expect(text).toContain('body 不变');
     expect(text).toContain('未计 sha256');
-    // 表头 + 关键符号
     expect(text).toContain('Body');
-    expect(text).toContain('foo');
-    expect(text).toContain('bar');
-    expect(text).toContain('legacy');
+
+    document.body.removeChild(root);
+  });
+
+  it('Native 符号：size 一致的"漂移项"既不进 changed 表也不再有独立面板（已下线）', () => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    mountDiffApp(root, richDiff());
+
+    const nativeSection = root.querySelector('#section-nativeLibs');
+    expect(nativeSection).toBeTruthy();
+
+    // 折叠面板不应再渲染
+    expect(nativeSection!.querySelector('details.body-hash-only-panel')).toBeNull();
+
+    // 顶层"符号表变化"标题里不再混入 body-only 计数
+    const titles = [...nativeSection!.querySelectorAll('.panel-title')].map(
+      (t) => t.textContent ?? '',
+    );
+    const symbolsTitle = titles.find((t) => t.includes('符号表变化'));
+    expect(symbolsTitle).toBeTruthy();
+    expect(symbolsTitle!).not.toContain('body-only');
 
     document.body.removeChild(root);
   });

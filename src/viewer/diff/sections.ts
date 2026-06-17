@@ -1015,6 +1015,8 @@ function renderSymbolsDiff(lib: DiffNativeLibSymbolsItem): HTMLElement | null {
     formatBytes(s.fromSize),
     formatBytes(s.toSize),
     deltaBytes(s.delta),
+    // 只有当 size 确实有变时 body badge 才传递可读信号；differ 已经把
+    // size 不变 + body 变 的项移到独立的 bodyHashOnly 面板，这里不会出现。
     s.bodyChanged === true
       ? badge('body changed', 'warning')
       : s.bodyChanged === false

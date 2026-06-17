@@ -96,7 +96,9 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string): string {
     </div>
   </div>
 
-  <div class="container" id="container" data-platform="${escAttr(defaultPlatform)}">
+  <div class="layout">
+    ${renderDevopsSidebar()}
+    <div class="container" id="container" data-platform="${escAttr(defaultPlatform)}">
     ${platformSegment}
 
     <div class="tabs">
@@ -165,6 +167,7 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string): string {
       ${platformFilter}
       <div id="jobs"></div>
     </section>
+    </div>
   </div>
 
   <!-- 文件选择 modal：实际就是服务端目录浏览器 -->
@@ -198,6 +201,41 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string): string {
   <script>${SCRIPT}</script>
 </body>
 </html>`;
+}
+
+/**
+ * 左侧栏：蓝盾流水线构建列表。
+ * 骨架由 server 渲染，构建数据由客户端 JS 调 /api/devops/builds 拉取后填充；
+ * 每行点击展开该构建的制品列表（/api/devops/artifacts）。
+ */
+function renderDevopsSidebar(): string {
+  const statusOptions = [
+    ['', '全部状态'],
+    ['SUCCEED', '成功'],
+    ['FAILED', '失败'],
+    ['RUNNING', '运行中'],
+    ['CANCELED', '已取消'],
+    ['QUEUE', '排队中'],
+    ['STAGE_SUCCESS', '阶段成功'],
+  ]
+    .map(([v, label]) => `<option value="${escAttr(v!)}">${escHtml(label!)}</option>`)
+    .join('');
+  return `<aside class="sidebar" id="devops-sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-title">流水线构建</div>
+      <div class="sidebar-sub">OpenHarmony 出档 · smoba</div>
+    </div>
+    <div class="sidebar-toolbar">
+      <select id="devops-status" class="devops-select" title="按构建状态过滤">${statusOptions}</select>
+      <button class="btn-icon-sm" id="devops-refresh" title="刷新">↻</button>
+    </div>
+    <div id="devops-list" class="devops-list"></div>
+    <div class="sidebar-foot">
+      <button class="btn-secondary devops-page-btn" id="devops-prev" disabled>← 上一页</button>
+      <span class="devops-page-info" id="devops-page-info">—</span>
+      <button class="btn-secondary devops-page-btn" id="devops-next" disabled>下一页 →</button>
+    </div>
+  </aside>`;
 }
 
 /**
@@ -320,7 +358,51 @@ body { margin: 0; background: var(--color-bg); color: var(--color-text); font-fa
 .topbar-storage-msg { font-size: 11px; color: var(--color-success); min-width: 48px; transition: opacity 0.3s; }
 .btn-icon-sm { background: transparent; border: 1px solid var(--color-border); border-radius: 4px; padding: 2px 7px; font-size: 13px; cursor: pointer; color: var(--color-muted); white-space: nowrap; flex-shrink: 0; }
 .btn-icon-sm:hover { background: var(--color-primary-bg); border-color: var(--color-primary); color: var(--color-primary); }
-.container { max-width: 1100px; margin: 0 auto; padding: 24px 32px; }
+.container { flex: 1; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 24px 32px; }
+
+/* 整体左右布局：左侧蓝盾构建栏 + 右侧主工作台 */
+.layout { display: flex; align-items: flex-start; gap: 0; }
+
+/* 左侧栏：蓝盾流水线构建列表 */
+.sidebar { width: 340px; flex-shrink: 0; align-self: stretch; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; max-height: calc(100vh - 120px); position: sticky; top: 0; }
+.sidebar-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--color-border); }
+.sidebar-title { font-size: 14px; font-weight: 600; }
+.sidebar-sub { font-size: 11px; color: var(--color-muted); margin-top: 2px; }
+.sidebar-toolbar { display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--color-border); align-items: center; }
+.devops-select { flex: 1; font-size: 12px; padding: 5px 8px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface-elev); color: var(--color-text); }
+.devops-select:focus { outline: none; border-color: var(--color-primary); }
+.devops-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.sidebar-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--color-border); }
+.devops-page-btn { padding: 5px 10px; font-size: 11px; }
+.devops-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.devops-page-info { font-size: 11px; color: var(--color-muted); font-family: var(--font-mono); white-space: nowrap; }
+
+/* 构建卡片 */
+.build-item { border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface-elev); overflow: hidden; }
+.build-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; cursor: pointer; transition: background 0.12s; }
+.build-row:hover { background: var(--color-primary-bg); }
+.build-num { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--color-primary); white-space: nowrap; }
+.build-meta { min-width: 0; }
+.build-meta-line { font-size: 11px; color: var(--color-muted); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.build-meta-user { font-size: 11px; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.build-status { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 500; white-space: nowrap; }
+.build-status.SUCCEED, .build-status.STAGE_SUCCESS { background: rgba(16,185,129,0.16); color: var(--color-success); }
+.build-status.FAILED { background: rgba(239,68,68,0.16); color: var(--color-danger); }
+.build-status.RUNNING, .build-status.QUEUE { background: rgba(91,140,255,0.16); color: var(--color-primary); }
+.build-status.CANCELED { background: rgba(107,114,128,0.18); color: var(--color-muted); }
+.build-artifacts { border-top: 1px solid var(--color-border); padding: 8px 10px; background: var(--color-surface); display: flex; flex-direction: column; gap: 6px; }
+.build-artifacts.loading, .build-artifacts.empty, .build-artifacts.err { font-size: 11px; color: var(--color-muted); }
+.build-artifacts.err { color: var(--color-warning); }
+.artifact-item { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline; }
+.artifact-name { font-family: var(--font-mono); font-size: 11px; word-break: break-all; color: var(--color-text); }
+.artifact-size { font-family: var(--font-mono); font-size: 10px; color: var(--color-muted); white-space: nowrap; }
+.devops-list .muted, .devops-list .err { padding: 12px; text-align: center; font-size: 12px; }
+.devops-list .err { color: var(--color-warning); }
+
+@media (max-width: 920px) {
+  .layout { flex-direction: column; }
+  .sidebar { width: 100%; max-height: 360px; border-right: none; border-bottom: 1px solid var(--color-border); position: static; }
+}
 
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--color-border); }
 .tab { padding: 8px 18px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--color-muted); cursor: pointer; font-size: 14px; }
@@ -657,6 +739,126 @@ const SCRIPT = `
       if (lastJobsList) renderJobs(lastJobsList);
     });
   });
+
+  // ---------- 蓝盾流水线构建列表（左侧栏） ----------
+  (function() {
+    var listBox = $('#devops-list');
+    if (!listBox) return;
+    var statusSel = $('#devops-status');
+    var refreshBtn = $('#devops-refresh');
+    var prevBtn = $('#devops-prev');
+    var nextBtn = $('#devops-next');
+    var pageInfo = $('#devops-page-info');
+
+    var page = 1;
+    var pageSize = 20;
+    var total = 0;
+    var loading = false;
+    // 记录已展开的 buildId → artifacts 容器 DOM，避免重复请求
+    var expanded = Object.create(null);
+
+    function buildStatusLabel(s) {
+      var m = { SUCCEED:'成功', STAGE_SUCCESS:'阶段成功', FAILED:'失败', RUNNING:'运行中', QUEUE:'排队中', CANCELED:'已取消' };
+      return m[s] || s || '-';
+    }
+    function fmtBuildTime(ms) {
+      if (!ms) return '-';
+      return fmtTime(new Date(ms).toISOString());
+    }
+
+    async function loadBuilds() {
+      if (loading) return;
+      loading = true;
+      expanded = Object.create(null);
+      listBox.innerHTML = '';
+      listBox.appendChild(el('div', { class: 'muted' }, '加载中…'));
+      prevBtn.disabled = true; nextBtn.disabled = true;
+      try {
+        var qs = '?page=' + page + '&pageSize=' + pageSize;
+        var st = statusSel.value;
+        if (st) qs += '&status=' + encodeURIComponent(st);
+        var data = await jsonFetch('/api/devops/builds' + qs);
+        total = data.total || 0;
+        renderBuilds(data.builds || []);
+      } catch (e) {
+        listBox.innerHTML = '';
+        listBox.appendChild(el('div', { class: 'err' }, '加载构建失败：' + e.message));
+      } finally {
+        loading = false;
+        updatePager();
+      }
+    }
+
+    function updatePager() {
+      var totalPages = Math.max(1, Math.ceil(total / pageSize));
+      pageInfo.textContent = '第 ' + page + '/' + totalPages + ' 页 · 共 ' + total;
+      prevBtn.disabled = loading || page <= 1;
+      nextBtn.disabled = loading || page >= totalPages;
+    }
+
+    function renderBuilds(builds) {
+      listBox.innerHTML = '';
+      if (!builds.length) {
+        listBox.appendChild(el('div', { class: 'muted' }, '该筛选下暂无构建'));
+        return;
+      }
+      builds.forEach(function(b) {
+        var num = (b.buildNum != null) ? ('#' + b.buildNum) : '#-';
+        var artBox = el('div', { class: 'build-artifacts', hidden: true });
+        var row = el('div', { class: 'build-row' }, [
+          el('div', { class: 'build-num' }, num),
+          el('div', { class: 'build-meta' }, [
+            el('div', { class: 'build-meta-user' }, b.userId || '-'),
+            el('div', { class: 'build-meta-line', title: b.buildId }, fmtBuildTime(b.startTime)),
+          ]),
+          el('span', { class: 'build-status ' + (b.status || ''), title: buildStatusLabel(b.status) }, buildStatusLabel(b.status)),
+        ]);
+        row.addEventListener('click', function() { toggleArtifacts(b, artBox); });
+        listBox.appendChild(el('div', { class: 'build-item' }, [row, artBox]));
+      });
+    }
+
+    async function toggleArtifacts(build, box) {
+      if (!box.hidden) { box.hidden = true; return; }
+      box.hidden = false;
+      if (expanded[build.buildId]) return; // 已加载过
+      box.className = 'build-artifacts loading';
+      box.innerHTML = '';
+      box.appendChild(el('div', null, '加载制品…'));
+      try {
+        var data = await jsonFetch('/api/devops/artifacts?buildId=' + encodeURIComponent(build.buildId));
+        var arts = data.artifacts || [];
+        expanded[build.buildId] = true;
+        box.className = 'build-artifacts';
+        box.innerHTML = '';
+        if (!arts.length) {
+          box.className = 'build-artifacts empty';
+          box.appendChild(el('div', null, '该构建暂无制品'));
+          return;
+        }
+        arts.forEach(function(a) {
+          box.appendChild(el('div', { class: 'artifact-item' }, [
+            el('span', { class: 'artifact-name', title: a.path }, a.name),
+            el('span', { class: 'artifact-size' }, typeof a.size === 'number' ? fmtBytes(a.size) : ''),
+          ]));
+        });
+      } catch (e) {
+        box.className = 'build-artifacts err';
+        box.innerHTML = '';
+        box.appendChild(el('div', null, '加载制品失败：' + e.message));
+      }
+    }
+
+    statusSel.addEventListener('change', function() { page = 1; loadBuilds(); });
+    refreshBtn.addEventListener('click', function() { loadBuilds(); });
+    prevBtn.addEventListener('click', function() { if (page > 1) { page--; loadBuilds(); } });
+    nextBtn.addEventListener('click', function() {
+      var totalPages = Math.max(1, Math.ceil(total / pageSize));
+      if (page < totalPages) { page++; loadBuilds(); }
+    });
+
+    loadBuilds();
+  })();
 
   // ---------- 复制 & 打开历史目录 ----------
   (function() {
@@ -1000,8 +1202,17 @@ const SCRIPT = `
       var file = dt.files[0];
 
       var nameLow = (file.name || '').toLowerCase();
-      if (!/\\.hap$|\\.json$/.test(nameLow)) {
-        setStatus(targetInput, 'err', '只支持 .hap / .json，收到: ' + file.name);
+      // 允许的扩展名跟着 currentPlatform 走，与 picker (data-filter) 保持一致。
+      // PLATFORM_DEFS[i].fileFilter 形如 '.hap,.json' / '.apk,.aab,.json' / '.ipa,.json'。
+      var def = platformDef(currentPlatform);
+      var allowedExts = ((def && def.fileFilter) || '')
+        .split(',')
+        .map(function(s){ return s.trim().toLowerCase(); })
+        .filter(Boolean);
+      var extOk = allowedExts.some(function(ext){ return nameLow.endsWith(ext); });
+      if (!extOk) {
+        var allowDisplay = allowedExts.length > 0 ? allowedExts.join(' / ') : '(未知平台)';
+        setStatus(targetInput, 'err', '当前平台（' + platformLabel(currentPlatform) + '）只支持 ' + allowDisplay + '，收到: ' + file.name);
         return;
       }
 

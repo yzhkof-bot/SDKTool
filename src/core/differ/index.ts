@@ -626,7 +626,9 @@ function diffOneLib(
     }
     const bodyChanged = computeSymbolBodyChanged(prev.codeSha256, s.codeSha256);
     const sizeChanged = prev.size !== s.size;
-    if (sizeChanged || bodyChanged === true) {
+    if (sizeChanged) {
+      // 唯一的 changed 信号：size 变化。bodyChanged 仅作为附加 badge 写进 row，
+      // 不参与是否入 changed 的判定。
       changed.push({
         name: s.name,
         fromSize: prev.size,
@@ -640,6 +642,18 @@ function diffOneLib(
         ...(s.codeSha256 ? { toCodeSha256: s.codeSha256 } : {}),
       });
     } else {
+      // size 一致：无论 codeSha256 是否不同（PC-rel 重链接漂移 / 真改写），
+      // 都统一计入 unchanged。
+      //
+      // 历史上这里曾把 "size 不变但 hash 不同" 单列为 bodyHashOnly 漂移面板，
+      // 但对真实 strip 过的 release .so 来说，ARM64 `bl/adrp/adr/ldr-literal`
+      // 这类 PC-relative 字段只要链接到不同地址就会产出不同字节——源码一行
+      // 未改也会触发。analyzer 端的 .rela.* mask 已吃掉一部分，剩余假阳性
+      // 占比仍极高，会把 diff.json 撑出几千条噪声，把 AI 读 diff 的注意力
+      // 与 token 预算全用在无意义条目上。所以直接吞掉。
+      //
+      // 真要追"size 不变但函数体改写"的强信号，请走反汇编 mnemonic 序列差分
+      // （未做；详见 native-symbols/README）。
       unchanged += 1;
     }
   }

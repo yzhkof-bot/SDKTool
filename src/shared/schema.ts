@@ -969,17 +969,46 @@ export interface DiffSymbolChanged {
   type: NativeSymbolType;
   imported: boolean;
   /**
-   * 函数体字节是否变化：
-   *   - true：两侧都有 codeSha256 且不一致（最强信号，能识别"size 不变 body 变"的情形）
+   * 函数体字节是否变化（**仅作为 size 已变时的附加信号**）：
+   *   - true：两侧都有 codeSha256 且不一致
    *   - false：两侧都有 codeSha256 且一致
    *   - null：任一侧缺 codeSha256 → 无法判断
    *   - 字段缺省：analyzer 未抽 codeSha256，向后兼容旧 report
+   *
+   * 注意 differ 已经把 "size 没变但 hash 不同" 的符号从 `changed` 移走了
+   * （走到 {@link DiffNativeLibSymbolsItem.bodyHashOnly}），因为那种信号
+   * 含大量 PC-relative 重链接位移假阳性。本字段在 `changed` 行里只回答
+   * "size 变了同时 body 也变了吗"——绝大多数情况都是 true，少数 false 通常
+   * 是末尾对齐 padding 调整。
    */
   bodyChanged?: boolean | null;
   /** 左侧 codeSha256（若有），便于 viewer 展示 */
   fromCodeSha256?: string;
   /** 右侧 codeSha256（若有），便于 viewer 展示 */
   toCodeSha256?: string;
+}
+
+/**
+ * @deprecated 已默认禁用 —— differ 不再产出，但保留字段定义以确保老 diff.json
+ * 与外部脚本读取不炸。
+ *
+ * 历史背景：曾用于呈现"同名符号 size 完全一致、但 codeSha256 不同"的漂移项。
+ * 对真实 strip 过的 release `.so` 来说，ARM64 `bl/adrp/adr/ldr-literal` 等
+ * PC-relative 字段只要被链接到不同地址就会产出不同字节——源码一行未改也会触发；
+ * analyzer 端的 `.rela.* mask` 只能吸收一部分。最终这种"漂移项"会污染 diff.json
+ * 与 AI 注意力，被整体下线。
+ *
+ * 真要追"size 不变但函数体改写"的强信号，需要反汇编 mnemonic 序列差分（未做）。
+ */
+export interface DiffSymbolBodyHashOnly {
+  name: string;
+  /** 符号 size（两侧相同） */
+  size: number;
+  bind: NativeSymbolBind;
+  type: NativeSymbolType;
+  imported: boolean;
+  fromCodeSha256: string;
+  toCodeSha256: string;
 }
 
 /* ELF section 的逐 section diff（按 |delta| 降序） */
@@ -1050,13 +1079,28 @@ export interface DiffNativeLibSymbolsItem {
   toMissing: boolean;
   added: NativeSymbol[];
   removed: NativeSymbol[];
-  /** size 变化的符号（同名同 imported） */
+  /**
+   * `size` 变化的符号（同名同 imported）——主"修改"信号。
+   * 注意：`size` 未变但 `codeSha256` 不同的符号**不会**进这里，详见
+   * {@link DiffNativeLibSymbolsItem.bodyHashOnly}。
+   */
   changed: DiffSymbolChanged[];
+  /**
+   * @deprecated 已默认禁用 —— differ 不再填充。保留字段定义仅为兼容老 diff.json。
+   *
+   * 历史含义：`size` 未变但 `codeSha256` 不同的符号集合。重链接产生的 PC-relative
+   * 字段位移导致大量假阳性，污染 diff 输出与 AI 注意力，已整体下线。
+   */
+  bodyHashOnly?: DiffSymbolBodyHashOnly[];
   totals: {
     added: number;
     removed: number;
     changed: number;
     unchanged: number;
+    /**
+     * @deprecated 与 {@link bodyHashOnly} 一同停产；缺省时按 0 算。
+     */
+    bodyHashOnly?: number;
   };
   /* ---- 以下字段为深度分析的可选维度，仅当对应 analyzer 字段在两侧任意一边可用时出现 ---- */
   sectionsDiff?: DiffNativeLibSections;

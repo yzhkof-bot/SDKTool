@@ -2,10 +2,11 @@
  * Minimal ELF64 LSB shared-object fixture（测试用）。
  *
  * 用途：给 `nativeSymbols` analyzer + native symbol diff 单测构造可控的 .so 内容。
- * 不追求完整 ELF 语义（无 program header / 无 reloc / 无 dynamic / 无 GNU note），
+ * 不追求完整 ELF 语义（无 program header / 无 dynamic / 无 GNU note），
  * 仅保证 zero-dep ELF parser 能正确读出：
  *   - ELF header（class=64 / data=LSB / type=ET_DYN / machine=AARCH64）
- *   - Section headers（NULL + .text + .dynstr + .dynsym + .shstrtab）
+ *   - Section headers（NULL + .text + .dynstr + .dynsym + .shstrtab，
+ *     可选 + .rela.text 用于 relocation mask 单测）
  *   - .dynsym 内的 FUNC 符号 + 其 st_value 落在 .text 范围内
  *
  * Layout（紧排，按声明顺序，无 padding 间隙）：
@@ -13,8 +14,9 @@
  *   [.text bytes ...]
  *   [.dynstr ...]
  *   [.dynsym entries ...]
+ *   [.rela.text entries (可选)]
  *   [.shstrtab ...]
- *   [section header table (5 × 64B)]
+ *   [section header table (5-6 × 64B)]
  *
  * 注意：`.text` 的 sh_addr 与 sh_offset 取同一个值，方便 mapVaddrToFileOffset
  * 直接由 st_value 找回文件偏移；也跟真实链接器对 PIC .so 的常见结果一致。
@@ -23,12 +25,14 @@
 const ELF64_HEADER_SIZE = 64;
 const ELF64_SHDR_SIZE = 64;
 const ELF64_DYNSYM_ENT = 24;
+const ELF64_RELA_ENT = 24;
 
 /* sh_type */
 const SHT_NULL = 0;
 const SHT_PROGBITS = 1;
 const SHT_STRTAB = 3;
 const SHT_DYNSYM = 11;
+const SHT_RELA = 4;
 
 /* sh_flags */
 const SHF_WRITE = 0x1;
@@ -60,10 +64,22 @@ export interface BuildElfSymbol {
   type?: 'FUNC' | 'OBJECT' | 'NOTYPE';
 }
 
+export interface BuildElfReloc {
+  /** 落在 .text 段内的偏移（相对 .text 起始字节），覆盖字节数由 type 决定 */
+  textOffset: number;
+  /** AArch64 reloc type，例如 283=R_AARCH64_CALL26（4 字节）、256=R_AARCH64_ABS64（8 字节） */
+  type: number;
+}
+
 export interface BuildElfOptions {
   symbols: BuildElfSymbol[];
   /** .text 起始虚拟地址，默认 0x1000；mapVaddrToFileOffset 对此基址透明 */
   textVaddr?: number;
+  /**
+   * 注入到 .rela.text 段的 reloc 条目（可选）。analyzer 会按 type 推断 mask 字节数，
+   * 把这些字节范围在 hash 前置零——用于验证"重链接位移噪声被吸收"的关键链路。
+   */
+  textRelocations?: BuildElfReloc[];
 }
 
 /**
@@ -137,7 +153,13 @@ export function buildElf(opts: BuildElfOptions): Buffer {
   }
 
   /* 4. .shstrtab：含每个 section 的名字 */
-  const sectionNames = ['', '.text', '.dynstr', '.dynsym', '.shstrtab'];
+  const sectionNames = hasReloFixedNames()
+    ? ['', '.text', '.dynstr', '.dynsym', '.rela.text', '.shstrtab']
+    : ['', '.text', '.dynstr', '.dynsym', '.shstrtab'];
+
+  function hasReloFixedNames(): boolean {
+    return (opts.textRelocations?.length ?? 0) > 0;
+  }
   const shstrChunks: Buffer[] = [];
   const shstrOffsets: number[] = [];
   let shstrCursor = 0;
@@ -149,15 +171,40 @@ export function buildElf(opts: BuildElfOptions): Buffer {
   }
   const shstrBytes = Buffer.concat(shstrChunks);
 
+  /* 4.5. .rela.text（可选） */
+  const hasRela = (opts.textRelocations?.length ?? 0) > 0;
+  const relaBytes = hasRela
+    ? Buffer.alloc(opts.textRelocations!.length * ELF64_RELA_ENT)
+    : Buffer.alloc(0);
+  if (hasRela) {
+    for (let i = 0; i < opts.textRelocations!.length; i++) {
+      const r = opts.textRelocations![i]!;
+      const off = i * ELF64_RELA_ENT;
+      // r_offset = textVaddr + textOffset（analyzer 会用 r_offset - text.shAddr
+      // 还原段内偏移；text.shAddr 我们设为 textVaddr，所以 r_offset 直接等于
+      // textVaddr + textOffset）
+      relaBytes.writeBigUInt64LE(BigInt(textVaddr + r.textOffset), off + 0);
+      // r_info：高 32 位 = sym index（这里固定 0，不影响 mask 逻辑）；
+      // 低 32 位 = type（analyzer 用小端读 base+8 的低 32 位）
+      relaBytes.writeUInt32LE(r.type >>> 0, off + 8);
+      relaBytes.writeUInt32LE(0, off + 12);
+      // r_addend = 0
+      relaBytes.writeBigInt64LE(0n, off + 16);
+    }
+  }
+
   /* 5. 算各 section 的文件偏移（紧排，按声明顺序） */
   const textOff = ELF64_HEADER_SIZE;
   const dynstrOff = textOff + textBytes.length;
   const dynsymOff = dynstrOff + dynstrBytes.length;
-  const shstrOff = dynsymOff + dynsymBytes.length;
+  const relaOff = dynsymOff + dynsymBytes.length;
+  const shstrOff = relaOff + relaBytes.length;
   const shdrOff = shstrOff + shstrBytes.length;
+  // section 总数：NULL + .text + .dynstr + .dynsym + (.rela.text 可选) + .shstrtab
+  const sectionCount = hasRela ? 6 : 5;
 
   /* 6. 组装 section header table */
-  const shdrTable = Buffer.alloc(5 * ELF64_SHDR_SIZE);
+  const shdrTable = Buffer.alloc(sectionCount * ELF64_SHDR_SIZE);
   // [0] NULL
   // [1] .text
   writeShdr(shdrTable, 1, {
@@ -198,9 +245,28 @@ export function buildElf(opts: BuildElfOptions): Buffer {
     shAddrAlign: 8,
     shEntSize: ELF64_DYNSYM_ENT,
   });
-  // [4] .shstrtab
-  writeShdr(shdrTable, 4, {
-    shName: shstrOffsets[4]!,
+
+  // 可选 [4] .rela.text（sh_info=1 指向 .text；sh_link=3 指向 .dynsym）
+  // 仅当有 reloc 注入时插入；后续 .shstrtab 索引随之 +1
+  const shstrSectionIdx = hasRela ? 5 : 4;
+  if (hasRela) {
+    writeShdr(shdrTable, 4, {
+      shName: shstrOffsets[4]!,
+      shType: SHT_RELA,
+      shFlags: 0,
+      shAddr: 0,
+      shOffset: relaOff,
+      shSize: relaBytes.length,
+      shLink: 3, // .dynsym
+      shInfo: 1, // .text
+      shAddrAlign: 8,
+      shEntSize: ELF64_RELA_ENT,
+    });
+  }
+
+  // .shstrtab（索引随是否有 .rela.text 浮动）
+  writeShdr(shdrTable, shstrSectionIdx, {
+    shName: shstrOffsets[shstrSectionIdx]!,
     shType: SHT_STRTAB,
     shFlags: 0,
     shAddr: 0,
@@ -232,13 +298,14 @@ export function buildElf(opts: BuildElfOptions): Buffer {
   out.writeUInt16LE(0, 54); // e_phentsize
   out.writeUInt16LE(0, 56); // e_phnum
   out.writeUInt16LE(ELF64_SHDR_SIZE, 58); // e_shentsize
-  out.writeUInt16LE(5, 60); // e_shnum
-  out.writeUInt16LE(4, 62); // e_shstrndx (.shstrtab 在 sections 数组的第 4 个)
+  out.writeUInt16LE(sectionCount, 60); // e_shnum
+  out.writeUInt16LE(shstrSectionIdx, 62); // e_shstrndx
 
   // payload
   textBytes.copy(out, textOff);
   dynstrBytes.copy(out, dynstrOff);
   dynsymBytes.copy(out, dynsymOff);
+  if (hasRela) relaBytes.copy(out, relaOff);
   shstrBytes.copy(out, shstrOff);
   shdrTable.copy(out, shdrOff);
 

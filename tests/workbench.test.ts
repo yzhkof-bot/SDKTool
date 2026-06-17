@@ -261,6 +261,22 @@ describe('startWorkbenchServer', () => {
     expect(text).toContain('id="picker"');
   });
 
+  it('GET / 页面里 drop 校验跟着 currentPlatform 走（不再硬编码 .hap / .json）', async () => {
+    // 防回归：曾经 compare 页拖入 .apk 被拒 "只支持 .hap / .json"，因为 drop handler
+    // 写死了正则。修复后 drop 改为读 platformDef(currentPlatform).fileFilter。
+    const r = await fetch(handle.url);
+    const text = await r.text();
+    // 1) 三个平台的 fileFilter 都必须出现在注入的 PLATFORM_DEFS JSON 里
+    expect(text).toContain('.hap,.json');
+    expect(text).toContain('.apk,.aab,.json');
+    expect(text).toContain('.ipa,.json');
+    // 2) drop 校验已基于 platformDef(currentPlatform) + fileFilter
+    expect(text).toContain('platformDef(currentPlatform)');
+    expect(text).toContain('def.fileFilter');
+    // 3) 旧的硬编码正则不应再出现
+    expect(text).not.toMatch(/\/\\\.hap\$\|\\\.json\$\//);
+  });
+
   it('GET /healthz → "ok"', async () => {
     const r = await fetch(`${handle.url}healthz`);
     expect(r.status).toBe(200);

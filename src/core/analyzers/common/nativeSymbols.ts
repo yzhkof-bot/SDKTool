@@ -481,6 +481,12 @@ function parseSymbolTable(
   // 仅在启用 hash 时建立 section vaddr→file offset 映射；
   // 节区比 program header 更精确（PHDR 的 LOAD 段一覆盖到底，section 能区分 .text vs .rodata）。
   const execSectionRanges = hashSymbolBodies ? buildExecSectionRanges(elf) : [];
+  // 同步收集所有指向可执行段的 .rela.* / .rel.* 条目对应的字节区间。
+  // hash 符号字节段前把这些 reloc 字节当作 0 处理 → 消除 PC-relative 重链接位移噪声。
+  // 注意：静态链接 release .so 的大多数 reloc 已在 link 阶段 apply 掉，这里能 mask 的
+  // 仅剩 .got/.plt 修补 + 少量 debug/LTO 构建残留，但对部分场景仍有效；剩余假阳性走 differ
+  // 的 bodyHashOnly 折叠面板继续提示用户。
+  const relocMasks = hashSymbolBodies ? collectRelocMasks(elf) : [];
 
   const allSymbols: NativeSymbol[] = [];
   const allImports = new Set<string>();
@@ -537,9 +543,7 @@ function parseSymbolTable(
       const fileOff = mapVaddrToFileOffset(stValue, stSize, execSectionRanges);
       if (fileOff !== null && fileOff + stSize <= buf.length) {
         // ARM/Thumb 互通：低位 bit 用作 Thumb 标记，不参与寻址；mapVaddrToFileOffset 已经把它清掉。
-        sym.codeSha256 = createHash('sha256')
-          .update(buf.subarray(fileOff, fileOff + stSize))
-          .digest('hex');
+        sym.codeSha256 = hashSymbolBytes(buf, fileOff, stSize, relocMasks);
       }
     }
 
@@ -620,6 +624,220 @@ function mapVaddrToFileOffset(
     }
   }
   return null;
+}
+
+/* ---------------------------------------------------------------------------
+ * Relocation mask：消除 PC-relative 重链接位移导致的"假 body changed"信号
+ * --------------------------------------------------------------------------- */
+
+/** 单条 reloc 在 .text/exec 段覆盖的字节区间（按 file offset 排序后供二分用） */
+interface RelocMask {
+  fileOffset: number;
+  len: number;
+}
+
+/**
+ * 扫描所有 SHT_RELA / SHT_REL，过滤出 `sh_info` 指向可执行段的条目，
+ * 把每条 reloc 在 target 段内的虚拟地址 `r_offset` 映射回文件偏移，配合 reloc
+ * type 推断的覆盖字节数，构成一份"hash 前必须置零"的字节区间清单。
+ *
+ * 行为要点：
+ *  - 仅处理 `SHF_EXECINSTR` 段（.text / .plt / .text.* 等）；.rela.dyn 修补 .got
+ *    我们不关心
+ *  - 未识别的 reloc type → 跳过（保守不 mask）
+ *  - r_offset 落在 target 段之外 → 直接丢
+ *  - 结果按 file offset 升序排序，便于符号 hash 阶段二分定位重叠区间
+ */
+function collectRelocMasks(elf: ParsedElf): RelocMask[] {
+  const masks: RelocMask[] = [];
+  for (const s of elf.sections) {
+    if (s.type !== SHT_RELA && s.type !== SHT_REL) continue;
+    // sh_info 是被修补的 section index
+    const targetIdx = s.info;
+    if (targetIdx < 0 || targetIdx >= elf.sections.length) continue;
+    const targetSec = elf.sections[targetIdx];
+    if (!targetSec) continue;
+    if ((targetSec.flags & SHF_EXECINSTR) === 0) continue;
+    const targetShAddr = readShAddr(elf, targetIdx);
+    if (targetShAddr === null) continue;
+
+    const isRela = s.type === SHT_RELA;
+    const defaultEntSize = elf.is64 ? (isRela ? 24 : 16) : (isRela ? 12 : 8);
+    const entSize = s.entsize > 0 ? s.entsize : defaultEntSize;
+    if (entSize <= 0 || s.size <= 0) continue;
+    if (s.offset + s.size > elf.buf.length) continue;
+    const count = Math.floor(s.size / entSize);
+
+    for (let i = 0; i < count; i++) {
+      const base = s.offset + i * entSize;
+      const rOffset = elf.rWord(base + 0);
+      // r_info：ELF64 是 8 字节，高 32 位 sym index，低 32 位 type；ELF32 是 4 字节，
+      // 高 24 位 sym，低 8 位 type。我们只关心 type。
+      const rType = elf.is64
+        ? elf.r32(base + 8) // 小端：低 32 位 = 低 4 字节 = type
+        : (elf.r32(base + 4) & 0xff);
+
+      const len = relocMaskLen(elf.eMachine, rType);
+      if (len === 0) continue;
+
+      // r_offset 在 link 完成后语义为虚拟地址（共享库 / 可执行文件），需要减
+      // 目标段 sh_addr 得段内偏移，再加段在文件里的 sh_offset。
+      const local = rOffset - targetShAddr;
+      if (local < 0 || local + len > targetSec.size) continue;
+      masks.push({ fileOffset: targetSec.offset + local, len });
+    }
+  }
+  masks.sort((a, b) => a.fileOffset - b.fileOffset);
+  return masks;
+}
+
+/* e_machine 常量（与 ELF spec 一致） */
+const EM_ARM = 40;
+const EM_AARCH64 = 183;
+const EM_X86_64 = 62;
+const EM_386 = 3;
+
+/**
+ * 根据 (machine, reloc type) 推断 reloc 覆盖的字节数。
+ * 仅覆盖 ARM64 / x86_64 / ARM(EABI) / x86 里常见的、可能落在 .text 内
+ * 影响指令字节的类型；GOT/PLT 修补类型（如 R_AARCH64_GLOB_DAT）不在这里返回，
+ * 因为它们修补的是 .got 段而不是 .text。
+ *
+ * 未识别 type → 返回 0（保守不 mask）。
+ */
+function relocMaskLen(machine: number, type: number): number {
+  if (machine === EM_AARCH64) {
+    switch (type) {
+      // 32-bit instruction patches (ARM64 指令固定 4 字节)
+      case 257: // R_AARCH64_ABS32
+      case 258: // R_AARCH64_ABS16 (按指令对齐保守取 4)
+      case 261: // R_AARCH64_PREL32
+      case 274: // R_AARCH64_LD_PREL_LO19
+      case 275: // R_AARCH64_ADR_PREL_LO21
+      case 276: // R_AARCH64_ADR_PREL_PG_HI21
+      case 277: // R_AARCH64_ADR_PREL_PG_HI21_NC
+      case 278: // R_AARCH64_ADD_ABS_LO12_NC
+      case 279: // R_AARCH64_LDST8_ABS_LO12_NC
+      case 280: // R_AARCH64_TSTBR14
+      case 281: // R_AARCH64_CONDBR19
+      case 282: // R_AARCH64_JUMP26
+      case 283: // R_AARCH64_CALL26
+      case 284: // R_AARCH64_LDST16_ABS_LO12_NC
+      case 285: // R_AARCH64_LDST32_ABS_LO12_NC
+      case 286: // R_AARCH64_LDST64_ABS_LO12_NC
+      case 299: // R_AARCH64_LDST128_ABS_LO12_NC
+        return 4;
+      // 64-bit data patches (literal pool 在 .text 内有时也有 64-bit 数据 slot)
+      case 256: // R_AARCH64_ABS64
+      case 260: // R_AARCH64_PREL64
+        return 8;
+      default:
+        return 0;
+    }
+  }
+  if (machine === EM_X86_64) {
+    switch (type) {
+      case 1: // R_X86_64_64
+      case 24: // R_X86_64_PC64
+        return 8;
+      case 2: // R_X86_64_PC32
+      case 4: // R_X86_64_PLT32
+      case 9: // R_X86_64_GOTPCREL
+      case 10: // R_X86_64_32
+      case 11: // R_X86_64_32S
+      case 26: // R_X86_64_GOTPC32
+        return 4;
+      default:
+        return 0;
+    }
+  }
+  if (machine === EM_ARM) {
+    switch (type) {
+      case 28: // R_ARM_CALL
+      case 29: // R_ARM_JUMP24
+      case 10: // R_ARM_THM_CALL
+      case 30: // R_ARM_THM_JUMP24
+      case 25: // R_ARM_BASE_PREL
+      case 26: // R_ARM_GOT_BREL
+      case 38: // R_ARM_TARGET1
+      case 102: // R_ARM_THM_JUMP11
+        return 4;
+      default:
+        return 0;
+    }
+  }
+  if (machine === EM_386) {
+    switch (type) {
+      case 1: // R_386_32
+      case 2: // R_386_PC32
+      case 4: // R_386_PLT32
+        return 4;
+      default:
+        return 0;
+    }
+  }
+  return 0;
+}
+
+/**
+ * 对符号字节段 `buf[fileOff..fileOff+size]` 算 SHA-256：
+ *   1. 找出与 `[fileOff, fileOff+size)` 相交的 reloc mask 区间
+ *   2. 若有相交 → 复制一份 buffer，将相交字节范围置 0 后 hash
+ *   3. 若没相交（绝大多数 release .so 符号都会落入这种情况）→ 直接 hash 原始 slice，省内存
+ *
+ * 用二分定位 reloc mask 起点；mask 数组已按 fileOffset 升序排好。
+ */
+function hashSymbolBytes(
+  buf: Buffer,
+  fileOff: number,
+  size: number,
+  masks: RelocMask[],
+): string {
+  const symEnd = fileOff + size;
+  const idx = lowerBoundMask(masks, fileOff);
+
+  // 快速判断是否有相交
+  let firstHit = -1;
+  for (let i = idx; i < masks.length; i++) {
+    const m = masks[i]!;
+    if (m.fileOffset >= symEnd) break;
+    if (m.fileOffset + m.len > fileOff) {
+      firstHit = i;
+      break;
+    }
+  }
+  if (firstHit < 0) {
+    return createHash('sha256').update(buf.subarray(fileOff, symEnd)).digest('hex');
+  }
+
+  // 有相交 → copy 一份并清零
+  const localBuf = Buffer.from(buf.subarray(fileOff, symEnd));
+  for (let i = firstHit; i < masks.length; i++) {
+    const m = masks[i]!;
+    if (m.fileOffset >= symEnd) break;
+    const overlapStart = Math.max(m.fileOffset, fileOff);
+    const overlapEnd = Math.min(m.fileOffset + m.len, symEnd);
+    if (overlapEnd > overlapStart) {
+      localBuf.fill(0, overlapStart - fileOff, overlapEnd - fileOff);
+    }
+  }
+  return createHash('sha256').update(localBuf).digest('hex');
+}
+
+/** 找到第一个 `fileOffset + len > target` 的下标；要求 masks 按 fileOffset 升序。 */
+function lowerBoundMask(masks: RelocMask[], target: number): number {
+  // 用 fileOffset 二分（不直接比 end，因为 len 不一致）；扫描时再用 end 校验。
+  // 为了不漏掉 fileOffset 在 target 之前但 end 跨过 target 的项，回退一点：
+  // 找第一个 fileOffset >= target - MAX_RELOC_LEN，简单起见取 8（reloc 最大 len）。
+  const probe = target - 8;
+  let lo = 0;
+  let hi = masks.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (masks[mid]!.fileOffset < probe) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 
 function decodeBind(b: number): NativeSymbolBind {
