@@ -17,6 +17,7 @@ import {
   type DevopsBuildStatus,
 } from './devops.js';
 import { locateByMeta } from './locate.js';
+import { LocalProjectStore, startLocalProjectJob } from './localProject.js';
 import { startAnalyzeJob, startCompareJob } from './runner.js';
 import { JobStore, defaultCacheDir } from './store.js';
 import { renderWorkbenchPage } from './page.js';
@@ -77,10 +78,11 @@ export async function startWorkbenchServer(
   const log = options.log ?? ((t) => process.stderr.write(t));
   const store = new JobStore(options.cacheDir ?? defaultCacheDir(port));
   const conversations = new ConversationManager({ store, log });
+  const localProjects = new LocalProjectStore();
 
   const prettyJson = options.prettyJson;
   const server: Server = createServer((req, res) => {
-    handle(req, res, store, conversations, options.toolVersion, log, prettyJson).catch((err) => {
+    handle(req, res, store, conversations, localProjects, options.toolVersion, log, prettyJson).catch((err) => {
       log(`[workbench] handler error: ${err?.stack ?? err}\n`);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -121,6 +123,7 @@ async function handle(
   res: ServerResponse,
   store: JobStore,
   conversations: ConversationManager,
+  localProjects: LocalProjectStore,
   toolVersion: string,
   log: (t: string) => void,
   prettyJson: boolean | undefined,
@@ -229,6 +232,52 @@ async function handle(
     } catch (e) {
       handleDevopsError(res, e);
     }
+    return;
+  }
+
+  // 配置本地工程：下载 il2cpp 产物 → 解压 → 覆盖工程 Data
+  if (method === 'POST' && url.pathname === '/api/local-project') {
+    const body = await readJson(req).catch((e) => ({ __error: e }));
+    if ('__error' in (body as object)) {
+      sendJson(res, 400, { error: 'BAD_JSON', message: String((body as { __error: Error }).__error.message) });
+      return;
+    }
+    const b = body as { buildId?: unknown; buildNum?: unknown; targetDir?: unknown };
+    const buildId = typeof b.buildId === 'string' ? b.buildId.trim() : '';
+    const targetDir = typeof b.targetDir === 'string' ? b.targetDir.trim() : '';
+    if (!buildId) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: '缺少 buildId 字符串字段' });
+      return;
+    }
+    if (!targetDir) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: '缺少 targetDir 字符串字段' });
+      return;
+    }
+    let dirStat;
+    try {
+      dirStat = await stat(targetDir);
+    } catch {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: `目标目录不存在: ${targetDir}` });
+      return;
+    }
+    if (!dirStat.isDirectory()) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: `目标路径不是目录: ${targetDir}` });
+      return;
+    }
+    const buildNum = typeof b.buildNum === 'number' ? b.buildNum : null;
+    const jobId = startLocalProjectJob({ buildId, buildNum, targetDir }, { store: localProjects, log });
+    sendJson(res, 202, { jobId });
+    return;
+  }
+
+  const lpMatch = /^\/api\/local-project\/([0-9a-f]+)$/.exec(url.pathname);
+  if (method === 'GET' && lpMatch) {
+    const job = localProjects.get(lpMatch[1]!);
+    if (!job) {
+      sendJson(res, 404, { error: 'NOT_FOUND' });
+      return;
+    }
+    sendJson(res, 200, job);
     return;
   }
 

@@ -174,7 +174,7 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string): string {
   <div class="modal" id="picker" hidden>
     <div class="modal-card">
       <div class="modal-header">
-        <strong>选择 Hap / Report</strong>
+        <strong id="picker-title">选择 Hap / Report</strong>
         <button class="btn-icon" id="picker-close" title="关闭">×</button>
       </div>
       <div class="modal-toolbar">
@@ -188,6 +188,43 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string): string {
       </div>
       <div class="modal-footer">
         <span class="muted" id="picker-status">加载中…</span>
+        <button class="btn-primary" id="picker-pick-dir" hidden>选择当前目录</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 构建制品列表 modal -->
+  <div class="modal" id="art-modal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong id="art-title">制品列表</strong>
+        <button class="btn-icon" id="art-close" title="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="art-actions"></div>
+        <div id="art-list" class="art-list"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="muted" id="art-status">加载中…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配置本地工程进度 modal -->
+  <div class="modal" id="lp-modal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong>配置本地工程</strong>
+        <button class="btn-icon" id="lp-close" title="关闭" disabled>×</button>
+      </div>
+      <div class="modal-body">
+        <div class="lp-meta" id="lp-meta"></div>
+        <div class="lp-steps" id="lp-steps"></div>
+        <div class="error lp-modal-error" id="lp-error" hidden></div>
+        <div class="lp-result" id="lp-result" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <span class="muted" id="lp-status">准备中…</span>
       </div>
     </div>
   </div>
@@ -541,6 +578,49 @@ body { margin: 0; background: var(--color-bg); color: var(--color-text); font-fa
 .picker-item.dim .name { color: var(--color-muted); }
 .picker-item.match .name { color: var(--color-primary); font-weight: 500; }
 .picker-item .mtime { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); }
+.modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.modal-footer .btn-primary { padding: 6px 14px; font-size: 12px; white-space: nowrap; }
+
+/* 制品区：配置本地工程入口 */
+.artifact-actions { margin-bottom: 4px; padding-bottom: 6px; border-bottom: 1px dashed var(--color-border); }
+.btn-config-proj { width: 100%; background: var(--color-primary); color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; }
+.btn-config-proj:hover { filter: brightness(0.95); }
+.btn-config-proj:disabled { opacity: 0.5; cursor: not-allowed; }
+.artifact-config-hint { font-size: 10px; color: var(--color-muted); margin-top: 4px; line-height: 1.4; }
+
+/* 制品列表 modal */
+#art-actions { padding: 12px 16px 0; }
+#art-actions:empty { padding: 0; }
+#art-actions .artifact-actions { margin-bottom: 0; }
+#art-actions .btn-config-proj { font-size: 13px; padding: 8px 12px; }
+#art-actions .artifact-config-hint { font-size: 11px; }
+.art-list { display: flex; flex-direction: column; }
+.art-list .artifact-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; padding: 7px 16px; border-bottom: 1px solid var(--color-border); }
+.art-list .artifact-item:last-child { border-bottom: none; }
+.art-list .artifact-item:hover { background: var(--color-primary-bg); }
+.art-list .artifact-name { font-size: 12px; }
+.art-list .artifact-size { font-size: 11px; }
+
+/* 配置本地工程进度 */
+.lp-meta { font-size: 12px; color: var(--color-muted); padding: 12px 16px 4px; font-family: var(--font-mono); word-break: break-all; }
+.lp-steps { display: flex; flex-direction: column; gap: 8px; padding: 8px 16px 12px; }
+.lp-step { border: 1px solid var(--color-border); border-radius: 6px; padding: 8px 12px; background: var(--color-surface-elev); }
+.lp-step-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lp-step-label { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.lp-step-icon { font-size: 13px; }
+.lp-step.pending .lp-step-label { color: var(--color-muted); }
+.lp-step.running .lp-step-label { color: var(--color-primary); }
+.lp-step.done .lp-step-label { color: var(--color-success); }
+.lp-step.error .lp-step-label { color: var(--color-danger); }
+.lp-step.skipped .lp-step-label { color: var(--color-muted); opacity: 0.6; }
+.lp-step-pct { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); white-space: nowrap; }
+.lp-step-detail { font-size: 11px; color: var(--color-muted); margin-top: 4px; font-family: var(--font-mono); word-break: break-all; }
+.lp-bar { height: 4px; border-radius: 999px; background: var(--color-code-bg); margin-top: 6px; overflow: hidden; }
+.lp-bar-fill { height: 100%; background: var(--color-primary); width: 0; transition: width 0.3s; }
+.lp-step.done .lp-bar-fill { background: var(--color-success); }
+.lp-step.error .lp-bar-fill { background: var(--color-danger); }
+.lp-result { margin: 4px 16px 14px; padding: 10px 12px; background: rgba(16,185,129,0.1); border: 1px solid var(--color-success); border-radius: 6px; font-size: 12px; color: var(--color-text); font-family: var(--font-mono); word-break: break-all; }
+.lp-modal-error { margin: 4px 16px 14px; }
 `;
 
 /* -------------------------------------------------------------------------- */
@@ -754,8 +834,6 @@ const SCRIPT = `
     var pageSize = 20;
     var total = 0;
     var loading = false;
-    // 记录已展开的 buildId → artifacts 容器 DOM，避免重复请求
-    var expanded = Object.create(null);
 
     function buildStatusLabel(s) {
       var m = { SUCCEED:'成功', STAGE_SUCCESS:'阶段成功', FAILED:'失败', RUNNING:'运行中', QUEUE:'排队中', CANCELED:'已取消' };
@@ -769,7 +847,6 @@ const SCRIPT = `
     async function loadBuilds() {
       if (loading) return;
       loading = true;
-      expanded = Object.create(null);
       listBox.innerHTML = '';
       listBox.appendChild(el('div', { class: 'muted' }, '加载中…'));
       prevBtn.disabled = true; nextBtn.disabled = true;
@@ -804,7 +881,6 @@ const SCRIPT = `
       }
       builds.forEach(function(b) {
         var num = (b.buildNum != null) ? ('#' + b.buildNum) : '#-';
-        var artBox = el('div', { class: 'build-artifacts', hidden: true });
         var row = el('div', { class: 'build-row' }, [
           el('div', { class: 'build-num' }, num),
           el('div', { class: 'build-meta' }, [
@@ -813,40 +889,9 @@ const SCRIPT = `
           ]),
           el('span', { class: 'build-status ' + (b.status || ''), title: buildStatusLabel(b.status) }, buildStatusLabel(b.status)),
         ]);
-        row.addEventListener('click', function() { toggleArtifacts(b, artBox); });
-        listBox.appendChild(el('div', { class: 'build-item' }, [row, artBox]));
+        row.addEventListener('click', function() { openArtModal(b); });
+        listBox.appendChild(el('div', { class: 'build-item' }, [row]));
       });
-    }
-
-    async function toggleArtifacts(build, box) {
-      if (!box.hidden) { box.hidden = true; return; }
-      box.hidden = false;
-      if (expanded[build.buildId]) return; // 已加载过
-      box.className = 'build-artifacts loading';
-      box.innerHTML = '';
-      box.appendChild(el('div', null, '加载制品…'));
-      try {
-        var data = await jsonFetch('/api/devops/artifacts?buildId=' + encodeURIComponent(build.buildId));
-        var arts = data.artifacts || [];
-        expanded[build.buildId] = true;
-        box.className = 'build-artifacts';
-        box.innerHTML = '';
-        if (!arts.length) {
-          box.className = 'build-artifacts empty';
-          box.appendChild(el('div', null, '该构建暂无制品'));
-          return;
-        }
-        arts.forEach(function(a) {
-          box.appendChild(el('div', { class: 'artifact-item' }, [
-            el('span', { class: 'artifact-name', title: a.path }, a.name),
-            el('span', { class: 'artifact-size' }, typeof a.size === 'number' ? fmtBytes(a.size) : ''),
-          ]));
-        });
-      } catch (e) {
-        box.className = 'build-artifacts err';
-        box.innerHTML = '';
-        box.appendChild(el('div', null, '加载制品失败：' + e.message));
-      }
     }
 
     statusSel.addEventListener('change', function() { page = 1; loadBuilds(); });
@@ -1088,8 +1133,14 @@ const SCRIPT = `
   var modalStatus = $('#picker-status');
   var pickerTargetInput = null;
   var pickerFilters = []; // 例如 ['.hap','.json']
+  var pickerMode = 'file'; // 'file' | 'dir'
+  var pickerDirCb = null;
 
   function openPicker(targetInputId, filterAttr) {
+    pickerMode = 'file';
+    pickerDirCb = null;
+    $('#picker-pick-dir').hidden = true;
+    $('#picker-title').textContent = '选择 Hap / Report';
     pickerTargetInput = $('#' + targetInputId);
     pickerFilters = (filterAttr || '').split(',').map(function(s){return s.trim().toLowerCase();}).filter(Boolean);
     modal.hidden = false;
@@ -1105,6 +1156,10 @@ const SCRIPT = `
   function closePicker() {
     modal.hidden = true;
     pickerTargetInput = null;
+    pickerMode = 'file';
+    pickerDirCb = null;
+    $('#picker-pick-dir').hidden = true;
+    $('#picker-title').textContent = '选择 Hap / Report';
   }
   $('#picker-close').addEventListener('click', closePicker);
   modal.addEventListener('click', function(e){ if (e.target === modal) closePicker(); });
@@ -1130,6 +1185,8 @@ const SCRIPT = `
       var data = await jsonFetch('/api/browse' + qs);
       currentResult = data;
       modalCwd.value = data.isRootList ? '' : data.cwd;
+      // 目录选择模式：根列表层不能"选择当前目录"
+      $('#picker-pick-dir').disabled = !!data.isRootList;
       var entries = data.entries;
       if (entries.length === 0) {
         modalStatus.textContent = data.isRootList ? '没有可用盘符' : '空目录 · ' + data.cwd;
@@ -1149,6 +1206,7 @@ const SCRIPT = `
             if (ent.isDir) {
               navigate(ent.path);
             } else {
+              if (pickerMode === 'dir') return; // 目录选择模式下忽略文件点击
               if (pickerTargetInput) pickerTargetInput.value = ent.path;
               closePicker();
             }
@@ -1165,6 +1223,173 @@ const SCRIPT = `
   // ESC 关闭 modal
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && !modal.hidden) closePicker();
+  });
+
+  // ---------- 目录选择模式（配置本地工程用） ----------
+  // 复用 picker modal，但只允许选目录：底部"选择当前目录"按钮回传 currentResult.cwd
+  function openDirPicker(onPick) {
+    pickerMode = 'dir';
+    pickerDirCb = onPick;
+    pickerTargetInput = null;
+    pickerFilters = [];
+    $('#picker-title').textContent = '选择本地工程根目录';
+    $('#picker-pick-dir').hidden = false;
+    $('#picker-pick-dir').disabled = true;
+    modal.hidden = false;
+    // 从已有结果的目录继续，否则从根开始
+    if (currentResult && !currentResult.isRootList && currentResult.cwd) navigate(currentResult.cwd);
+    else navigate('');
+  }
+  $('#picker-pick-dir').addEventListener('click', function() {
+    if (pickerMode !== 'dir' || !currentResult || currentResult.isRootList) return;
+    var dir = currentResult.cwd;
+    var cb = pickerDirCb;
+    closePicker();
+    if (cb) cb(dir);
+  });
+
+  // ---------- 构建制品列表 modal ----------
+  var artModal = $('#art-modal');
+  var artListBox = $('#art-list');
+  var artActions = $('#art-actions');
+  var artTitle = $('#art-title');
+  var artStatus = $('#art-status');
+  var artReqSeq = 0;
+  function closeArtModal() { artModal.hidden = true; }
+  $('#art-close').addEventListener('click', closeArtModal);
+  artModal.addEventListener('click', function(e){ if (e.target === artModal) closeArtModal(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !artModal.hidden) closeArtModal(); });
+
+  async function openArtModal(build) {
+    var seq = ++artReqSeq;
+    artTitle.textContent = '制品列表 · #' + (build.buildNum != null ? build.buildNum : '-');
+    artActions.innerHTML = '';
+    artListBox.innerHTML = '';
+    artStatus.textContent = '加载制品…';
+    artModal.hidden = false;
+    try {
+      var data = await jsonFetch('/api/devops/artifacts?buildId=' + encodeURIComponent(build.buildId));
+      if (seq !== artReqSeq) return; // 期间已切到其它构建
+      var arts = data.artifacts || [];
+      if (!arts.length) { artStatus.textContent = '该构建暂无制品'; return; }
+      // 检测"配置本地工程"所需的 il2cpp 产物对（中间版本号动态，用 endsWith 区分变体）
+      var hapArt = arts.find(function(a){ return (a.name || '').toLowerCase().endsWith('il2cpp.shell.hap'); });
+      var zipsArt = arts.find(function(a){ return (a.name || '').toLowerCase().endsWith('il2cpp.zips'); });
+      if (hapArt && zipsArt) {
+        var cfgBtn = el('button', { class: 'btn-config-proj' }, '⚙ 配置本地工程');
+        cfgBtn.addEventListener('click', function() {
+          closeArtModal();
+          openDirPicker(function(dir) {
+            startLocalProject(build.buildId, build.buildNum, dir);
+          });
+        });
+        var hint = el('div', { class: 'artifact-config-hint' },
+          '选择本地目录后：下载 ' + hapArt.name + ' 与 ' + zipsArt.name + '，解压 .zips 并用 hap 内 Data 覆盖工程');
+        artActions.appendChild(el('div', { class: 'artifact-actions' }, [cfgBtn, hint]));
+      }
+      arts.forEach(function(a) {
+        artListBox.appendChild(el('div', { class: 'artifact-item' }, [
+          el('span', { class: 'artifact-name', title: a.path }, a.name),
+          el('span', { class: 'artifact-size' }, typeof a.size === 'number' ? fmtBytes(a.size) : ''),
+        ]));
+      });
+      artStatus.textContent = arts.length + ' 个制品';
+    } catch (e) {
+      if (seq !== artReqSeq) return;
+      artStatus.textContent = '加载制品失败：' + e.message;
+    }
+  }
+
+  // ---------- 配置本地工程：启动 + 进度轮询 ----------
+  var lpModal = $('#lp-modal');
+  var lpTimer = null;
+
+  async function startLocalProject(buildId, buildNum, targetDir) {
+    openLpModal(buildNum, targetDir);
+    try {
+      var r = await jsonFetch('/api/local-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ buildId: buildId, buildNum: buildNum, targetDir: targetDir }),
+      });
+      pollLp(r.jobId);
+    } catch (e) {
+      lpFail(e.message || '启动失败');
+    }
+  }
+
+  function openLpModal(buildNum, targetDir) {
+    $('#lp-meta').textContent = '构建 ' + (buildNum != null ? ('#' + buildNum) : '-') + '  →  ' + targetDir;
+    $('#lp-steps').innerHTML = '';
+    $('#lp-error').hidden = true; $('#lp-error').textContent = '';
+    $('#lp-result').hidden = true; $('#lp-result').textContent = '';
+    $('#lp-status').textContent = '准备中…';
+    $('#lp-close').disabled = true;
+    lpModal.hidden = false;
+  }
+
+  function renderLpSteps(steps) {
+    var box = $('#lp-steps');
+    box.innerHTML = '';
+    var iconMap = { pending: '○', running: '◐', done: '✓', error: '✗', skipped: '–' };
+    (steps || []).forEach(function(s) {
+      var pctText = (s.percent != null) ? (s.percent + '%') : '';
+      var head = el('div', { class: 'lp-step-head' }, [
+        el('div', { class: 'lp-step-label' }, [
+          el('span', { class: 'lp-step-icon' }, iconMap[s.status] || '○'),
+          s.label,
+        ]),
+        el('span', { class: 'lp-step-pct' }, pctText),
+      ]);
+      var kids = [head];
+      if (s.detail) kids.push(el('div', { class: 'lp-step-detail' }, s.detail));
+      var fill = el('div', { class: 'lp-bar-fill' });
+      fill.style.width = (s.percent != null ? s.percent : (s.status === 'done' ? 100 : 0)) + '%';
+      kids.push(el('div', { class: 'lp-bar' }, fill));
+      box.appendChild(el('div', { class: 'lp-step ' + s.status }, kids));
+    });
+  }
+
+  function pollLp(jobId) {
+    clearInterval(lpTimer);
+    async function tick() {
+      var job;
+      try {
+        job = await jsonFetch('/api/local-project/' + encodeURIComponent(jobId));
+      } catch (e) {
+        return; // 偶发轮询失败容忍，下一拍重试
+      }
+      renderLpSteps(job.steps || []);
+      if (job.status === 'pending' || job.status === 'running') {
+        $('#lp-status').textContent = '处理中…（GB 级下载，请保持页面打开）';
+      } else if (job.status === 'done') {
+        clearInterval(lpTimer);
+        $('#lp-status').textContent = '完成 ✓';
+        $('#lp-close').disabled = false;
+        if (job.result) {
+          $('#lp-result').hidden = false;
+          $('#lp-result').textContent = '✓ 已用 hap 内 Data 覆盖：' + job.result.overlayDir + '（' + job.result.copiedFiles + ' 个文件）';
+        }
+      } else if (job.status === 'error') {
+        lpFail(job.error || '未知错误');
+      }
+    }
+    tick();
+    lpTimer = setInterval(tick, 1000);
+  }
+
+  function lpFail(msg) {
+    clearInterval(lpTimer);
+    $('#lp-status').textContent = '失败';
+    $('#lp-close').disabled = false;
+    $('#lp-error').hidden = false;
+    $('#lp-error').textContent = msg;
+  }
+
+  $('#lp-close').addEventListener('click', function() {
+    if ($('#lp-close').disabled) return;
+    clearInterval(lpTimer);
+    lpModal.hidden = true;
   });
 
   // ---------- 拖拽：拖文件进 panel → /api/locate 反查 → 自动填路径 ----------
