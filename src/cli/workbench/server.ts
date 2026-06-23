@@ -607,24 +607,23 @@ async function serveJobProduct(
   const dir = store.jobDir(id);
   const fileName = job.kind === 'analyze' ? `report.${kind}` : `diff.${kind}`;
   const filePath = join(dir, fileName);
-  // compare 任务的 diff.html 通过 workbench 访问时，需要塞 AI 启用标记，
-  // 让 viewer 知道当前是"workbench 模式 + 当前 jobId"，按钮才可用。
-  // analyze 任务暂不支持 AI（产物体积更小，价值低；后续要做单独加路由）。
-  if (kind === 'html' && job.kind === 'compare') {
-    await serveDiffHtmlWithAi(res, filePath, fileName, id);
+  // 通过 workbench 访问 HTML 产物时（无论 analyze 的 report.html 还是 compare 的 diff.html），
+  // 都塞 AI 启用标记，让 viewer 知道当前是"workbench 模式 + 当前 jobId"，"AI 分析"按钮才可用。
+  if (kind === 'html') {
+    await serveHtmlWithAi(res, filePath, fileName, id);
     return;
   }
   await streamFileOr404(res, filePath, fileName, kind);
 }
 
 /**
- * 给 workbench 模式下的 diff.html 注入 `window.__KINGSDK_AI__`：viewer 启动时
- * 据此显示并启用 "AI 分析" 按钮，否则按钮置灰提示"workbench 才能用"。
+ * 给 workbench 模式下的 viewer HTML（report.html / diff.html）注入 `window.__KINGSDK_AI__`：
+ * viewer 启动时据此显示并启用 "AI 分析" 按钮，否则按钮置灰提示"workbench 才能用"。
  *
  * 注入点：放在原 `<script id="__DATA__">...</script>` 之前，保证 viewer bootstrap 时已可读。
- * 失败时降级回普通 stream（不阻断 diff 渲染）。
+ * 失败时降级回普通 stream（不阻断报告渲染）。
  */
-async function serveDiffHtmlWithAi(
+async function serveHtmlWithAi(
   res: ServerResponse,
   filePath: string,
   fileName: string,

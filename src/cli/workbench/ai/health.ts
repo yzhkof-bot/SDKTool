@@ -12,6 +12,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+import { getInternetEnvironment } from './env.js';
 import type { AiHealthResponse } from './types.js';
 
 export function checkAiHealth(opts: { model?: string } = {}): AiHealthResponse {
@@ -21,11 +22,13 @@ export function checkAiHealth(opts: { model?: string } = {}): AiHealthResponse {
   const hasEnvCreds =
     !!process.env.CODEBUDDY_API_KEY || !!process.env.CODEBUDDY_AUTH_TOKEN;
   const hasLoginDir = existsSync(join(homedir(), '.codebuddy'));
+  const internetEnvironment = getInternetEnvironment();
 
   if (!hasEnvCreds && !hasLoginDir) {
     return {
       available: false,
       provider: 'codebuddy',
+      internetEnvironment,
       reason:
         '未检测到 CodeBuddy 登录态：请在终端跑 `codebuddy` 完成一次登录，或设置 CODEBUDDY_API_KEY 环境变量后重启 workbench',
     };
@@ -34,6 +37,7 @@ export function checkAiHealth(opts: { model?: string } = {}): AiHealthResponse {
   return {
     available: true,
     provider: 'codebuddy',
+    internetEnvironment,
     ...(opts.model ? { model: opts.model } : {}),
   };
 }

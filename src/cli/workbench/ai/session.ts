@@ -28,6 +28,7 @@ import type {
   UserMessage,
 } from '@tencent-ai/agent-sdk';
 
+import { buildSdkEnv } from './env.js';
 import { buildSystemPrompt, type BuildSystemPromptArgs } from './prompts.js';
 import type { InlineImage, SseEvent } from './types.js';
 
@@ -64,6 +65,9 @@ export class AiSession {
 
     this.sdk = unstable_v2_createSession({
       cwd: opts.jobDir,
+      // 显式注入 CodeBuddy 环境变量（重点是 CODEBUDDY_INTERNET_ENVIRONMENT=ioa），
+      // 否则非终端启动时子进程拿不到 iOA 登录态，getAvailableModels() 会失败 → 模型只剩 Auto
+      env: buildSdkEnv(),
       ...(opts.model ? { model: opts.model } : {}),
       permissionMode: 'bypassPermissions',
       // 关键：所有工具一律放行，避免 SDK 等用户回复永远卡住

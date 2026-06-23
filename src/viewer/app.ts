@@ -1,5 +1,6 @@
 import type { PackageReport, Platform } from '../shared/schema.js';
 
+import { createAiPanel } from './ai-panel.js';
 import { h } from './helpers.js';
 import { renderAbc } from './sections/abc.js';
 import { renderDependencies } from './sections/dependencies.js';
@@ -129,11 +130,13 @@ export function mountApp(root: HTMLElement, report: PackageReport): void {
   root.innerHTML = '';
 
   const sections = pickSections(report);
+  const ai = createAiPanel({ defaultPrompt: '帮我总结分析这个包的内容' });
   const sidebar = renderSidebar(report, sections);
-  const main = renderMain(report, sections);
+  const main = renderMain(report, sections, ai.trigger);
 
   const app = h('div', { class: 'app' }, sidebar, main);
   root.appendChild(app);
+  document.body.appendChild(ai.drawer);
 
   const initial = parseHash(sections) ?? 'overview';
   activateSection(initial);
@@ -172,7 +175,11 @@ function renderSidebar(report: PackageReport, sections: SectionDef[]): HTMLEleme
   return h('aside', { class: 'sidebar' }, header, ...navItems) as HTMLElement;
 }
 
-function renderMain(report: PackageReport, sections: SectionDef[]): HTMLElement {
+function renderMain(
+  report: PackageReport,
+  sections: SectionDef[],
+  aiTrigger: HTMLElement,
+): HTMLElement {
   const platform: Platform = report.platform ?? 'harmony';
   const topbar = h(
     'div',
@@ -194,6 +201,8 @@ function renderMain(report: PackageReport, sections: SectionDef[]): HTMLElement 
       'tool ',
       h('code', null, report.meta.toolVersion),
     ),
+    h('span', { class: 'topbar-spacer' }),
+    aiTrigger,
   );
 
   const sectionEls = sections.map((s) =>

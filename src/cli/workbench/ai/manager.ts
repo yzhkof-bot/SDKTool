@@ -11,7 +11,8 @@
  */
 
 import { randomBytes } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { AiSession } from './session.js';
 import type { BuildSystemPromptArgs } from './prompts.js';
@@ -186,11 +187,11 @@ export class ConversationManager {
   /**
    * 列出 CLI 端可用模型；带 1h 缓存。
    *
-   * 实现：拉起一个"采集型"会话——cwd 借用任意已完成 job 的目录，或 store.rootDir；
+   * 实现：拉起一个"采集型"会话——cwd 用 cacheDir 下固定的 `_ai_probe` 目录；
    * connect 后调 SDK.getAvailableModels() → 缓存 → close。SDK 不支持就走 fallback。
    *
-   * 没有任何已完成 job 时不强行起 session（CLI 子进程开销大），直接返回 fallback。
-   * 已有 job 后下次刷新会拿到真实列表。
+   * 用固定探测目录（而非借用某个已完成 job 目录）的好处：用户在还没跑过任何分析任务、
+   * 也没发任何消息时，照样能拿到完整模型列表。
    */
   async getModels(force = false): Promise<{ models: AiModel[]; fromSdk: boolean }> {
     if (!force && this.modelsCache) {
@@ -211,15 +212,7 @@ export class ConversationManager {
   }
 
   private async fetchModelsFromSdk(): Promise<AiModel[]> {
-    // 找一个已完成 job 的 jobDir 作为采集会话的 cwd；
-    // 没有就直接 fallback，避免为了列模型起一个未挂载产物的 CLI 子进程。
-    const probeJobDir = this.pickAnyJobDir();
-    if (!probeJobDir) {
-      this.log('[ai] no job available to probe models, using fallback list\n');
-      const list = FALLBACK_MODELS;
-      this.modelsCache = { list, fetchedAt: Date.now(), fromSdk: false };
-      return list;
-    }
+    const probeJobDir = this.probeDir();
     const probe = new AiSession({
       jobDir: probeJobDir,
       promptContext: {
@@ -254,13 +247,11 @@ export class ConversationManager {
     }
   }
 
-  private pickAnyJobDir(): string | undefined {
-    for (const job of this.store.list(50)) {
-      if (job.status !== 'done') continue;
-      const dir = this.store.jobDir(job.id);
-      if (existsSync(dir)) return dir;
-    }
-    return undefined;
+  /** 模型探测专用的固定 cwd；保证目录存在，与真实 job 目录解耦 */
+  private probeDir(): string {
+    const dir = join(this.store.cacheDir, '_ai_probe');
+    mkdirSync(dir, { recursive: true });
+    return dir;
   }
 
   close(id: string): boolean {

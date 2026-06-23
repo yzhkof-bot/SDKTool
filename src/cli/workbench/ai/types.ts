@@ -12,6 +12,8 @@ export interface AiHealthResponse {
   provider: 'codebuddy';
   /** 当前后端选用的模型；未配置则 undefined */
   model?: string;
+  /** 当前 SDK 子进程使用的 CodeBuddy 上网环境（如 ioa）；便于排查登录态问题 */
+  internetEnvironment?: string;
   /** 不可用时的原因（缺凭据、SDK 起不来等） */
   reason?: string;
 }

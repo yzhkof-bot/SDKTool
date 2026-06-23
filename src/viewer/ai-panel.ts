@@ -1,18 +1,18 @@
 /**
- * Diff viewer 的"AI 分析"抽屉面板。
+ * Viewer 的"AI 分析"抽屉面板（分析报告 / 对比报告共用）。
  *
  * 行为：
  *  - 顶部按钮触发 toggle()
  *  - 仅在 workbench 模式下（window.__KINGSDK_AI__.jobId 存在）启用
  *  - 启用后启动时调 /api/ai/health 决定按钮的最终态
  *  - 首次发送时创建 conversation；后续走 /api/ai/conversations/:id/messages SSE
- *  - 输入框默认填充 "帮我总结分析这个 diff 的内容"，可改可清
+ *  - 输入框默认填充由调用方通过 opts.defaultPrompt 指定（diff / 单包文案不同），可改可清
  *  - 多轮对话：会话上下文保留在服务端（SDK Session），前端只记 conversationId + 已渲染消息
  *
  * UI：极简、单文件 IIFE，不引第三方。
  */
 
-import { h } from '../helpers.js';
+import { h } from './helpers.js';
 
 interface AiBootstrap {
   jobId: string;
@@ -80,7 +80,13 @@ interface MessageState {
   toolsById?: Map<string, { node: HTMLElement; resultEl?: HTMLElement }>;
 }
 
+/** 兜底默认 prompt（diff 文案）；调用方一般会用 opts.defaultPrompt 覆盖 */
 const DEFAULT_PROMPT = '帮我总结分析这个 diff 的内容';
+
+export interface CreateAiPanelOptions {
+  /** 输入框默认填充的 prompt；不传则用 diff 文案兜底 */
+  defaultPrompt?: string;
+}
 
 export interface AiPanelHandle {
   /** 顶部按钮元素，调用方负责挂载到 topbar */
@@ -93,8 +99,9 @@ export interface AiPanelHandle {
   toggle: () => void;
 }
 
-export function createAiPanel(): AiPanelHandle {
+export function createAiPanel(opts: CreateAiPanelOptions = {}): AiPanelHandle {
   const bootstrap = readBootstrap();
+  const defaultPrompt = opts.defaultPrompt ?? DEFAULT_PROMPT;
 
   const trigger = h(
     'button',
@@ -114,9 +121,9 @@ export function createAiPanel(): AiPanelHandle {
   const inputEl = h('textarea', {
     class: 'ai-input',
     rows: '3',
-    placeholder: DEFAULT_PROMPT,
+    placeholder: defaultPrompt,
   }) as HTMLTextAreaElement;
-  inputEl.value = DEFAULT_PROMPT;
+  inputEl.value = defaultPrompt;
 
   const sendBtn = h('button', { class: 'ai-send', type: 'button' }, '发送') as HTMLButtonElement;
   const stopBtn = h(

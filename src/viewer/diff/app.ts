@@ -2,7 +2,7 @@ import type { PackageDiffReport } from '../../shared/schema.js';
 
 import { h } from '../helpers.js';
 
-import { createAiPanel } from './ai-panel.js';
+import { createAiPanel } from '../ai-panel.js';
 import {
   renderAbc,
   renderBasic,
@@ -146,7 +146,7 @@ const SECTIONS: SectionDef[] = [
 export function mountDiffApp(root: HTMLElement, diff: PackageDiffReport): void {
   root.innerHTML = '';
 
-  const ai = createAiPanel();
+  const ai = createAiPanel({ defaultPrompt: '帮我总结分析这个 diff 的内容' });
 
   const sidebar = renderSidebar(diff);
   const main = renderMain(diff, ai.trigger);
