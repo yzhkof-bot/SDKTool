@@ -121,6 +121,11 @@ export function openInBrowser(url: string): void {
       args = [url];
     }
     const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+    // spawn 在命令不存在（如无桌面环境缺少 xdg-open）时会异步发出 'error' 事件，
+    // 必须监听，否则会变成 uncaught exception 把进程搞崩。
+    child.on('error', () => {
+      // 静默失败：浏览器没打开不影响服务
+    });
     child.unref();
   } catch {
     // 静默失败：浏览器没打开不影响服务
