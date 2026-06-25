@@ -25,6 +25,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { networkInterfaces } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,7 +41,15 @@ await main();
 /* ------------------------------------------------------------------ */
 
 async function main() {
+  // host 是绑定地址；探活和「打开」展示地址需区别对待：
+  //   - 0.0.0.0 / :: 是通配绑定地址，不能直接连，探活回退到 127.0.0.1
+  //   - 展示地址优先用局域网 IP，方便其它机器直接访问
+  const isWildcard = host === '0.0.0.0' || host === '::' || host === '';
+  const healthHost = isWildcard ? '127.0.0.1' : host;
+  const displayHost = isWildcard ? lanIp() ?? '127.0.0.1' : host;
+
   log(`[wb] 目标 ${host}:${port}`);
+  if (isWildcard) log(`[wb] 监听所有网卡，其它机器可访问 http://${displayHost}:${port}/`);
 
   // 1. 杀旧
   const killed = killPort(port);
@@ -100,10 +109,24 @@ async function main() {
 
   // 4. 探活
   await sleep(800);
-  await waitHealthz(`http://${host}:${port}/healthz`, 12).then(
-    () => log(`[wb] ✓ healthz OK · 打开 http://${host}:${port}/`),
+  await waitHealthz(`http://${healthHost}:${port}/healthz`, 12).then(
+    () => log(`[wb] ✓ healthz OK · 打开 http://${displayHost}:${port}/`),
     (e) => err(`[wb] ✗ healthz 探活失败: ${e?.message ?? e}`),
   );
+}
+
+/**
+ * 返回第一个非内网回环的 IPv4 地址（局域网 IP），找不到返回 undefined。
+ * 用于绑定 0.0.0.0 时给出一个其它机器可访问的展示地址。
+ */
+function lanIp() {
+  const nets = networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const ni of nets[name] ?? []) {
+      if (ni.family === 'IPv4' && !ni.internal) return ni.address;
+    }
+  }
+  return undefined;
 }
 
 /* ------------------------------------------------------------------ */
@@ -112,8 +135,10 @@ async function main() {
 
 function parseArgs(argv) {
   const out = {
+    // 默认绑 0.0.0.0（所有网卡），让同网段其它机器也能访问；
+    // 只想本机用就传 --host 127.0.0.1
     port: 7790,
-    host: '127.0.0.1',
+    host: '0.0.0.0',
     build: true,
     open: true,
     dev: false,
@@ -148,7 +173,7 @@ function printHelp() {
 
 Options:
   --port <n>     监听端口 (默认 7790)
-  --host <h>     监听地址 (默认 127.0.0.1)
+  --host <h>     监听地址 (默认 0.0.0.0，所有网卡可访问；只想本机用传 127.0.0.1)
   --no-build     跳过 npm run build
   --no-open      workbench 不自动开浏览器
   --dev          用 tsx 直接跑 src/cli/index.ts（隐含 --no-build）
