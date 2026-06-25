@@ -12,10 +12,11 @@ import { browseDirectory, BrowseError } from './browse.js';
 import {
   DEVOPS_BUILD_STATUSES,
   DevopsError,
-  listArtifacts,
-  listBuilds,
+  loadDevopsRegistry,
   type DevopsBuildStatus,
+  type DevopsRegistry,
 } from './devops.js';
+import { DevopsConfigError } from './devopsConfig.js';
 import { locateByMeta } from './locate.js';
 import { LocalProjectStore, startLocalProjectJob } from './localProject.js';
 import { startAnalyzeJob, startCompareJob } from './runner.js';
@@ -80,9 +81,20 @@ export async function startWorkbenchServer(
   const conversations = new ConversationManager({ store, log });
   const localProjects = new LocalProjectStore();
 
+  // 蓝盾流水线注册表（来自 pipelines.config.json）。配置错误时给出清晰报错而非静默。
+  let devops: DevopsRegistry;
+  try {
+    devops = loadDevopsRegistry();
+  } catch (e) {
+    if (e instanceof DevopsConfigError) {
+      log(`[workbench] 蓝盾流水线配置错误：${e.message}\n`);
+    }
+    throw e;
+  }
+
   const prettyJson = options.prettyJson;
   const server: Server = createServer((req, res) => {
-    handle(req, res, store, conversations, localProjects, options.toolVersion, log, prettyJson).catch((err) => {
+    handle(req, res, store, conversations, localProjects, devops, options.toolVersion, log, prettyJson).catch((err) => {
       log(`[workbench] handler error: ${err?.stack ?? err}\n`);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -124,6 +136,7 @@ async function handle(
   store: JobStore,
   conversations: ConversationManager,
   localProjects: LocalProjectStore,
+  devops: DevopsRegistry,
   toolVersion: string,
   log: (t: string) => void,
   prettyJson: boolean | undefined,
@@ -190,6 +203,12 @@ async function handle(
     return;
   }
 
+  // 蓝盾流水线清单（前端侧栏下拉用）
+  if (method === 'GET' && url.pathname === '/api/devops/pipelines') {
+    sendJson(res, 200, { pipelines: devops.listPipelines(), defaultKey: devops.defaultKey });
+    return;
+  }
+
   // 蓝盾构建历史（首页左侧栏）
   if (method === 'GET' && url.pathname === '/api/devops/builds') {
     const page = Number.parseInt(url.searchParams.get('page') ?? '1', 10);
@@ -207,12 +226,13 @@ async function handle(
       status = statusRaw as DevopsBuildStatus;
     }
     try {
-      const result = await listBuilds({
+      const client = devops.getClient(url.searchParams.get('pipeline'));
+      const result = await client.listBuilds({
         page: Number.isFinite(page) ? page : 1,
         pageSize: Number.isFinite(pageSize) ? pageSize : 20,
         status,
       });
-      sendJson(res, 200, result);
+      sendJson(res, 200, { pipeline: client.key, ...result });
     } catch (e) {
       handleDevopsError(res, e);
     }
@@ -227,8 +247,9 @@ async function handle(
       return;
     }
     try {
-      const artifacts = await listArtifacts(buildId);
-      sendJson(res, 200, { buildId: buildId.trim(), artifacts });
+      const client = devops.getClient(url.searchParams.get('pipeline'));
+      const artifacts = await client.listArtifacts(buildId);
+      sendJson(res, 200, { pipeline: client.key, buildId: buildId.trim(), artifacts });
     } catch (e) {
       handleDevopsError(res, e);
     }
@@ -242,7 +263,7 @@ async function handle(
       sendJson(res, 400, { error: 'BAD_JSON', message: String((body as { __error: Error }).__error.message) });
       return;
     }
-    const b = body as { buildId?: unknown; buildNum?: unknown; targetDir?: unknown };
+    const b = body as { pipeline?: unknown; buildId?: unknown; buildNum?: unknown; targetDir?: unknown };
     const buildId = typeof b.buildId === 'string' ? b.buildId.trim() : '';
     const targetDir = typeof b.targetDir === 'string' ? b.targetDir.trim() : '';
     if (!buildId) {
@@ -251,6 +272,20 @@ async function handle(
     }
     if (!targetDir) {
       sendJson(res, 400, { error: 'BAD_REQUEST', message: '缺少 targetDir 字符串字段' });
+      return;
+    }
+    let client;
+    try {
+      client = devops.getClient(typeof b.pipeline === 'string' ? b.pipeline : null);
+    } catch (e) {
+      handleDevopsError(res, e);
+      return;
+    }
+    if (!client.localProjectRule) {
+      sendJson(res, 400, {
+        error: 'BAD_REQUEST',
+        message: `流水线「${client.key}」未配置 localProject，不支持配置本地工程`,
+      });
       return;
     }
     let dirStat;
@@ -265,7 +300,7 @@ async function handle(
       return;
     }
     const buildNum = typeof b.buildNum === 'number' ? b.buildNum : null;
-    const jobId = startLocalProjectJob({ buildId, buildNum, targetDir }, { store: localProjects, log });
+    const jobId = startLocalProjectJob({ client, buildId, buildNum, targetDir }, { store: localProjects, log });
     sendJson(res, 202, { jobId });
     return;
   }

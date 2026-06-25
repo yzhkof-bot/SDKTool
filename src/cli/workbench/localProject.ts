@@ -22,13 +22,7 @@ import { pipeline } from 'node:stream/promises';
 
 import yauzl, { type Entry, type ZipFile } from 'yauzl';
 
-import {
-  DevopsError,
-  getArtifactDownload,
-  listArtifacts,
-  selectIl2cppArtifacts,
-  type DevopsArtifact,
-} from './devops.js';
+import { DevopsError, type DevopsArtifact, type DevopsClient } from './devops.js';
 
 /* -------------------------------------------------------------------------- */
 /* 类型                                                                        */
@@ -50,6 +44,8 @@ export interface ProgressStep {
 export interface LocalProjectJob {
   id: string;
   status: LocalProjectStatus;
+  /** 所属流水线 key（多流水线区分用） */
+  pipelineKey: string;
   buildId: string;
   buildNum: number | null;
   targetDir: string;
@@ -80,11 +76,17 @@ const STEP_DEFS: ReadonlyArray<{ key: ProgressStep['key']; label: string }> = [
 export class LocalProjectStore {
   private readonly jobs = new Map<string, LocalProjectJob>();
 
-  create(buildId: string, buildNum: number | null, targetDir: string): LocalProjectJob {
+  create(
+    pipelineKey: string,
+    buildId: string,
+    buildNum: number | null,
+    targetDir: string,
+  ): LocalProjectJob {
     const id = randomBytes(8).toString('hex');
     const job: LocalProjectJob = {
       id,
       status: 'pending',
+      pipelineKey,
       buildId,
       buildNum,
       targetDir,
@@ -123,6 +125,8 @@ export interface LocalProjectDeps {
 }
 
 export interface StartLocalProjectOptions {
+  /** 该任务所属流水线的 client（决定产物匹配规则与下载凭据） */
+  client: DevopsClient;
   buildId: string;
   buildNum?: number | null;
   targetDir: string;
@@ -133,25 +137,43 @@ export interface StartLocalProjectOptions {
  * targetDir 的存在性/合法性由调用方（server 路由）先校验。
  */
 export function startLocalProjectJob(opts: StartLocalProjectOptions, deps: LocalProjectDeps): string {
-  const job = deps.store.create(opts.buildId.trim(), opts.buildNum ?? null, resolvePath(opts.targetDir));
-  void runLocalProjectAsync(job.id, deps);
+  const job = deps.store.create(
+    opts.client.key,
+    opts.buildId.trim(),
+    opts.buildNum ?? null,
+    resolvePath(opts.targetDir),
+  );
+  void runLocalProjectAsync(job.id, opts.client, deps);
   return job.id;
 }
 
-async function runLocalProjectAsync(id: string, deps: LocalProjectDeps): Promise<void> {
+async function runLocalProjectAsync(
+  id: string,
+  client: DevopsClient,
+  deps: LocalProjectDeps,
+): Promise<void> {
   const { store, log } = deps;
   const job = store.get(id);
   if (!job) return;
+  const rule = client.localProjectRule;
+  if (!rule) {
+    store.patch(id, {
+      status: 'error',
+      error: `流水线「${client.key}」未配置 localProject，无法配置本地工程`,
+      finishedAt: new Date().toISOString(),
+    });
+    return;
+  }
   store.patch(id, { status: 'running' });
-  log(`[local-project] start ${id} build=${job.buildId} dir=${job.targetDir}\n`);
+  log(`[local-project] start ${id} pipeline=${client.key} build=${job.buildId} dir=${job.targetDir}\n`);
 
   try {
     // ---- 1. 定位制品 ----
     store.patchStep(id, 'locate', { status: 'running' });
-    const artifacts = await listArtifacts(job.buildId);
-    const { hap, zips } = selectIl2cppArtifacts(artifacts);
+    const artifacts = await client.listArtifacts(job.buildId);
+    const { hap, zips } = client.selectLocalProjectArtifacts(artifacts);
     if (!hap || !zips) {
-      const missing = [!hap ? '*il2cpp.shell.hap' : null, !zips ? '*il2cpp.zips' : null]
+      const missing = [!hap ? `*${rule.hapSuffix}` : null, !zips ? `*${rule.zipsSuffix}` : null]
         .filter(Boolean)
         .join(' / ');
       throw new DevopsError(`该构建未找到所需产物：${missing}`, 404);
@@ -165,10 +187,10 @@ async function runLocalProjectAsync(id: string, deps: LocalProjectDeps): Promise
     const hapDest = join(job.targetDir, hap.name);
 
     // ---- 2. 下载 .zips ----
-    await downloadArtifactStep(id, deps, 'zips', zips, zipsDest);
+    await downloadArtifactStep(id, client, deps, 'zips', zips, zipsDest);
 
     // ---- 3. 下载 .shell.hap ----
-    await downloadArtifactStep(id, deps, 'hap', hap, hapDest);
+    await downloadArtifactStep(id, client, deps, 'hap', hap, hapDest);
 
     // ---- 4. 解压 .zips ----
     store.patchStep(id, 'unzip', { status: 'running', percent: 0 });
@@ -189,17 +211,17 @@ async function runLocalProjectAsync(id: string, deps: LocalProjectDeps): Promise
 
     // ---- 5. 覆盖工程 Data 目录 ----
     store.patchStep(id, 'overlay', { status: 'running', percent: 0 });
-    const overlayDir = await resolveProjectDataDir(job.targetDir, extractedRoots);
+    const overlayDir = await resolveProjectDataDir(job.targetDir, extractedRoots, rule.projectDataRel);
     if (!overlayDir) {
       throw new Error(
-        `解压后未找到工程目录 ${PROJECT_DATA_REL}（请确认 .zips 内含该路径）`,
+        `解压后未找到工程目录 ${rule.projectDataRel}（请确认 .zips 内含该路径）`,
       );
     }
     // 覆盖语义：先清空工程内 Data 目录，再用 hap 内 Data 全量写入，保证与 hap 完全一致
     await rm(overlayDir, { recursive: true, force: true });
     await mkdir(overlayDir, { recursive: true });
     let lastOverlayTick = 0;
-    const copied = await overlayHapData(hapDest, overlayDir, (done, total) => {
+    const copied = await overlayHapData(hapDest, overlayDir, rule.hapDataPrefix, (done, total) => {
       const now = Date.now();
       if (now - lastOverlayTick > 400 || done === total) {
         lastOverlayTick = now;
@@ -236,6 +258,7 @@ async function runLocalProjectAsync(id: string, deps: LocalProjectDeps): Promise
 
 async function downloadArtifactStep(
   id: string,
+  client: DevopsClient,
   deps: LocalProjectDeps,
   key: 'zips' | 'hap',
   artifact: DevopsArtifact,
@@ -243,7 +266,7 @@ async function downloadArtifactStep(
 ): Promise<void> {
   const { store } = deps;
   store.patchStep(id, key, { status: 'running', percent: 0, detail: '准备下载…' });
-  const { url, headers } = getArtifactDownload(artifact);
+  const { url, headers } = client.getArtifactDownload(artifact);
   await mkdir(dirname(dest), { recursive: true });
 
   let lastTick = 0;
@@ -347,25 +370,21 @@ async function extractZipToDir(
 /* 用 hap 内 Data 覆盖工程                                                     */
 /* -------------------------------------------------------------------------- */
 
-/** hap 内资源目录前缀（zip 内统一正斜杠） */
-const HAP_DATA_PREFIX = 'resources/rawfile/Data/';
-/** 解压后工程内被覆盖的目标相对路径 */
-const PROJECT_DATA_REL = 'Project/TargetOpenHarmony/DevEcoProj/entry/src/main/resources/rawfile/Data';
-
 /**
- * 在 destRoot 下定位工程的 Data 目录（被覆盖目标）。
- * 先直接试 destRoot/PROJECT_DATA_REL；找不到再在解压出的顶层目录里逐个试
- * destRoot/<top>/PROJECT_DATA_REL，以兼容 .zips 把工程包在一层外壳目录里的情况。
+ * 在 destRoot 下定位工程的 Data 目录（被覆盖目标）。projectDataRel 由流水线配置提供。
+ * 先直接试 destRoot/projectDataRel；找不到再在解压出的顶层目录里逐个试
+ * destRoot/<top>/projectDataRel，以兼容 .zips 把工程包在一层外壳目录里的情况。
  */
 async function resolveProjectDataDir(
   destRoot: string,
   topDirs: Set<string>,
+  projectDataRel: string,
 ): Promise<string | null> {
-  const direct = join(destRoot, PROJECT_DATA_REL);
+  const direct = join(destRoot, projectDataRel);
   if (await dirOrParentExists(direct)) return direct;
   for (const top of topDirs) {
     if (!top) continue;
-    const candidate = join(destRoot, top, PROJECT_DATA_REL);
+    const candidate = join(destRoot, top, projectDataRel);
     if (await dirOrParentExists(candidate)) return candidate;
   }
   return null;
@@ -389,12 +408,13 @@ async function isDir(p: string): Promise<boolean> {
 }
 
 /**
- * 从 hap（zip）中提取 `resources/rawfile/Data/` 下的所有文件，写到 overlayDir，
- * 保留 Data 之后的子路径。返回写出的文件数。
+ * 从 hap（zip）中提取 hapDataPrefix 下的所有文件，写到 overlayDir，
+ * 保留前缀之后的子路径。返回写出的文件数。hapDataPrefix 由流水线配置提供。
  */
 async function overlayHapData(
   hapPath: string,
   overlayDir: string,
+  hapDataPrefix: string,
   onProgress: (done: number, total: number) => void,
 ): Promise<number> {
   const zip = await openZip(hapPath);
@@ -405,7 +425,7 @@ async function overlayHapData(
     await new Promise<void>((resolveP, rejectP) => {
       zip.on('entry', (entry: Entry) => {
         const rel = normalizePath(entry.fileName);
-        if (!isDirectoryEntry(entry) && startsWithCi(rel, HAP_DATA_PREFIX)) {
+        if (!isDirectoryEntry(entry) && startsWithCi(rel, hapDataPrefix)) {
           dataEntries.push(entry);
         }
         zip.readEntry();
@@ -416,14 +436,14 @@ async function overlayHapData(
     });
 
     if (dataEntries.length === 0) {
-      throw new Error(`hap 内未找到 ${HAP_DATA_PREFIX} 目录，无法覆盖`);
+      throw new Error(`hap 内未找到 ${hapDataPrefix} 目录，无法覆盖`);
     }
 
     const total = dataEntries.length;
     let done = 0;
     for (const entry of dataEntries) {
       const rel = normalizePath(entry.fileName);
-      const sub = rel.slice(HAP_DATA_PREFIX.length); // Data/ 之后的子路径
+      const sub = rel.slice(hapDataPrefix.length); // 前缀之后的子路径
       const outPath = resolvePath(root, sub);
       if (outPath !== root && !outPath.startsWith(root + pathSep())) {
         throw new Error(`非法 hap 条目路径（越界）：${entry.fileName}`);

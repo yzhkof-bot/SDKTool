@@ -1,0 +1,41 @@
+{
+  // 蓝盾（BK-CI）流水线配置。改这个文件即可增删要展示的流水线，无需改代码。
+  // 解析用 JSON5：允许注释、尾逗号。
+  //
+  // bkrepo：制品库下载用的 Basic Auth 凭据（所有流水线共用）。
+  //   - 可被环境变量覆盖：BKREPO_USER / BKREPO_TOKEN
+  //   - token 过期到「蓝盾 → 服务 → 制品库 → 个人中心 → 申请 Token」重新申请。
+  "bkrepo": {
+    "user": "windye",
+    "token": "c4c01586a5998023da781f42d963209a"
+  },
+
+  // pipelines：要在侧栏展示的流水线列表，按顺序显示，第一条为默认选中。
+  //   key         唯一标识（前端/接口用，仅字母数字与 - _）
+  //   label       侧栏主标题
+  //   sublabel    侧栏副标题（可选）
+  //   projectId   蓝盾项目 ID
+  //   pipelineId  流水线 ID
+  //   accessToken 该流水线的 bk-ci access_token（过期到 https://iwiki.woa.com/p/4009265804 重新获取）
+  //   localProject 可选：配置后该流水线的制品弹窗会出现「配置本地工程」按钮
+  //     hapSuffix       安装包文件名后缀（endsWith 匹配）
+  //     zipsSuffix      资源包文件名后缀（endsWith 匹配）
+  //     hapDataPrefix   hap(zip) 内要提取的目录前缀
+  //     projectDataRel  解压后工程内被覆盖的相对目录
+  "pipelines": [
+    {
+      "key": "smoba-oh",
+      "label": "OpenHarmony 出档",
+      "sublabel": "smoba",
+      "projectId": "smoba",
+      "pipelineId": "p-814da33753ef4ef3a960488412a3f44e",
+      "accessToken": "gvsgjjTb9qWRfw36bYQDykUgTl3CdH",
+      "localProject": {
+        "hapSuffix": "il2cpp.shell.hap",
+        "zipsSuffix": "il2cpp.zips",
+        "hapDataPrefix": "resources/rawfile/Data/",
+        "projectDataRel": "Project/TargetOpenHarmony/DevEcoProj/entry/src/main/resources/rawfile/Data"
+      }
+    }
+  ]
+}

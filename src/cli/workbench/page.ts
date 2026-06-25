@@ -260,7 +260,10 @@ function renderDevopsSidebar(): string {
   return `<aside class="sidebar" id="devops-sidebar">
     <div class="sidebar-head">
       <div class="sidebar-title">流水线构建</div>
-      <div class="sidebar-sub">OpenHarmony 出档 · smoba</div>
+      <div class="sidebar-sub" id="devops-sub">加载流水线…</div>
+    </div>
+    <div class="sidebar-toolbar">
+      <select id="devops-pipeline" class="devops-select" title="选择流水线" hidden></select>
     </div>
     <div class="sidebar-toolbar">
       <select id="devops-status" class="devops-select" title="按构建状态过滤">${statusOptions}</select>
@@ -631,6 +634,10 @@ const SCRIPT = `
 (function() {
   'use strict';
 
+  // 当前选中的流水线摘要（{ key, label, sublabel, hasLocalProject, localProject }）。
+  // 由侧栏的流水线加载逻辑设置，openArtModal / startLocalProject 共享读取。
+  var currentPipeline = null;
+
   // ---------- 工具函数 ----------
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return [].slice.call((root || document).querySelectorAll(sel)); }
@@ -824,6 +831,8 @@ const SCRIPT = `
   (function() {
     var listBox = $('#devops-list');
     if (!listBox) return;
+    var pipelineSel = $('#devops-pipeline');
+    var subEl = $('#devops-sub');
     var statusSel = $('#devops-status');
     var refreshBtn = $('#devops-refresh');
     var prevBtn = $('#devops-prev');
@@ -834,6 +843,46 @@ const SCRIPT = `
     var pageSize = 20;
     var total = 0;
     var loading = false;
+
+    function pipelineSubText(p) {
+      if (!p) return '';
+      return p.sublabel ? (p.label + ' · ' + p.sublabel) : p.label;
+    }
+
+    // 先拉流水线清单填充下拉；成功后再加载默认流水线的构建。
+    async function loadPipelines() {
+      try {
+        var data = await jsonFetch('/api/devops/pipelines');
+        var pipelines = data.pipelines || [];
+        if (!pipelines.length) {
+          subEl.textContent = '未配置流水线';
+          listBox.innerHTML = '';
+          listBox.appendChild(el('div', { class: 'err' }, '未配置流水线，请编辑 pipelines.config.json'));
+          return;
+        }
+        pipelineSel.innerHTML = '';
+        pipelines.forEach(function(p) {
+          pipelineSel.appendChild(el('option', { value: p.key }, p.label + (p.sublabel ? (' · ' + p.sublabel) : '')));
+        });
+        // 多条时才显示下拉；单条直接用副标题展示
+        pipelineSel.hidden = pipelines.length < 2;
+        var defKey = data.defaultKey || pipelines[0].key;
+        pipelineSel.value = defKey;
+        currentPipeline = pipelines.filter(function(p){ return p.key === defKey; })[0] || pipelines[0];
+        subEl.textContent = pipelineSubText(currentPipeline);
+        pipelineSel.addEventListener('change', function() {
+          currentPipeline = pipelines.filter(function(p){ return p.key === pipelineSel.value; })[0] || null;
+          subEl.textContent = pipelineSubText(currentPipeline);
+          page = 1;
+          loadBuilds();
+        });
+        loadBuilds();
+      } catch (e) {
+        subEl.textContent = '加载流水线失败';
+        listBox.innerHTML = '';
+        listBox.appendChild(el('div', { class: 'err' }, '加载流水线失败：' + e.message));
+      }
+    }
 
     function buildStatusLabel(s) {
       var m = { SUCCEED:'成功', STAGE_SUCCESS:'阶段成功', FAILED:'失败', RUNNING:'运行中', QUEUE:'排队中', CANCELED:'已取消' };
@@ -854,6 +903,7 @@ const SCRIPT = `
         var qs = '?page=' + page + '&pageSize=' + pageSize;
         var st = statusSel.value;
         if (st) qs += '&status=' + encodeURIComponent(st);
+        if (currentPipeline) qs += '&pipeline=' + encodeURIComponent(currentPipeline.key);
         var data = await jsonFetch('/api/devops/builds' + qs);
         total = data.total || 0;
         renderBuilds(data.builds || []);
@@ -902,7 +952,7 @@ const SCRIPT = `
       if (page < totalPages) { page++; loadBuilds(); }
     });
 
-    loadBuilds();
+    loadPipelines();
   })();
 
   // ---------- 复制 & 打开历史目录 ----------
@@ -1268,13 +1318,16 @@ const SCRIPT = `
     artStatus.textContent = '加载制品…';
     artModal.hidden = false;
     try {
-      var data = await jsonFetch('/api/devops/artifacts?buildId=' + encodeURIComponent(build.buildId));
+      var artQs = '?buildId=' + encodeURIComponent(build.buildId);
+      if (currentPipeline) artQs += '&pipeline=' + encodeURIComponent(currentPipeline.key);
+      var data = await jsonFetch('/api/devops/artifacts' + artQs);
       if (seq !== artReqSeq) return; // 期间已切到其它构建
       var arts = data.artifacts || [];
       if (!arts.length) { artStatus.textContent = '该构建暂无制品'; return; }
-      // 检测"配置本地工程"所需的 il2cpp 产物对（中间版本号动态，用 endsWith 区分变体）
-      var hapArt = arts.find(function(a){ return (a.name || '').toLowerCase().endsWith('il2cpp.shell.hap'); });
-      var zipsArt = arts.find(function(a){ return (a.name || '').toLowerCase().endsWith('il2cpp.zips'); });
+      // 仅当该流水线配置了 localProject 时才尝试检测产物对（后缀由配置给出，用 endsWith 区分变体）
+      var lp = currentPipeline && currentPipeline.localProject;
+      var hapArt = lp ? arts.find(function(a){ return (a.name || '').toLowerCase().endsWith(lp.hapSuffix.toLowerCase()); }) : null;
+      var zipsArt = lp ? arts.find(function(a){ return (a.name || '').toLowerCase().endsWith(lp.zipsSuffix.toLowerCase()); }) : null;
       if (hapArt && zipsArt) {
         var cfgBtn = el('button', { class: 'btn-config-proj' }, '⚙ 配置本地工程');
         cfgBtn.addEventListener('click', function() {
@@ -1310,7 +1363,12 @@ const SCRIPT = `
       var r = await jsonFetch('/api/local-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buildId: buildId, buildNum: buildNum, targetDir: targetDir }),
+        body: JSON.stringify({
+          pipeline: currentPipeline ? currentPipeline.key : undefined,
+          buildId: buildId,
+          buildNum: buildNum,
+          targetDir: targetDir,
+        }),
       });
       pollLp(r.jobId);
     } catch (e) {
