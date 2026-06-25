@@ -1634,6 +1634,11 @@ export interface WorkbenchJob {
   finishedAt?: string;
   /** 输入文件绝对路径（一个或两个） */
   inputs: string[];
+  /**
+   * 运行中的临时进度提示（如"下载制品 1.2/3.3 GiB""分析中…"）。
+   * 仅 status='running' 时有意义，done/error 时由 runner 清空（向后兼容，老 job 无此字段）。
+   */
+  note?: string;
   /** 仅 status='error' 时存在 */
   error?: string;
   /** 仅 status='done' 时存在；URL 都是相对路径（相对于 server origin） */

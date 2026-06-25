@@ -11,15 +11,30 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve as resolvePath } from 'node:path';
+import { homedir } from 'node:os';
+import { join, resolve as resolvePath } from 'node:path';
 
 import JSON5 from 'json5';
+
+import { defaultArtifactCacheDir } from './artifactCache.js';
 
 /** 制品库下载用的 Basic Auth 凭据（所有流水线共用）。 */
 export interface BkRepoCreds {
   user: string;
   token: string;
 }
+
+/** 蓝盾制品本地下载缓存的配置。 */
+export interface ArtifactCacheConfig {
+  /** 缓存目录绝对路径 */
+  dir: string;
+  /** 缓存上限（字节）；超出按下载先后清理最老的 */
+  maxBytes: number;
+}
+
+/** 缓存上限默认 20 GiB。 */
+const DEFAULT_CACHE_MAX_GIB = 20;
+const GiB = 1024 * 1024 * 1024;
 
 /**
  * "配置本地工程"规则：仅当流水线配置了这一块时，前端制品弹窗才出现该按钮。
@@ -54,12 +69,15 @@ export interface PipelineConfig {
 
 export interface DevopsConfig {
   bkrepo: BkRepoCreds;
+  /** 制品下载缓存（与流水线配置写在同一文件） */
+  artifactCache: ArtifactCacheConfig;
   pipelines: PipelineConfig[];
 }
 
 /** 内置默认配置（无配置文件时使用）。与历史硬编码值保持一致。 */
 const BUILTIN_CONFIG: DevopsConfig = {
   bkrepo: { user: 'windye', token: 'c4c01586a5998023da781f42d963209a' },
+  artifactCache: { dir: defaultArtifactCacheDir(), maxBytes: DEFAULT_CACHE_MAX_GIB * GiB },
   pipelines: [
     {
       key: 'smoba-oh',
@@ -115,6 +133,42 @@ function parseLocalProject(raw: unknown, where: string): LocalProjectRule | unde
   };
 }
 
+/** 展开 `~` / `~/...` 为用户主目录（配置文件里手写路径常用 ~）。 */
+function expandHome(p: string): string {
+  if (p === '~') return homedir();
+  if (p.startsWith('~/') || p.startsWith('~\\')) return join(homedir(), p.slice(2));
+  return p;
+}
+
+/**
+ * 解析 artifactCache 配置块（整块可省略，缺字段各自取默认）。
+ *  - dir：默认 ~/.kingsdk/artifact-cache；可被环境变量 SDKTOOL_ARTIFACT_CACHE_DIR 覆盖
+ *  - maxGiB：默认 20；可被环境变量 SDKTOOL_ARTIFACT_CACHE_MAX_GIB 覆盖；非正数回退默认
+ */
+function parseArtifactCache(raw: unknown): ArtifactCacheConfig {
+  const o = asRecord(raw);
+
+  const envDir = process.env.SDKTOOL_ARTIFACT_CACHE_DIR;
+  const dirRaw =
+    envDir && envDir.trim()
+      ? envDir.trim()
+      : typeof o.dir === 'string' && o.dir.trim()
+        ? o.dir.trim()
+        : '';
+  const dir = dirRaw ? resolvePath(expandHome(dirRaw)) : defaultArtifactCacheDir();
+
+  const envMax = process.env.SDKTOOL_ARTIFACT_CACHE_MAX_GIB;
+  const maxGiBRaw =
+    envMax && envMax.trim()
+      ? Number(envMax)
+      : typeof o.maxGiB === 'number'
+        ? o.maxGiB
+        : DEFAULT_CACHE_MAX_GIB;
+  const maxGiB = Number.isFinite(maxGiBRaw) && maxGiBRaw > 0 ? maxGiBRaw : DEFAULT_CACHE_MAX_GIB;
+
+  return { dir, maxBytes: Math.floor(maxGiB * GiB) };
+}
+
 function parseConfig(raw: unknown): DevopsConfig {
   const root = asRecord(raw);
   const bkRaw = asRecord(root.bkrepo);
@@ -122,6 +176,7 @@ function parseConfig(raw: unknown): DevopsConfig {
     user: process.env.BKREPO_USER || reqStr(bkRaw, 'user', 'bkrepo'),
     token: process.env.BKREPO_TOKEN || reqStr(bkRaw, 'token', 'bkrepo'),
   };
+  const artifactCache = parseArtifactCache(root.artifactCache);
 
   const list = root.pipelines;
   if (!Array.isArray(list) || list.length === 0) {
@@ -148,7 +203,7 @@ function parseConfig(raw: unknown): DevopsConfig {
     };
   });
 
-  return { bkrepo, pipelines };
+  return { bkrepo, artifactCache, pipelines };
 }
 
 /** 解析配置文件路径：env 覆盖 > cwd/pipelines.config.json。返回 null 表示用内置默认。 */

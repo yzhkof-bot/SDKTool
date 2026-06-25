@@ -12,7 +12,29 @@ import {
 } from '../../shared/schema.js';
 import { renderDiffHtml, renderReportHtml } from '../utils/render.js';
 
+import type { ArtifactCache } from './artifactCache.js';
+import type { DevopsRegistry } from './devops.js';
 import type { JobStore } from './store.js';
+
+/**
+ * analyze/compare 的一个输入来源：要么是本地路径，要么是一条蓝盾制品引用
+ * （引用阶段不下载，运行时由 runner 经 ArtifactCache 解析成本地路径）。
+ */
+export type InputSource =
+  | { kind: 'path'; path: string }
+  | {
+      kind: 'devops';
+      /** 流水线 key；缺省用默认流水线 */
+      pipeline?: string;
+      buildId: string;
+      buildNum?: number | null;
+      /** 制品在蓝盾里的路径 */
+      artifactPath: string;
+      /** 原始文件名 */
+      name: string;
+      artifactoryType?: string;
+      size?: number | null;
+    };
 
 export interface RunnerDeps {
   store: JobStore;
@@ -23,6 +45,10 @@ export interface RunnerDeps {
   extras?: string[];
   /** 应用包平台；未指定时按 'harmony' 处理 */
   platform?: Platform;
+  /** 解析蓝盾制品引用时用；仅当输入含 devops source 时必需 */
+  devops?: DevopsRegistry;
+  /** 蓝盾制品本地下载缓存；仅当输入含 devops source 时必需 */
+  artifactCache?: ArtifactCache;
   /**
    * 磁盘 JSON 产物是否使用缩进（2 空格）。默认 true。
    *
@@ -42,46 +68,49 @@ export interface RunnerDeps {
  *
  * 逻辑：
  *  1. 立即创建 pending job
- *  2. 校验路径（不存在/非文件 → 直接置 error）
- *  3. 后台 analyzePackage，写产物到 store.jobDir(id) 下的 report.json / report.html
+ *  2. path source 做同步快校验（不存在/非文件 → 直接置 error）；devops source 留到异步
+ *  3. 后台先把 source 解析成本地路径（devops 需下载/命中缓存），再 analyzePackage
  *  4. 把产物 URL 回写 job.outputs
  */
-export function startAnalyzeJob(absPath: string, deps: RunnerDeps): string {
-  const label = baseName(absPath);
+export function startAnalyzeJob(source: InputSource, deps: RunnerDeps): string {
   const platform = deps.platform ?? DEFAULT_PLATFORM;
-  const job = deps.store.create('analyze', [absPath], label, platform);
+  const job = deps.store.create('analyze', [sourceInputLabel(source)], sourceTitle(source), platform);
 
-  // 同步快校验，错误直接落 error 状态，避免后台无人处理的 race
-  if (!existsSync(absPath)) {
-    deps.store.update(job.id, {
-      status: 'error',
-      error: `文件不存在: ${absPath}`,
-      finishedAt: new Date().toISOString(),
-    });
-    return job.id;
-  }
-  if (!statSync(absPath).isFile()) {
-    deps.store.update(job.id, {
-      status: 'error',
-      error: `不是文件: ${absPath}`,
-      finishedAt: new Date().toISOString(),
-    });
-    return job.id;
+  // path source：同步快校验，错误直接落 error，避免后台无人处理的 race
+  if (source.kind === 'path') {
+    if (!existsSync(source.path)) {
+      deps.store.update(job.id, {
+        status: 'error',
+        error: `文件不存在: ${source.path}`,
+        finishedAt: new Date().toISOString(),
+      });
+      return job.id;
+    }
+    if (!statSync(source.path).isFile()) {
+      deps.store.update(job.id, {
+        status: 'error',
+        error: `不是文件: ${source.path}`,
+        finishedAt: new Date().toISOString(),
+      });
+      return job.id;
+    }
   }
 
-  // 异步执行
-  void runAnalyzeAsync(job.id, absPath, deps);
+  void runAnalyzeAsync(job.id, source, deps);
   return job.id;
 }
 
-async function runAnalyzeAsync(id: string, absPath: string, deps: RunnerDeps): Promise<void> {
+async function runAnalyzeAsync(id: string, source: InputSource, deps: RunnerDeps): Promise<void> {
   const platform = deps.platform ?? DEFAULT_PLATFORM;
   deps.store.update(id, { status: 'running' });
-  deps.log(`[workbench] analyze start ${id} [${platform}] ${absPath}${deps.extras?.length ? ` (extras=${deps.extras.join(',')})` : ''}\n`);
+  deps.log(`[workbench] analyze start ${id} [${platform}] ${sourceInputLabel(source)}${deps.extras?.length ? ` (extras=${deps.extras.join(',')})` : ''}\n`);
+  let acquired: { path: string; release: () => void } | null = null;
   try {
     const dir = deps.store.jobDir(id);
     await mkdir(dir, { recursive: true });
-    const report = await analyzePackage(absPath, {
+    acquired = await resolveSource(source, deps, (note) => deps.store.update(id, { note }));
+    deps.store.update(id, { note: '分析中…' });
+    const report = await analyzePackage(acquired.path, {
       toolVersion: deps.toolVersion,
       extras: deps.extras,
       platform,
@@ -92,6 +121,7 @@ async function runAnalyzeAsync(id: string, absPath: string, deps: RunnerDeps): P
     await writeFile(htmlPath, renderReportHtml(report), 'utf8');
     deps.store.update(id, {
       status: 'done',
+      note: undefined,
       finishedAt: new Date().toISOString(),
       outputs: {
         htmlUrl: `/jobs/${id}/html`,
@@ -102,10 +132,13 @@ async function runAnalyzeAsync(id: string, absPath: string, deps: RunnerDeps): P
   } catch (e) {
     deps.store.update(id, {
       status: 'error',
+      note: undefined,
       error: (e as Error).message ?? String(e),
       finishedAt: new Date().toISOString(),
     });
     deps.log(`[workbench] analyze error ${id} - ${(e as Error).message}\n`);
+  } finally {
+    acquired?.release();
   }
 }
 
@@ -114,49 +147,64 @@ async function runAnalyzeAsync(id: string, absPath: string, deps: RunnerDeps): P
 /* -------------------------------------------------------------------------- */
 
 export function startCompareJob(
-  leftPath: string,
-  rightPath: string,
+  leftSource: InputSource,
+  rightSource: InputSource,
   deps: RunnerDeps,
 ): string {
-  const label = `${baseName(leftPath)} vs ${baseName(rightPath)}`;
+  const label = `${sourceTitle(leftSource)} vs ${sourceTitle(rightSource)}`;
   const platform = deps.platform ?? DEFAULT_PLATFORM;
-  const job = deps.store.create('compare', [leftPath, rightPath], label, platform);
+  const job = deps.store.create(
+    'compare',
+    [sourceInputLabel(leftSource), sourceInputLabel(rightSource)],
+    label,
+    platform,
+  );
 
-  for (const p of [leftPath, rightPath]) {
-    if (!existsSync(p)) {
+  // 仅对 path source 做同步快校验；devops source 留到异步解析
+  for (const s of [leftSource, rightSource]) {
+    if (s.kind !== 'path') continue;
+    if (!existsSync(s.path)) {
       deps.store.update(job.id, {
         status: 'error',
-        error: `文件不存在: ${p}`,
+        error: `文件不存在: ${s.path}`,
         finishedAt: new Date().toISOString(),
       });
       return job.id;
     }
-    if (!statSync(p).isFile()) {
+    if (!statSync(s.path).isFile()) {
       deps.store.update(job.id, {
         status: 'error',
-        error: `不是文件: ${p}`,
+        error: `不是文件: ${s.path}`,
         finishedAt: new Date().toISOString(),
       });
       return job.id;
     }
   }
 
-  void runCompareAsync(job.id, leftPath, rightPath, deps);
+  void runCompareAsync(job.id, leftSource, rightSource, deps);
   return job.id;
 }
 
 async function runCompareAsync(
   id: string,
-  leftPath: string,
-  rightPath: string,
+  leftSource: InputSource,
+  rightSource: InputSource,
   deps: RunnerDeps,
 ): Promise<void> {
   const platform = deps.platform ?? DEFAULT_PLATFORM;
   deps.store.update(id, { status: 'running' });
-  deps.log(`[workbench] compare start ${id} [${platform}] ${leftPath} <-> ${rightPath}${deps.extras?.length ? ` (extras=${deps.extras.join(',')})` : ''}\n`);
+  deps.log(`[workbench] compare start ${id} [${platform}] ${sourceInputLabel(leftSource)} <-> ${sourceInputLabel(rightSource)}${deps.extras?.length ? ` (extras=${deps.extras.join(',')})` : ''}\n`);
+  let acquiredLeft: { path: string; release: () => void } | null = null;
+  let acquiredRight: { path: string; release: () => void } | null = null;
   try {
     const dir = deps.store.jobDir(id);
     await mkdir(dir, { recursive: true });
+    // 顺序解析两侧（避免两个 GB 级下载同时打满带宽/磁盘）
+    acquiredLeft = await resolveSource(leftSource, deps, (note) => deps.store.update(id, { note: `左：${note}` }));
+    acquiredRight = await resolveSource(rightSource, deps, (note) => deps.store.update(id, { note: `右：${note}` }));
+    deps.store.update(id, { note: '分析中…' });
+    const leftPath = acquiredLeft.path;
+    const rightPath = acquiredRight.path;
     const [left, right] = await Promise.all([
       loadOrAnalyze(leftPath, deps.toolVersion, deps.extras, platform),
       loadOrAnalyze(rightPath, deps.toolVersion, deps.extras, platform),
@@ -185,6 +233,7 @@ async function runCompareAsync(
 
     deps.store.update(id, {
       status: 'done',
+      note: undefined,
       finishedAt: new Date().toISOString(),
       outputs: {
         htmlUrl: `/jobs/${id}/html`,
@@ -207,10 +256,14 @@ async function runCompareAsync(
   } catch (e) {
     deps.store.update(id, {
       status: 'error',
+      note: undefined,
       error: (e as Error).message ?? String(e),
       finishedAt: new Date().toISOString(),
     });
     deps.log(`[workbench] compare error ${id} - ${(e as Error).message}\n`);
+  } finally {
+    acquiredLeft?.release();
+    acquiredRight?.release();
   }
 }
 
@@ -255,6 +308,74 @@ function assertSamePlatform(left: PackageReport, right: PackageReport, expected:
 
 function baseName(p: string): string {
   return p.split(/[\\/]/).pop() || p;
+}
+
+/** 人类可读标题（用于 job.label）。 */
+function sourceTitle(s: InputSource): string {
+  if (s.kind === 'path') return baseName(s.path);
+  return s.name + (s.buildNum != null ? ` #${s.buildNum}` : '');
+}
+
+/** 写进 job.inputs 的描述串（历史里能看出来源）。 */
+function sourceInputLabel(s: InputSource): string {
+  if (s.kind === 'path') return s.path;
+  const pipe = s.pipeline ? `${s.pipeline} ` : '';
+  return `[蓝盾] ${pipe}${s.name}${s.buildNum != null ? ` #${s.buildNum}` : ''}`;
+}
+
+/**
+ * 把一个 InputSource 解析成本地文件路径：
+ *  - path：原样返回，release 为 no-op
+ *  - devops：经 ArtifactCache 下载（或命中缓存）；onProgress 回传进度文本给作业 note
+ *
+ * 返回的 release() 必须在分析结束后调用，解除缓存"使用中"标记。
+ */
+async function resolveSource(
+  source: InputSource,
+  deps: RunnerDeps,
+  onProgress: (note: string) => void,
+): Promise<{ path: string; release: () => void }> {
+  if (source.kind === 'path') {
+    return { path: source.path, release: () => {} };
+  }
+  if (!deps.devops) throw new Error('服务未配置蓝盾流水线，无法下载制品');
+  if (!deps.artifactCache) throw new Error('服务未配置制品缓存目录，无法下载制品');
+  const client = deps.devops.getClient(source.pipeline); // 未知流水线会抛 DevopsError
+  const artifactPath = source.artifactPath;
+  const artifactoryType = source.artifactoryType ?? 'PIPELINE';
+
+  onProgress('准备下载制品…');
+  let lastTick = 0;
+  const acquired = await deps.artifactCache.acquire(
+    {
+      projectId: client.pipeline.projectId,
+      buildId: source.buildId,
+      artifactPath,
+      name: source.name,
+      expectedSize: source.size ?? undefined,
+      getDownload: () => client.getArtifactDownload({ path: artifactPath, artifactoryType }),
+    },
+    (received, total) => {
+      const now = Date.now();
+      if (now - lastTick > 400 || (total > 0 && received >= total)) {
+        lastTick = now;
+        onProgress(`下载制品 ${fmtBytes(received)}${total > 0 ? ` / ${fmtBytes(total)}` : ''}`);
+      }
+    },
+  );
+  return { path: acquired.path, release: acquired.release };
+}
+
+function fmtBytes(b: number): string {
+  if (!Number.isFinite(b) || b < 0) return '0 B';
+  const u = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  let i = 0;
+  let v = b;
+  while (v >= 1024 && i < u.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return (i === 0 ? v.toFixed(0) : v.toFixed(2)) + ' ' + u[i];
 }
 
 /**

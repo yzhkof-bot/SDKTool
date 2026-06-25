@@ -17,9 +17,10 @@ import {
   type DevopsRegistry,
 } from './devops.js';
 import { DevopsConfigError } from './devopsConfig.js';
+import { ArtifactCache } from './artifactCache.js';
 import { locateByMeta } from './locate.js';
 import { LocalProjectStore, startLocalProjectJob } from './localProject.js';
-import { startAnalyzeJob, startCompareJob } from './runner.js';
+import { startAnalyzeJob, startCompareJob, type InputSource } from './runner.js';
 import { JobStore, defaultCacheDir } from './store.js';
 import { renderWorkbenchPage } from './page.js';
 import {
@@ -41,6 +42,11 @@ export interface WorkbenchServerOptions {
    * 与开发者本地查看）；显式 false 时退回紧凑单行。
    */
   prettyJson?: boolean;
+  /**
+   * devops-only（仅蓝盾包）模式：开启后分析/对比界面禁用本地路径输入，
+   * 只接受蓝盾制品来源。缺省读环境变量 SDKTOOL_DEVOPS_ONLY（由启动脚本设置）。
+   */
+  devopsOnly?: boolean;
 }
 
 export interface WorkbenchServerHandle {
@@ -62,8 +68,10 @@ export interface WorkbenchServerHandle {
  *   GET  /api/devops/artifacts?buildId  蓝盾某次构建的制品列表
  *   GET  /api/jobs                      job 列表
  *   GET  /api/jobs/:id                  单个 job
- *   POST /api/analyze                   { path, platform?, extras? } → 启动分析作业
- *   POST /api/compare                   { leftPath, rightPath, platform?, extras? } → 启动对比作业
+ *   POST /api/analyze                   { path | source, platform?, extras? } → 启动分析作业
+ *   POST /api/compare                   { leftPath|left, rightPath|right, platform?, extras? } → 启动对比作业
+ *                                       source/left/right 可为 { type:'devops', pipeline?, buildId, buildNum?, artifactPath, name, artifactoryType?, size? }
+ *                                       （蓝盾制品引用，运行时才下载到独立缓存目录，已下载则复用）
  *   GET  /jobs/:id/html                 作业主产物 HTML（analyze=报告 / compare=diff）
  *   GET  /jobs/:id/json                 作业主产物 JSON
  *   GET  /jobs/:id/sides/:side/html     compare job 单侧 PackageReport HTML（side ∈ left|right）
@@ -92,9 +100,17 @@ export async function startWorkbenchServer(
     throw e;
   }
 
+  // 蓝盾制品下载缓存（目录/上限来自同一份配置；超量按下载先后清理）
+  const artifactCache = new ArtifactCache(devops.artifactCache.dir, devops.artifactCache.maxBytes);
+  log(`[workbench] 制品缓存目录 ${devops.artifactCache.dir}（上限 ${(devops.artifactCache.maxBytes / (1024 ** 3)).toFixed(0)} GiB）\n`);
+
   const prettyJson = options.prettyJson;
+  // devops-only 标记：由启动脚本（如 Linux 部署脚本）设环境变量 SDKTOOL_DEVOPS_ONLY 打开。
+  // 打开后分析/对比只接受蓝盾制品来源，禁用本地路径输入（前端隐藏 + 后端兜底拒绝）。
+  const devopsOnly = options.devopsOnly ?? readDevopsOnlyEnv();
+  if (devopsOnly) log('[workbench] devops-only 模式：仅支持蓝盾包对比，已禁用本地路径输入\n');
   const server: Server = createServer((req, res) => {
-    handle(req, res, store, conversations, localProjects, devops, options.toolVersion, log, prettyJson).catch((err) => {
+    handle(req, res, store, conversations, localProjects, devops, artifactCache, options.toolVersion, log, prettyJson, devopsOnly).catch((err) => {
       log(`[workbench] handler error: ${err?.stack ?? err}\n`);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -137,16 +153,18 @@ async function handle(
   conversations: ConversationManager,
   localProjects: LocalProjectStore,
   devops: DevopsRegistry,
+  artifactCache: ArtifactCache,
   toolVersion: string,
   log: (t: string) => void,
   prettyJson: boolean | undefined,
+  devopsOnly: boolean,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x');
   const method = req.method ?? 'GET';
 
   // 静态：工作台首页
   if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-    sendHtml(res, renderWorkbenchPage(store.cacheDir));
+    sendHtml(res, renderWorkbenchPage(store.cacheDir, devopsOnly));
     return;
   }
   if (method === 'GET' && url.pathname === '/healthz') {
@@ -352,9 +370,17 @@ async function handle(
       sendJson(res, 400, { error: 'BAD_JSON', message: String((body as { __error: Error }).__error.message) });
       return;
     }
-    const path = (body as { path?: unknown }).path;
-    if (typeof path !== 'string' || !path.trim()) {
+    const src = toInputSource((body as { source?: unknown }).source, (body as { path?: unknown }).path);
+    if (src === 'EMPTY') {
       sendJson(res, 400, { error: 'BAD_REQUEST', message: '缺少 path 字符串字段' });
+      return;
+    }
+    if (src === 'INVALID') {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: '制品来源参数不完整（需要 buildId / artifactPath / name）' });
+      return;
+    }
+    if (devopsOnly && src.kind === 'path') {
+      sendJson(res, 403, { error: 'DEVOPS_ONLY', message: '当前为蓝盾包模式，仅支持蓝盾制品来源，不接受本地路径' });
       return;
     }
     const platform = parsePlatformField((body as { platform?: unknown }).platform);
@@ -366,13 +392,15 @@ async function handle(
       return;
     }
     const extras = parseExtras((body as { extras?: unknown }).extras);
-    const id = startAnalyzeJob(path.trim(), {
+    const id = startAnalyzeJob(src, {
       store,
       toolVersion,
       log,
       extras,
       platform,
       prettyJson,
+      devops,
+      artifactCache,
     });
     sendJson(res, 202, { jobId: id });
     return;
@@ -384,9 +412,19 @@ async function handle(
       sendJson(res, 400, { error: 'BAD_JSON', message: String((body as { __error: Error }).__error.message) });
       return;
     }
-    const { leftPath, rightPath } = body as { leftPath?: unknown; rightPath?: unknown };
-    if (typeof leftPath !== 'string' || !leftPath.trim() || typeof rightPath !== 'string' || !rightPath.trim()) {
-      sendJson(res, 400, { error: 'BAD_REQUEST', message: '需要 leftPath / rightPath 两个字符串字段' });
+    const b = body as { left?: unknown; right?: unknown; leftPath?: unknown; rightPath?: unknown };
+    const left = toInputSource(b.left, b.leftPath);
+    const right = toInputSource(b.right, b.rightPath);
+    if (left === 'EMPTY' || right === 'EMPTY') {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: '需要 leftPath / rightPath 两个字符串字段（或 left / right 制品引用）' });
+      return;
+    }
+    if (left === 'INVALID' || right === 'INVALID') {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: '制品来源参数不完整（需要 buildId / artifactPath / name）' });
+      return;
+    }
+    if (devopsOnly && (left.kind === 'path' || right.kind === 'path')) {
+      sendJson(res, 403, { error: 'DEVOPS_ONLY', message: '当前为蓝盾包模式，仅支持蓝盾制品来源，不接受本地路径' });
       return;
     }
     const platform = parsePlatformField((body as { platform?: unknown }).platform);
@@ -398,13 +436,15 @@ async function handle(
       return;
     }
     const extras = parseExtras((body as { extras?: unknown }).extras);
-    const id = startCompareJob(leftPath.trim(), rightPath.trim(), {
+    const id = startCompareJob(left, right, {
       store,
       toolVersion,
       log,
       extras,
       platform,
       prettyJson,
+      devops,
+      artifactCache,
     });
     sendJson(res, 202, { jobId: id });
     return;
@@ -801,6 +841,56 @@ function parsePlatformField(raw: unknown): Platform | 'INVALID' {
  * 后端不在这里做 id 白名单校验：未知 id 进 pipeline 会被 pickEnabledAnalyzers 静默忽略，
  * 不影响其它默认 analyzer 运行。
  */
+/**
+ * 把 analyze/compare 的一个输入解析成 InputSource：
+ *  - sourceRaw 是对象且 type==='devops' → 蓝盾制品引用（校验 buildId/artifactPath/name）
+ *  - sourceRaw 是对象且 type==='path' → 本地路径
+ *  - 否则回退看 legacyPath（旧 body 的 path / leftPath / rightPath 字符串）
+ *
+ * 返回 'EMPTY'（两者都没有）/ 'INVALID'（来源对象字段不全）由路由分别映射 400。
+ */
+function toInputSource(sourceRaw: unknown, legacyPath: unknown): InputSource | 'EMPTY' | 'INVALID' {
+  if (sourceRaw && typeof sourceRaw === 'object') {
+    const s = sourceRaw as Record<string, unknown>;
+    const type = s.type ?? s.kind;
+    if (type === 'devops') {
+      const buildId = typeof s.buildId === 'string' ? s.buildId.trim() : '';
+      const artifactPath = typeof s.artifactPath === 'string' ? s.artifactPath.trim() : '';
+      const name = typeof s.name === 'string' ? s.name.trim() : '';
+      if (!buildId || !artifactPath || !name) return 'INVALID';
+      return {
+        kind: 'devops',
+        pipeline: typeof s.pipeline === 'string' && s.pipeline.trim() ? s.pipeline.trim() : undefined,
+        buildId,
+        buildNum: typeof s.buildNum === 'number' ? s.buildNum : null,
+        artifactPath,
+        name,
+        artifactoryType: typeof s.artifactoryType === 'string' ? s.artifactoryType : undefined,
+        size: typeof s.size === 'number' ? s.size : null,
+      };
+    }
+    if (type === 'path') {
+      const p = typeof s.path === 'string' ? s.path.trim() : '';
+      if (!p) return 'INVALID';
+      return { kind: 'path', path: p };
+    }
+    return 'INVALID';
+  }
+  if (typeof legacyPath === 'string' && legacyPath.trim()) {
+    return { kind: 'path', path: legacyPath.trim() };
+  }
+  return 'EMPTY';
+}
+
+/**
+ * 读 SDKTOOL_DEVOPS_ONLY 环境变量并解析成布尔。
+ * 视 `1 / true / yes / on`（忽略大小写、去空白）为开启；其余（含未设置）为关闭。
+ */
+function readDevopsOnlyEnv(): boolean {
+  const v = (process.env.SDKTOOL_DEVOPS_ONLY ?? '').trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
 function parseExtras(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const out: string[] = [];

@@ -17,6 +17,7 @@
 
 import {
   loadDevopsConfig,
+  type ArtifactCacheConfig,
   type BkRepoCreds,
   type DevopsConfig,
   type LocalProjectRule,
@@ -348,12 +349,15 @@ export interface PipelineSummary {
 export class DevopsRegistry {
   private readonly clients = new Map<string, DevopsClient>();
   readonly defaultKey: string;
+  /** 制品下载缓存配置（与流水线同一份配置文件） */
+  readonly artifactCache: ArtifactCacheConfig;
 
   constructor(config: DevopsConfig) {
     for (const p of config.pipelines) {
       this.clients.set(p.key, new DevopsClient(p, config.bkrepo));
     }
     this.defaultKey = config.pipelines[0]!.key;
+    this.artifactCache = config.artifactCache;
   }
 
   /** 前端列表用：流水线摘要（不暴露 token）。 */

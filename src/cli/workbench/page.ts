@@ -60,11 +60,11 @@ const PLATFORM_DEFS: ReadonlyArray<PlatformUIDef> = [
   },
 ];
 
-export function renderWorkbenchPage(cacheDir: string): string {
-  return PAGE_HTML(getExtraAnalyzerMeta(DEFAULT_PLATFORM), cacheDir);
+export function renderWorkbenchPage(cacheDir: string, devopsOnly = false): string {
+  return PAGE_HTML(getExtraAnalyzerMeta(DEFAULT_PLATFORM), cacheDir, devopsOnly);
 }
 
-function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string): string {
+function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string, devopsOnly: boolean): string {
   const extrasAnalyze = renderExtrasBlock(extras, 'analyze');
   const extrasCompare = renderExtrasBlock(extras, 'compare');
   const cacheDirEsc = escHtml(cacheDir);
@@ -233,6 +233,7 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string): string {
     window.__KINGSDK__ = {
       defaultPlatform: ${JSON.stringify(defaultPlatform)},
       platforms: ${platformDefsJson},
+      devopsOnly: ${JSON.stringify(devopsOnly)},
     };
   </script>
   <script>${SCRIPT}</script>
@@ -502,6 +503,8 @@ body { margin: 0; background: var(--color-bg); color: var(--color-text); font-fa
 .path-row label { color: var(--color-muted); font-size: 13px; }
 .path-row input { font-family: var(--font-mono); font-size: 12px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface-elev); color: var(--color-text); width: 100%; }
 .path-row input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-bg); }
+.path-row input.devops-locked { background: var(--color-code-bg); color: var(--color-muted); cursor: not-allowed; }
+.path-row input.devops-locked:focus { box-shadow: none; border-color: var(--color-border); }
 
 /* 可选深度分析多选区 */
 .extras-block { margin-top: 12px; padding: 12px 14px; background: var(--color-surface-elev); border: 1px solid var(--color-border); border-radius: 6px; }
@@ -558,6 +561,7 @@ body { margin: 0; background: var(--color-bg); color: var(--color-text); font-fa
 .job .link-group a { color: var(--color-primary); text-decoration: none; }
 .job .link-group a:hover { text-decoration: underline; }
 .job .err-msg { color: var(--color-danger); font-size: 12px; font-family: var(--font-mono); margin-top: 4px; word-break: break-all; }
+.job .job-note { color: var(--color-primary); font-size: 12px; font-family: var(--font-mono); margin-top: 4px; }
 .job .actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .job .btn-delete { background: transparent; border: 1px solid var(--color-border); color: var(--color-muted); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 0; line-height: 1; }
 .job .btn-delete:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--color-danger); color: var(--color-danger); }
@@ -598,11 +602,23 @@ body { margin: 0; background: var(--color-bg); color: var(--color-text); font-fa
 #art-actions .btn-config-proj { font-size: 13px; padding: 8px 12px; }
 #art-actions .artifact-config-hint { font-size: 11px; }
 .art-list { display: flex; flex-direction: column; }
-.art-list .artifact-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; padding: 7px 16px; border-bottom: 1px solid var(--color-border); }
+.art-list .artifact-item { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 7px 16px; border-bottom: 1px solid var(--color-border); }
 .art-list .artifact-item:last-child { border-bottom: none; }
 .art-list .artifact-item:hover { background: var(--color-primary-bg); }
 .art-list .artifact-name { font-size: 12px; }
 .art-list .artifact-size { font-size: 11px; }
+.artifact-name-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* 安装包（hap/apk/aab/ipa）高亮：左侧色条 + 文件名加重 + 扩展名徽标 */
+.art-list .artifact-item.pkg { background: var(--color-primary-bg); box-shadow: inset 3px 0 0 var(--color-primary); }
+.art-list .artifact-item.pkg .artifact-name { color: var(--color-primary); font-weight: 600; }
+.artifact-pkg-badge { flex: none; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 4px; background: var(--color-primary); color: #fff; }
+.artifact-add-btns { display: flex; gap: 4px; white-space: nowrap; }
+.artifact-add-btn { font-size: 11px; padding: 3px 8px; border: 1px solid var(--color-border); border-radius: 5px; background: var(--color-surface-elev); color: var(--color-text); cursor: pointer; }
+.artifact-add-btn:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-bg); }
+/* 已加入但未下载的蓝盾制品引用 chip（显示在输入框下方 row-status 区） */
+.devops-ref-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 2px 6px 2px 8px; border-radius: 10px; background: var(--color-primary-bg); color: var(--color-primary); border: 1px solid var(--color-primary); }
+.devops-ref-x { border: none; background: transparent; color: inherit; cursor: pointer; font-size: 11px; line-height: 1; padding: 0 2px; }
+.devops-ref-x:hover { color: var(--color-danger); }
 
 /* 配置本地工程进度 */
 .lp-meta { font-size: 12px; color: var(--color-muted); padding: 12px 16px 4px; font-family: var(--font-mono); word-break: break-all; }
@@ -638,6 +654,10 @@ const SCRIPT = `
   // 由侧栏的流水线加载逻辑设置，openArtModal / startLocalProject 共享读取。
   var currentPipeline = null;
 
+  // analyze/compare 三个输入位上"已加入但未下载"的蓝盾制品引用。
+  // 点"开始"时才把引用发给后端触发下载；null 表示该位用本地路径输入。
+  var pendingSources = { 'analyze-path': null, 'compare-left': null, 'compare-right': null };
+
   // ---------- 工具函数 ----------
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return [].slice.call((root || document).querySelectorAll(sel)); }
@@ -659,6 +679,59 @@ const SCRIPT = `
     var u = ['B','KiB','MiB','GiB','TiB']; var i = 0; var v = b;
     while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
     return (i === 0 ? v.toFixed(0) : v.toFixed(2)) + ' ' + u[i];
+  }
+
+  // ---------- 蓝盾制品引用（加入分析/对比） ----------
+  // 把 (构建, 制品) 转成发给后端的制品引用对象（此刻不下载）。
+  function devopsRefFor(build, a) {
+    return {
+      type: 'devops',
+      pipeline: currentPipeline ? currentPipeline.key : undefined,
+      buildId: build.buildId,
+      buildNum: (build.buildNum != null ? build.buildNum : null),
+      artifactPath: a.path,
+      name: a.name,
+      artifactoryType: a.artifactoryType,
+      size: (typeof a.size === 'number' ? a.size : null),
+    };
+  }
+  // 在某个输入位的 row-status 里渲染引用 chip（或清掉）。有引用时禁用文本框。
+  function renderSourceChip(inputId) {
+    var input = document.getElementById(inputId);
+    var box = document.querySelector('.row-status[data-status-for="' + inputId + '"]');
+    if (!input || !box) return;
+    var ref = pendingSources[inputId];
+    box.className = 'row-status';
+    box.innerHTML = '';
+    if (ref) {
+      input.value = '';
+      input.disabled = true;
+      var text = '☁ ' + ref.name
+        + (ref.buildNum != null ? (' · #' + ref.buildNum) : '')
+        + (ref.size != null ? (' · ' + fmtBytes(ref.size)) : '')
+        + ' · 点开始后才下载';
+      var x = el('button', { class: 'devops-ref-x', title: '移除引用' }, '✕');
+      x.addEventListener('click', function(){ clearDevopsSource(inputId); });
+      box.appendChild(el('span', { class: 'devops-ref-chip' }, [text, x]));
+    } else {
+      input.disabled = false;
+    }
+  }
+  function setDevopsSource(inputId, ref) { pendingSources[inputId] = ref; renderSourceChip(inputId); }
+  function clearDevopsSource(inputId) {
+    if (pendingSources[inputId]) { pendingSources[inputId] = null; renderSourceChip(inputId); }
+  }
+  // 程序化切到某个 tab（analyze | compare）。
+  function activateTab(name) {
+    var tb = document.querySelector('.tab[data-tab="' + name + '"]');
+    if (tb) tb.click();
+  }
+  // 制品行点"加入"：记录引用 + 切 tab + 关弹窗。
+  function addArtifactToSlot(slot, build, a) {
+    var inputId = slot === 'analyze' ? 'analyze-path' : (slot === 'left' ? 'compare-left' : 'compare-right');
+    setDevopsSource(inputId, devopsRefFor(build, a));
+    activateTab(slot === 'analyze' ? 'analyze' : 'compare');
+    closeArtModal();
   }
   function fmtTime(iso) {
     if (!iso) return '';
@@ -706,6 +779,9 @@ const SCRIPT = `
   var KS = (window.__KINGSDK__ || { defaultPlatform: 'harmony', platforms: [] });
   var PLATFORM_DEFS = KS.platforms || [];
   var currentPlatform = KS.defaultPlatform || 'harmony';
+  // devops-only：由启动脚本（Linux 部署）设的标记。开启后分析/对比只能用蓝盾制品，
+  // 禁用本地路径输入（隐藏浏览/拖拽、路径框只读、文案与校验同步切换）。
+  var DEVOPS_ONLY = !!KS.devopsOnly;
   var historyFilter = 'all'; // 'all' | 'harmony' | 'android' | 'ios'
   /** 缓存每个平台 extras 列表（首次拉取后存下，避免 segment 来回切重复网络请求） */
   var extrasCache = Object.create(null);
@@ -752,6 +828,11 @@ const SCRIPT = `
     var rightInput = $('#compare-right');
     if (leftInput) leftInput.value = '';
     if (rightInput) rightInput.value = '';
+    // 切平台清掉已加入的蓝盾引用（不同平台包不可混用）
+    ['analyze-path','compare-left','compare-right'].forEach(function(id){ pendingSources[id] = null; });
+    ['analyze-path','compare-left','compare-right'].forEach(function(id){
+      var inp = document.getElementById(id); if (inp) inp.disabled = false;
+    });
     $$('.row-status').forEach(function(s){ s.textContent = ''; s.className = 'row-status'; });
     $$('.error').forEach(function(e){ e.hidden = true; e.textContent = ''; });
 
@@ -1000,6 +1081,29 @@ const SCRIPT = `
     });
   });
 
+  // ---------- devops-only 模式：禁用本地路径输入 ----------
+  (function applyDevopsOnly() {
+    if (!DEVOPS_ONLY) return;
+    // 隐藏所有"浏览…"按钮
+    $$('button[data-browse-target]').forEach(function(b){ b.hidden = true; });
+    // 路径框只读 + 提示从左侧蓝盾构建加入
+    ['analyze-path','compare-left','compare-right'].forEach(function(id){
+      var inp = document.getElementById(id);
+      if (!inp) return;
+      inp.readOnly = true;
+      inp.classList.add('devops-locked');
+      inp.value = '';
+      inp.setAttribute('placeholder', '← 从左侧蓝盾构建选择制品「加入」');
+    });
+    // 隐藏"拖到这里"提示
+    $$('.drop-row-hint').forEach(function(h){ h.hidden = true; });
+    // 切换两个面板的说明文案
+    var aHint = document.querySelector('section[data-section="analyze"] .hint');
+    if (aHint) aHint.innerHTML = '当前为<b>蓝盾包模式</b>：请从左侧流水线构建中选择制品「<b>分析</b>」加入。不支持本地路径输入。';
+    var cHint = document.querySelector('section[data-section="compare"] .hint');
+    if (cHint) cHint.innerHTML = '当前为<b>蓝盾包模式</b>：请从左侧流水线构建中分别把制品「<b>对比左</b>」「<b>对比右</b>」加入。不支持本地路径输入。';
+  })();
+
   // ---------- Extras（可选深度分析多选） ----------
   // 收集当前 kind（'analyze' | 'compare'）下勾选的 analyzer id
   function collectExtras(kind) {
@@ -1009,13 +1113,19 @@ const SCRIPT = `
 
   // ---------- Analyze / Compare 按钮 ----------
   $('#btn-analyze').addEventListener('click', async function() {
+    var ref = pendingSources['analyze-path'];
     var path = $('#analyze-path').value.trim();
     var errBox = $('#analyze-error');
     errBox.hidden = true; errBox.textContent = '';
-    if (!path) { errBox.hidden = false; errBox.textContent = '请填路径或点"浏览…"选择'; return; }
+    if (!ref && !path) {
+      errBox.hidden = false;
+      errBox.textContent = DEVOPS_ONLY ? '请从左侧蓝盾构建选择制品「分析」加入' : '请填路径、点"浏览…"，或从蓝盾制品"加入分析"';
+      return;
+    }
     var extras = collectExtras('analyze');
     try {
-      var body = { path: path, platform: currentPlatform };
+      var body = { platform: currentPlatform };
+      if (ref) body.source = ref; else body.path = path;
       if (extras.length > 0) body.extras = extras;
       var r = await jsonFetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       console.log('[workbench] analyze job started', r, 'platform=', currentPlatform, 'extras=', extras);
@@ -1026,14 +1136,22 @@ const SCRIPT = `
   });
 
   $('#btn-compare').addEventListener('click', async function() {
+    var lref = pendingSources['compare-left'];
+    var rref = pendingSources['compare-right'];
     var leftPath = $('#compare-left').value.trim();
     var rightPath = $('#compare-right').value.trim();
     var errBox = $('#compare-error');
     errBox.hidden = true; errBox.textContent = '';
-    if (!leftPath || !rightPath) { errBox.hidden = false; errBox.textContent = '两侧路径都需要填'; return; }
+    if ((!lref && !leftPath) || (!rref && !rightPath)) {
+      errBox.hidden = false;
+      errBox.textContent = DEVOPS_ONLY ? '两侧都需要从左侧蓝盾构建「对比左 / 对比右」加入' : '两侧都需要：本地路径或蓝盾制品引用';
+      return;
+    }
     var extras = collectExtras('compare');
     try {
-      var body = { leftPath: leftPath, rightPath: rightPath, platform: currentPlatform };
+      var body = { platform: currentPlatform };
+      if (lref) body.left = lref; else body.leftPath = leftPath;
+      if (rref) body.right = rref; else body.rightPath = rightPath;
       if (extras.length > 0) body.extras = extras;
       var r = await jsonFetch('/api/compare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       console.log('[workbench] compare job started', r, 'platform=', currentPlatform, 'extras=', extras);
@@ -1128,6 +1246,7 @@ const SCRIPT = `
         el('div', { class: 'label' }, j.label || j.kind),
         el('div', { class: 'sub' }, sub),
         el('div', { class: 'time-row' }, timeChips),
+        (j.status === 'running' && j.note) ? el('div', { class: 'job-note' }, j.note) : null,
         j.status === 'error' ? el('div', { class: 'err-msg' }, 'Error: ' + (j.error || 'unknown')) : null,
       ]);
 
@@ -1257,7 +1376,7 @@ const SCRIPT = `
               navigate(ent.path);
             } else {
               if (pickerMode === 'dir') return; // 目录选择模式下忽略文件点击
-              if (pickerTargetInput) pickerTargetInput.value = ent.path;
+              if (pickerTargetInput) { clearDevopsSource(pickerTargetInput.id); pickerTargetInput.value = ent.path; }
               closePicker();
             }
           });
@@ -1340,13 +1459,48 @@ const SCRIPT = `
           '选择本地目录后：下载 ' + hapArt.name + ' 与 ' + zipsArt.name + '，解压 .zips 并用 hap 内 Data 覆盖工程');
         artActions.appendChild(el('div', { class: 'artifact-actions' }, [cfgBtn, hint]));
       }
+      // 只有当前平台的安装包（.hap / .apk,.aab / .ipa）才能加入分析/对比；
+      // .json 报告等其它制品不显示按钮（fileFilter 里去掉 .json）。
+      var pkgDef = platformDef(currentPlatform);
+      var pkgExts = ((pkgDef && pkgDef.fileFilter) || '')
+        .split(',').map(function(s){ return s.trim().toLowerCase(); })
+        .filter(function(e){ return e && e !== '.json'; });
+      function isAnalyzable(name) {
+        var n = (name || '').toLowerCase();
+        return pkgExts.some(function(e){ return n.endsWith(e); });
+      }
+      function pkgExtOf(name) {
+        var n = (name || '').toLowerCase();
+        for (var i = 0; i < pkgExts.length; i++) {
+          if (n.endsWith(pkgExts[i])) return pkgExts[i].replace('.', '').toUpperCase();
+        }
+        return '';
+      }
       arts.forEach(function(a) {
-        artListBox.appendChild(el('div', { class: 'artifact-item' }, [
-          el('span', { class: 'artifact-name', title: a.path }, a.name),
+        var pkg = isAnalyzable(a.name);
+        var actionsCol;
+        if (pkg) {
+          var addBtn = el('button', { class: 'artifact-add-btn', title: '加入分析' }, '分析');
+          addBtn.addEventListener('click', function(){ addArtifactToSlot('analyze', build, a); });
+          var leftBtn = el('button', { class: 'artifact-add-btn', title: '加入对比·左(旧)' }, '对比左');
+          leftBtn.addEventListener('click', function(){ addArtifactToSlot('left', build, a); });
+          var rightBtn = el('button', { class: 'artifact-add-btn', title: '加入对比·右(新)' }, '对比右');
+          rightBtn.addEventListener('click', function(){ addArtifactToSlot('right', build, a); });
+          actionsCol = el('span', { class: 'artifact-add-btns' }, [addBtn, leftBtn, rightBtn]);
+        } else {
+          actionsCol = el('span', { class: 'artifact-add-btns' });
+        }
+        var nameKids = [];
+        if (pkg) nameKids.push(el('span', { class: 'artifact-pkg-badge' }, pkgExtOf(a.name)));
+        nameKids.push(el('span', { class: 'artifact-name', title: a.path }, a.name));
+        artListBox.appendChild(el('div', { class: 'artifact-item' + (pkg ? ' pkg' : '') }, [
+          el('span', { class: 'artifact-name-cell' }, nameKids),
           el('span', { class: 'artifact-size' }, typeof a.size === 'number' ? fmtBytes(a.size) : ''),
+          actionsCol,
         ]));
       });
-      artStatus.textContent = arts.length + ' 个制品';
+      artStatus.textContent = arts.length + ' 个制品'
+        + (pkgExts.length ? ('（可加入分析/对比: ' + pkgExts.join('/') + '）') : '');
     } catch (e) {
       if (seq !== artReqSeq) return;
       artStatus.textContent = '加载制品失败：' + e.message;
@@ -1471,6 +1625,8 @@ const SCRIPT = `
     var inputId = row.getAttribute('data-input-id');
     var targetInput = inputId ? document.getElementById(inputId) : null;
     if (!targetInput) return;
+    // devops-only：不绑定拖拽反查（只允许蓝盾制品来源）
+    if (DEVOPS_ONLY) return;
 
     row.addEventListener('dragenter', function(e){ e.preventDefault(); row.classList.add('dragover'); });
     row.addEventListener('dragover', function(e){ e.preventDefault(); row.classList.add('dragover'); });
@@ -1483,6 +1639,7 @@ const SCRIPT = `
       var dt = e.dataTransfer;
       if (!dt || !dt.files || dt.files.length === 0) return;
       var file = dt.files[0];
+      clearDevopsSource(targetInput.id); // 拖本地文件 → 覆盖已加入的蓝盾引用
 
       var nameLow = (file.name || '').toLowerCase();
       // 允许的扩展名跟着 currentPlatform 走，与 picker (data-filter) 保持一致。
@@ -1504,6 +1661,7 @@ const SCRIPT = `
         var qs = '?name=' + encodeURIComponent(file.name) + '&size=' + encodeURIComponent(String(file.size));
         var data = await jsonFetch('/api/locate' + qs);
         if (data.matches && data.matches.length > 0) {
+          clearDevopsSource(targetInput.id);
           targetInput.value = data.matches[0];
           var hint = '已自动定位';
           if (data.matches.length > 1) hint += '（共 ' + data.matches.length + ' 个候选，已取第一个，请核对）';
@@ -1518,9 +1676,9 @@ const SCRIPT = `
     });
   });
 
-  // input 内容变化时清状态
+  // input 内容变化时清状态 + 清掉蓝盾引用（手动输入优先）
   $$('[data-dropinput]').forEach(function(i){
-    i.addEventListener('input', function(){ clearStatus(i); });
+    i.addEventListener('input', function(){ clearDevopsSource(i.id); clearStatus(i); });
   });
 })();
 `;
