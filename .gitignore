@@ -11,3 +11,6 @@ coverage/
 
 tests/fixtures/*.hap
 !tests/fixtures/.gitkeep
+
+# workbench 后台运行日志/PID（restart-workbench.sh）
+.wb-logs/
