@@ -1,6 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import { spawn } from 'node:child_process';
-import { platform } from 'node:os';
+import { networkInterfaces, platform } from 'node:os';
 
 import type { PackageReport } from '../../shared/schema.js';
 
@@ -90,7 +90,7 @@ export async function startViewServer(
   const url = `http://${host}:${actualPort}/`;
 
   if (options.openBrowser) {
-    openInBrowser(url);
+    openInBrowser(toBrowserUrl(url));
   }
 
   return {
@@ -101,6 +101,37 @@ export async function startViewServer(
         server.close(() => resolve());
       }),
   };
+}
+
+/**
+ * 把「服务监听地址」转成「浏览器真正能连上的地址」。
+ *
+ * 0.0.0.0 / :: / 空串 是通配绑定地址，浏览器直连会报 ERR_ADDRESS_INVALID。
+ * 这里优先回退到局域网 IP（方便同网段其它机器访问），找不到再退到 127.0.0.1。
+ */
+export function toBrowserUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = u.hostname;
+    if (host === '0.0.0.0' || host === '::' || host === '' || host === '[::]') {
+      u.hostname = lanIp() ?? '127.0.0.1';
+      return u.toString();
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+/** 第一个非回环的 IPv4 地址（局域网 IP），找不到返回 undefined。 */
+function lanIp(): string | undefined {
+  const nets = networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const ni of nets[name] ?? []) {
+      if (ni.family === 'IPv4' && !ni.internal) return ni.address;
+    }
+  }
+  return undefined;
 }
 
 /** 跨平台打开浏览器（fire-and-forget） */

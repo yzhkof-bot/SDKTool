@@ -104,6 +104,7 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string, devopsOnly: bo
     <div class="tabs">
       <button class="tab active" data-tab="analyze">分析单个包</button>
       <button class="tab" data-tab="compare">对比两个包</button>
+      <button class="tab" data-tab="wework">企业微信机器人</button>
     </div>
 
     <section class="panel" data-section="analyze">
@@ -162,7 +163,47 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string, devopsOnly: bo
       <div id="compare-error" class="error" hidden></div>
     </section>
 
-    <section class="panel">
+    <section class="panel" data-section="wework" hidden>
+      <h2 class="panel-title">企业微信机器人 · 长连接测试 <span class="muted">(基于 @wecom/aibot-node-sdk WebSocket)</span></h2>
+      <p class="hint">用 <b>pipelines.config.json</b> 的 <code>wework</code> 段里配置的 BotID / Secret 建立长连接，验证收发是否打通。此页<b>不接入</b>分析/对比功能，仅做连通性测试。在企业微信里给机器人发消息即可在下方实时日志看到回调。</p>
+
+      <div class="ww-card">
+        <div class="ww-status-row">
+          <span class="ww-dot" id="ww-dot"></span>
+          <span class="ww-state-text" id="ww-state-text">加载中…</span>
+        </div>
+        <div class="ww-meta" id="ww-meta"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="ww-connect">连接</button>
+        <button class="btn-secondary" id="ww-disconnect">断开</button>
+        <label class="ww-toggle"><input type="checkbox" id="ww-autoreply" /> 收到文本消息自动 echo 回复</label>
+      </div>
+      <div id="ww-error" class="error" hidden></div>
+
+      <div class="ww-send">
+        <div class="ww-send-title">主动推送测试 <span class="muted">(需该用户先在会话里给机器人发过消息)</span></div>
+        <div class="path-row ww-send-row">
+          <label>chatid</label>
+          <input type="text" id="ww-chatid" placeholder="单聊填用户 userid / 群聊填 chatid" />
+          <button class="btn-secondary" id="ww-use-last" title="填入最近一次会话的 chatid">最近会话</button>
+        </div>
+        <textarea id="ww-content" class="ww-textarea" placeholder="支持 markdown，例如：**加粗** 与 [链接](https://work.weixin.qq.com)"></textarea>
+        <div class="actions">
+          <button class="btn-primary" id="ww-send">主动发送</button>
+        </div>
+      </div>
+
+      <div class="ww-log-head">
+        <span class="ww-log-title">实时日志</span>
+        <span class="ww-stats" id="ww-stats"></span>
+        <button class="btn-icon-sm" id="ww-clear" title="清空日志">清空</button>
+      </div>
+      <div id="ww-log" class="ww-log"></div>
+    </section>
+
+    <section class="panel" id="history-panel">
       <h2 class="panel-title">历史记录 <span class="muted">(自动刷新，最近 50 条；点每行右侧 × 删单条)</span></h2>
       ${platformFilter}
       <div id="jobs"></div>
@@ -640,6 +681,43 @@ body { margin: 0; background: var(--color-bg); color: var(--color-text); font-fa
 .lp-step.error .lp-bar-fill { background: var(--color-danger); }
 .lp-result { margin: 4px 16px 14px; padding: 10px 12px; background: rgba(16,185,129,0.1); border: 1px solid var(--color-success); border-radius: 6px; font-size: 12px; color: var(--color-text); font-family: var(--font-mono); word-break: break-all; }
 .lp-modal-error { margin: 4px 16px 14px; }
+
+/* 企业微信机器人测试页 */
+.ww-card { padding: 12px 14px; background: var(--color-surface-elev); border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 12px; }
+.ww-status-row { display: flex; align-items: center; gap: 10px; }
+.ww-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-muted); flex-shrink: 0; box-shadow: 0 0 0 3px rgba(107,114,128,0.15); }
+.ww-dot.connected { background: var(--color-success); box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+.ww-dot.connecting { background: var(--color-warning); box-shadow: 0 0 0 3px rgba(245,158,11,0.2); animation: ww-pulse 1.2s ease-in-out infinite; }
+.ww-dot.closed, .ww-dot.error { background: var(--color-danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
+@keyframes ww-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.ww-state-text { font-size: 14px; font-weight: 500; }
+.ww-meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--color-muted); font-family: var(--font-mono); }
+.ww-meta code { background: var(--color-code-bg); padding: 1px 6px; border-radius: 4px; color: var(--color-text); }
+.ww-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text); cursor: pointer; }
+.ww-toggle input { cursor: pointer; }
+.ww-send { margin-top: 14px; padding: 12px 14px; background: var(--color-surface-elev); border: 1px solid var(--color-border); border-radius: 8px; }
+.ww-send-title { font-size: 13px; font-weight: 500; margin-bottom: 10px; }
+.ww-send-row { margin-bottom: 10px; }
+.ww-textarea { width: 100%; min-height: 64px; resize: vertical; font-family: var(--font-mono); font-size: 12px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); }
+.ww-textarea:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-bg); }
+.ww-log-head { display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; }
+.ww-log-title { font-size: 14px; font-weight: 600; }
+.ww-stats { font-size: 12px; color: var(--color-muted); font-family: var(--font-mono); flex: 1; }
+.ww-log { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-elev); max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; }
+.ww-log:empty::after { content: '暂无日志 — 点「连接」后在企业微信里给机器人发条消息试试'; color: var(--color-muted); font-size: 12px; padding: 16px; }
+.ww-log-item { padding: 7px 12px; border-bottom: 1px solid var(--color-border); font-size: 12px; display: grid; grid-template-columns: 64px 56px 1fr; gap: 10px; align-items: baseline; }
+.ww-log-item:last-child { border-bottom: none; }
+.ww-log-time { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); white-space: nowrap; }
+.ww-log-badge { font-size: 10px; font-weight: 600; text-align: center; padding: 1px 0; border-radius: 4px; }
+.ww-log-badge.system { background: rgba(107,114,128,0.18); color: var(--color-muted); }
+.ww-log-badge.in { background: rgba(91,140,255,0.16); color: var(--color-primary); }
+.ww-log-badge.out { background: rgba(16,185,129,0.16); color: var(--color-success); }
+.ww-log-badge.error { background: rgba(239,68,68,0.16); color: var(--color-danger); }
+.ww-log-main { min-width: 0; }
+.ww-log-text { color: var(--color-text); word-break: break-word; white-space: pre-wrap; }
+.ww-log-cmd { font-family: var(--font-mono); font-size: 10px; color: var(--color-muted); margin-left: 6px; }
+.ww-log-toggle { background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 11px; padding: 0; margin-top: 2px; }
+.ww-log-detail { margin-top: 6px; padding: 8px 10px; background: var(--color-code-bg); border-radius: 6px; font-family: var(--font-mono); font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 240px; overflow: auto; }
 `;
 
 /* -------------------------------------------------------------------------- */
@@ -1078,6 +1156,12 @@ const SCRIPT = `
       $$('section[data-section]').forEach(function(s){
         s.hidden = s.getAttribute('data-section') !== name;
       });
+      // 企业微信测试页是独立连通性工具，与「平台 / 包分析历史」无关：进入时隐藏它们，离开时恢复
+      var onWework = name === 'wework';
+      var seg = document.querySelector('.platform-segment');
+      var hist = document.getElementById('history-panel');
+      if (seg) seg.hidden = onWework;
+      if (hist) hist.hidden = onWework;
     });
   });
 
@@ -1680,5 +1764,159 @@ const SCRIPT = `
   $$('[data-dropinput]').forEach(function(i){
     i.addEventListener('input', function(){ clearDevopsSource(i.id); clearStatus(i); });
   });
+
+  // ---------- 企业微信机器人长连接测试 ----------
+  (function() {
+    var dot = $('#ww-dot');
+    var stateText = $('#ww-state-text');
+    var meta = $('#ww-meta');
+    var statsEl = $('#ww-stats');
+    var logBox = $('#ww-log');
+    var errBox = $('#ww-error');
+    var autoReplyCb = $('#ww-autoreply');
+    var chatidInput = $('#ww-chatid');
+    var contentInput = $('#ww-content');
+    if (!logBox) return; // 面板不存在（理论不会）
+
+    var wwSeq = 0;            // 已渲染到的最大日志 seq（增量轮询基准）
+    var lastChat = null;      // 最近一次会话上下文
+    var autoReplyDirty = false; // 用户正在操作开关时，避免轮询覆盖
+
+    var STATE_TEXT = {
+      idle: '未连接', connecting: '连接中…', connected: '已连接（认证成功）',
+      closed: '连接已断开', error: '错误',
+    };
+
+    function showErr(msg) { errBox.hidden = false; errBox.textContent = msg; }
+    function clearErr() { errBox.hidden = true; errBox.textContent = ''; }
+
+    // 应用状态（状态/元信息/统计/开关），不负责日志
+    function applyStatus(s) {
+      var st = s.status || 'idle';
+      dot.className = 'ww-dot ' + (s.connected ? 'connected' : st);
+      stateText.textContent = (STATE_TEXT[st] || st) + (s.connected ? '' : '');
+      meta.innerHTML = '';
+      if (!s.configured) {
+        meta.appendChild(el('span', { class: 'err' }, '⚠ 未配置 botId / secret，请编辑 pipelines.config.json 的 wework 段'));
+      } else {
+        meta.appendChild(el('span', null, ['BotID ', el('code', null, s.botIdMasked || '-')]));
+        meta.appendChild(el('span', null, ['地址 ', el('code', null, s.wsUrl || '-')]));
+      }
+      if (s.stats) {
+        statsEl.textContent = '收 ' + s.stats.received + ' · 回 ' + s.stats.replied + ' · 主动发 ' + s.stats.sent;
+      }
+      if (!autoReplyDirty) autoReplyCb.checked = !!s.autoReply;
+      lastChat = s.lastChat || null;
+    }
+
+    function dirText(d) { return { system: '系统', in: '收', out: '发', error: '错误' }[d] || d; }
+
+    function appendLogs(logs) {
+      (logs || []).forEach(function(ev) {
+        var main = el('div', { class: 'ww-log-main' }, [
+          el('span', { class: 'ww-log-text' }, ev.text),
+          ev.cmd ? el('span', { class: 'ww-log-cmd' }, ev.cmd) : null,
+        ]);
+        if (ev.detail !== undefined && ev.detail !== null) {
+          var pre = el('pre', { class: 'ww-log-detail' }, JSON.stringify(ev.detail, null, 2));
+          pre.hidden = true;
+          var toggle = el('button', { class: 'ww-log-toggle' }, '▾ 原始数据');
+          toggle.addEventListener('click', function() {
+            pre.hidden = !pre.hidden;
+            toggle.textContent = (pre.hidden ? '▾' : '▴') + ' 原始数据';
+          });
+          main.appendChild(el('div', null, [toggle]));
+          main.appendChild(pre);
+        }
+        logBox.appendChild(el('div', { class: 'ww-log-item' }, [
+          el('span', { class: 'ww-log-time' }, fmtClock(ev.ts)),
+          el('span', { class: 'ww-log-badge ' + ev.dir }, dirText(ev.dir)),
+          main,
+        ]));
+      });
+      if ((logs || []).length) logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function fmtClock(ts) {
+      var d = new Date(ts);
+      if (isNaN(d.getTime())) return '';
+      return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    }
+
+    async function poll() {
+      try {
+        var s = await jsonFetch('/api/wework/state?since=' + wwSeq);
+        applyStatus(s);
+        appendLogs(s.logs);
+        wwSeq = s.latestSeq || wwSeq;
+      } catch (e) { /* 容忍偶发轮询失败 */ }
+    }
+
+    $('#ww-connect').addEventListener('click', async function() {
+      clearErr();
+      try {
+        await jsonFetch('/api/wework/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        await poll();
+      } catch (e) { showErr(e.message); }
+    });
+
+    $('#ww-disconnect').addEventListener('click', async function() {
+      clearErr();
+      try {
+        await jsonFetch('/api/wework/disconnect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        await poll();
+      } catch (e) { showErr(e.message); }
+    });
+
+    autoReplyCb.addEventListener('change', async function() {
+      autoReplyDirty = true;
+      clearErr();
+      try {
+        await jsonFetch('/api/wework/auto-reply', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: autoReplyCb.checked }),
+        });
+        await poll();
+      } catch (e) { showErr(e.message); }
+      finally { autoReplyDirty = false; }
+    });
+
+    $('#ww-use-last').addEventListener('click', function() {
+      if (lastChat && lastChat.chatid) { chatidInput.value = lastChat.chatid; }
+      else if (lastChat && lastChat.userid) { chatidInput.value = lastChat.userid; }
+      else { showErr('还没有最近会话——先让用户在企业微信里给机器人发条消息'); }
+    });
+
+    $('#ww-send').addEventListener('click', async function() {
+      clearErr();
+      var chatid = chatidInput.value.trim();
+      var content = contentInput.value;
+      if (!chatid) { showErr('请填 chatid'); return; }
+      if (!content.trim()) { showErr('请填要发送的内容'); return; }
+      try {
+        await jsonFetch('/api/wework/send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatid: chatid, content: content }),
+        });
+        contentInput.value = '';
+        await poll();
+      } catch (e) { showErr(e.message); }
+    });
+
+    $('#ww-clear').addEventListener('click', async function() {
+      clearErr();
+      try {
+        var s = await jsonFetch('/api/wework/clear-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        logBox.innerHTML = '';
+        wwSeq = s.latestSeq || wwSeq;
+        applyStatus(s);
+        appendLogs(s.logs);
+        wwSeq = s.latestSeq || wwSeq;
+      } catch (e) { showErr(e.message); }
+    });
+
+    poll();
+    setInterval(poll, 1500);
+  })();
 })();
 `;

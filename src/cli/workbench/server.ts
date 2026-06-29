@@ -16,8 +16,9 @@ import {
   type DevopsBuildStatus,
   type DevopsRegistry,
 } from './devops.js';
-import { DevopsConfigError } from './devopsConfig.js';
+import { DevopsConfigError, loadDevopsConfig } from './devopsConfig.js';
 import { ArtifactCache } from './artifactCache.js';
+import { WeworkBotManager } from './wework.js';
 import { locateByMeta } from './locate.js';
 import { LocalProjectStore, startLocalProjectJob } from './localProject.js';
 import { startAnalyzeJob, startCompareJob, type InputSource } from './runner.js';
@@ -104,13 +105,21 @@ export async function startWorkbenchServer(
   const artifactCache = new ArtifactCache(devops.artifactCache.dir, devops.artifactCache.maxBytes);
   log(`[workbench] 制品缓存目录 ${devops.artifactCache.dir}（上限 ${(devops.artifactCache.maxBytes / (1024 ** 3)).toFixed(0)} GiB）\n`);
 
+  // 企业微信智能机器人长连接管理器（仅供「企业微信机器人」测试界面用，进程内单例）。
+  const wework = new WeworkBotManager(loadDevopsConfig().wework, log);
+  if (wework.configured) {
+    log('[workbench] 企业微信机器人：已读取 wework 配置，可在「企业微信机器人」标签页连接测试\n');
+  } else {
+    log('[workbench] 企业微信机器人：未配置 wework.botId/secret（测试界面会提示）\n');
+  }
+
   const prettyJson = options.prettyJson;
   // devops-only 标记：由启动脚本（如 Linux 部署脚本）设环境变量 SDKTOOL_DEVOPS_ONLY 打开。
   // 打开后分析/对比只接受蓝盾制品来源，禁用本地路径输入（前端隐藏 + 后端兜底拒绝）。
   const devopsOnly = options.devopsOnly ?? readDevopsOnlyEnv();
   if (devopsOnly) log('[workbench] devops-only 模式：仅支持蓝盾包对比，已禁用本地路径输入\n');
   const server: Server = createServer((req, res) => {
-    handle(req, res, store, conversations, localProjects, devops, artifactCache, options.toolVersion, log, prettyJson, devopsOnly).catch((err) => {
+    handle(req, res, store, conversations, localProjects, devops, artifactCache, wework, options.toolVersion, log, prettyJson, devopsOnly).catch((err) => {
       log(`[workbench] handler error: ${err?.stack ?? err}\n`);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -137,6 +146,7 @@ export async function startWorkbenchServer(
     close: () =>
       new Promise<void>((resolve) => {
         conversations.closeAll();
+        wework.dispose();
         server.close(() => resolve());
       }),
   };
@@ -154,6 +164,7 @@ async function handle(
   localProjects: LocalProjectStore,
   devops: DevopsRegistry,
   artifactCache: ArtifactCache,
+  wework: WeworkBotManager,
   toolVersion: string,
   log: (t: string) => void,
   prettyJson: boolean | undefined,
@@ -562,6 +573,67 @@ async function handle(
     const ok = conversations.close(convId[1]!);
     if (!ok) sendJson(res, 404, { error: 'NOT_FOUND' });
     else sendJson(res, 200, { closed: convId[1] });
+    return;
+  }
+
+  // -------------------- 企业微信机器人长连接（测试界面） --------------------
+
+  if (method === 'GET' && url.pathname === '/api/wework/state') {
+    const sinceRaw = url.searchParams.get('since');
+    const since = sinceRaw ? Number.parseInt(sinceRaw, 10) : 0;
+    sendJson(res, 200, wework.getState(Number.isFinite(since) && since > 0 ? since : 0));
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/wework/connect') {
+    const result = wework.connect();
+    if (!result.ok) {
+      sendJson(res, 400, { error: 'WEWORK_CONNECT_FAILED', message: result.message ?? '连接失败' });
+      return;
+    }
+    sendJson(res, 200, { ...wework.getState() });
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/wework/disconnect') {
+    wework.disconnect();
+    sendJson(res, 200, { ...wework.getState() });
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/wework/auto-reply') {
+    const body = (await readJson(req).catch((e) => ({ __error: e }))) as
+      | { enabled?: unknown; __error?: Error };
+    if (body.__error) {
+      sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
+      return;
+    }
+    wework.setAutoReply(Boolean(body.enabled));
+    sendJson(res, 200, { ...wework.getState() });
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/wework/clear-log') {
+    wework.clearLog();
+    sendJson(res, 200, { ...wework.getState() });
+    return;
+  }
+
+  if (method === 'POST' && url.pathname === '/api/wework/send') {
+    const body = (await readJson(req).catch((e) => ({ __error: e }))) as
+      | { chatid?: unknown; content?: unknown; __error?: Error };
+    if (body.__error) {
+      sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
+      return;
+    }
+    const chatid = typeof body.chatid === 'string' ? body.chatid : '';
+    const content = typeof body.content === 'string' ? body.content : '';
+    const result = await wework.sendMarkdown(chatid, content);
+    if (!result.ok) {
+      sendJson(res, 400, { error: 'WEWORK_SEND_FAILED', message: result.message ?? '发送失败' });
+      return;
+    }
+    sendJson(res, 200, { ...wework.getState() });
     return;
   }
 

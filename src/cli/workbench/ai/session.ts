@@ -1,43 +1,41 @@
 /**
- * 一次 AI 会话的封装：
- * 持有一个底层 @tencent-ai/agent-sdk 的 SessionImpl，提供：
- *  - sendAndStream(text)：发送用户消息 + 异步迭代器吐 SseEvent
- *  - interrupt()：打断当前轮
- *  - close()：销毁
+ * 一次 AI 会话的封装（基于 sagent-sdk 重写）。
  *
- * 工作目录始终锁在 jobDir，让 AI 通过 Read/Grep/Glob 访问 diff.json / report.json。
+ * 替换前：持有 @tencent-ai/agent-sdk 的 CLI 子进程 Session。
+ * 替换后：用 sagent-sdk 的 Agent 直接调用 Claude 代理接口，工具用内置文件工具集
+ * （read/write/edit/list/glob/grep/shell），工作根目录锁在 jobDir。
+ *
+ * 对外接口保持不变（sendAndStream / interrupt / setModel / listAvailableModels /
+ * close / info / isClosed），所以 manager.ts、server.ts、前端都无需改动。
  *
  * 设计取舍：
- *  - includePartialMessages=true：开启 SDK 的 stream_event 协议，把 text/thinking
- *    增量 delta 直接转写成 SSE 给前端做"打字机"效果。
- *    为了避免重复，最终 AssistantMessage 里的 text/thinking block 会被跳过
- *    （内容已经由 deltas 覆盖），只保留 tool_use（input 是流式装配完才完整）。
- *  - canUseTool 永远 allow：用户已经明确选了"完整 SDK 默认全套 tool"，不在这里做拦截。
- *  - permissionMode='bypassPermissions'：让 Bash/Write/Edit 无需弹窗，配合 canUseTool 双保险。
+ *  - 无外部子进程、无 connect 概念：connect() 保留为兼容空实现。
+ *  - 多轮上下文保存在本实例的 history 里，每轮用完整消息回填。
+ *  - canUseTool 全放行的语义 → 内置工具默认全开（含 shell），cwd 锁 jobDir。
+ *  - 流式 text/thinking 增量直接转成 SSE，沿用原打字机协议。
  */
 
-import { unstable_v2_createSession } from '@tencent-ai/agent-sdk';
-import type {
-  AssistantMessage,
-  ContentBlock,
-  ImageMediaType,
-  Message,
-  PartialAssistantMessage,
-  ResultMessage,
-  Session as SdkSession,
-  UserMessage,
-} from '@tencent-ai/agent-sdk';
+import { randomUUID } from 'node:crypto';
+import {
+  Agent,
+  createAnthropicProvider,
+  createBuiltinTools,
+  imageBase64,
+  LLMError,
+  type AgentEvent,
+  type Message as SdkMessage,
+} from '@yzhkof-bot/sagent-sdk';
 
-import { buildSdkEnv } from './env.js';
+import { buildLlmConfig } from './env.js';
 import { buildSystemPrompt, type BuildSystemPromptArgs } from './prompts.js';
 import type { InlineImage, SseEvent } from './types.js';
 
 export interface AiSessionOptions {
   jobDir: string;
   promptContext: BuildSystemPromptArgs;
-  /** 模型 override；不传走 SDK 默认 */
+  /** 模型 override；不传走默认（LLM_MODEL 或内置默认）。 */
   model?: string;
-  /** 调试用：SDK 内部 stderr 日志（透传给 server log） */
+  /** 调试日志透传。 */
   log?: (text: string) => void;
 }
 
@@ -47,75 +45,83 @@ export interface AiSessionInfo {
   model?: string;
 }
 
+/** 平台支持的 Claude 模型（静态列表；平台无运行时模型发现接口）。 */
+const AVAILABLE_MODELS: Array<{ modelId: string; name: string; description?: string }> = [
+  { modelId: 'claude-sonnet-4.6', name: 'Claude Sonnet 4.6', description: '默认，速度与质量均衡' },
+  { modelId: 'claude-opus-4.7', name: 'Claude Opus 4.7', description: '更强推理，支持扩展思考' },
+];
+
 export class AiSession {
-  private readonly sdk: SdkSession;
   private readonly jobDir: string;
+  private readonly systemPrompt: string;
+  private readonly sessionId = `sess_${randomUUID()}`;
+  private readonly log: (text: string) => void;
+
   private model?: string;
-  private connected = false;
-  private connectingPromise: Promise<void> | null = null;
+  /** 懒加载：第一次发消息时才构建（避免缺 API Key 时构造即抛错，保留原懒加载语义）。 */
+  private agent: Agent | null = null;
+  private history: SdkMessage[] = [];
   private closed = false;
-  /** 当前是否有 turn 在进行；用于拒绝并发 send */
   private inFlight = false;
-  /** 累计消息数；客户端 reconnect 时可以从这里恢复，但 MVP 不实现 */
-  private turnCount = 0;
+  /** 当前轮的中断控制器。 */
+  private abort: AbortController | null = null;
 
   constructor(opts: AiSessionOptions) {
     this.jobDir = opts.jobDir;
     this.model = opts.model;
+    this.log = opts.log ?? (() => {});
+    this.systemPrompt = buildSystemPrompt(opts.promptContext);
+  }
 
-    this.sdk = unstable_v2_createSession({
-      cwd: opts.jobDir,
-      // 显式注入 CodeBuddy 环境变量（重点是 CODEBUDDY_INTERNET_ENVIRONMENT=ioa），
-      // 否则非终端启动时子进程拿不到 iOA 登录态，getAvailableModels() 会失败 → 模型只剩 Auto
-      env: buildSdkEnv(),
-      ...(opts.model ? { model: opts.model } : {}),
-      permissionMode: 'bypassPermissions',
-      // 关键：所有工具一律放行，避免 SDK 等用户回复永远卡住
-      canUseTool: async (_toolName, input) => ({
-        behavior: 'allow' as const,
-        updatedInput: input,
-      }),
-      systemPrompt: { append: buildSystemPrompt(opts.promptContext) },
-      // 打开 partial 流式：让 text_delta/thinking_delta 实时往外吐，前端做打字机
-      includePartialMessages: true,
-      // settingSources 故意不传 → 不读用户/项目级配置，保证 workbench AI 行为纯由 server 控制
+  private ensureAgent(): Agent {
+    if (!this.agent) this.agent = this.buildAgent();
+    return this.agent;
+  }
+
+  private buildAgent(): Agent {
+    const cfg = buildLlmConfig(this.model);
+    const provider = createAnthropicProvider({
+      apiKey: cfg.apiKey,
+      baseUrl: cfg.baseUrl,
+      model: cfg.model,
+      maxTokens: 8192,
+      sessionId: this.sessionId, // 同会话固定，提升上游 cache 命中率
+      ...(cfg.thinkingBudget
+        ? { thinking: { type: 'enabled', budgetTokens: cfg.thinkingBudget } }
+        : {}),
     });
-    void opts.log; // SDK Session 暂不支持 stderr 透传；保留参数以便后续替换 provider 时复用
+    // 工具锁在 jobDir，开启 shell（等价于原方案 bypassPermissions + 全放行）
+    const tools = createBuiltinTools({ rootDir: this.jobDir, includeShell: true });
+    return new Agent({
+      provider,
+      tools,
+      systemPrompt: this.systemPrompt,
+      maxSteps: 50,
+      // 上下文自动压缩（对齐 Claude Code）：参数来自 pipelines.config.json 的 ai 段，缺省走默认。
+      compaction: {
+        contextWindow: cfg.contextWindow,
+        threshold: cfg.compactThreshold,
+        keepRecentRatio: cfg.keepRecentRatio,
+      },
+    });
   }
 
   get info(): AiSessionInfo {
     return {
-      sessionId: this.sdk.sessionId,
+      sessionId: this.sessionId,
       jobDir: this.jobDir,
       ...(this.model ? { model: this.model } : {}),
     };
   }
 
-  /** 幂等的 connect：多次调用合并到一个 Promise */
+  /** 兼容旧接口：本实现无外部连接，空操作。 */
   async connect(): Promise<void> {
-    if (this.connected) return;
-    if (!this.connectingPromise) {
-      this.connectingPromise = this.sdk.connect().then(
-        () => {
-          this.connected = true;
-        },
-        (err: unknown) => {
-          this.connectingPromise = null;
-          throw err;
-        },
-      );
-    }
-    await this.connectingPromise;
+    /* no-op */
   }
 
   /**
    * 发送一条用户消息并流式返回 SseEvent。
-   *
-   * 用法：
-   *   for await (const ev of session.sendAndStream(text)) writer.write(ev);
-   *
-   * 并发：调用方需保证同一时刻只有一个 sendAndStream 在跑；并发会抛错而不是排队，
-   * 避免 SDK 内部状态被打乱（SDK 的 stream() 在一轮结束前不能再被 next()）。
+   * 并发保护：同一时刻只允许一个 sendAndStream。
    */
   async *sendAndStream(text: string, images?: InlineImage[]): AsyncGenerator<SseEvent> {
     if (this.closed) {
@@ -129,122 +135,101 @@ export class AiSession {
       return;
     }
     this.inFlight = true;
-    this.turnCount += 1;
-
-    try {
-      await this.connect();
-    } catch (err) {
-      this.inFlight = false;
-      yield {
-        type: 'error',
-        message: `AI 初始化失败：${describeError(err)}`,
-      };
-      yield { type: 'done' };
-      return;
-    }
+    this.abort = new AbortController();
 
     yield { type: 'turn_start' };
 
+    const startedAt = Date.now();
+    const input = this.buildInput(text, images);
+
+    let agent: Agent;
     try {
-      const payload = images && images.length > 0
-        ? this.buildUserMessage(text, images)
-        : text;
-      await this.sdk.send(payload);
+      agent = this.ensureAgent();
     } catch (err) {
       this.inFlight = false;
-      yield { type: 'error', message: `发送失败：${describeError(err)}` };
+      this.abort = null;
+      yield { type: 'error', message: `AI 初始化失败：${describeError(err)}` };
       yield { type: 'done' };
       return;
     }
 
     try {
-      for await (const msg of this.sdk.stream()) {
-        const events = translateSdkMessage(msg);
-        for (const ev of events) yield ev;
-        // 一轮结束（result message）后 SDK 的 stream() 会自然结束
+      let steps = 0;
+      for await (const ev of agent.runStream(input, {
+        history: this.history,
+        signal: this.abort.signal,
+      })) {
+        const out = translateEvent(ev);
+        if (out) yield out;
+        if (ev.type === 'done') {
+          steps = ev.result.steps;
+          // 用本轮完整消息（去掉 system）替换历史，支持多轮上下文
+          this.history = ev.result.messages.filter((m) => m.role !== 'system');
+        }
       }
+      yield {
+        type: 'turn_end',
+        success: true,
+        durationMs: Date.now() - startedAt,
+        totalCostUsd: 0,
+        numTurns: steps,
+      };
     } catch (err) {
-      yield { type: 'error', message: `推理异常：${describeError(err)}` };
+      if (this.abort?.signal.aborted) {
+        yield {
+          type: 'turn_end',
+          success: false,
+          durationMs: Date.now() - startedAt,
+          totalCostUsd: 0,
+          numTurns: 0,
+          errors: ['已中断'],
+        };
+      } else {
+        yield { type: 'error', message: `推理异常：${describeError(err)}` };
+      }
     } finally {
       this.inFlight = false;
+      this.abort = null;
+      yield { type: 'done' };
     }
   }
 
   async interrupt(): Promise<void> {
-    if (!this.connected) return;
-    try {
-      await this.sdk.interrupt();
-    } catch {
-      // SDK 文档说 interrupt 可能在某些状态下 reject；这里吞掉，上层只关心"尽力中断"
-    }
+    this.abort?.abort();
   }
 
-  /**
-   * 切换底层模型；对下一轮 send() 生效。
-   *
-   * 行为细节：
-   *  - 还没 connect 的 session 直接更新本地 model，下一次 connect/send 时由 SDK 用新值；
-   *    实际上 SDK 是按 constructor 时的 model 走的，所以我们只能在 connect 之后调用 setModel。
-   *    因此这里若未 connect 就先 connect，再发控制请求。
-   *  - 期间不打断 inFlight：调用方自己决定是否要先 interrupt()。
-   */
+  /** 切换模型：丢弃当前 Agent，下一轮 send 时按新模型重建。 */
   async setModel(model: string): Promise<void> {
-    if (!model.trim()) throw new Error('model 不能为空');
-    if (this.closed) throw new Error('会话已关闭');
-    await this.connect();
-    await this.sdk.setModel(model);
-    this.model = model;
+    // 空字符串 = 恢复默认
+    this.model = model.trim() ? model : undefined;
+    this.agent = null;
+    this.log(`[ai] session model → ${this.model ?? '(default)'}\n`);
   }
 
-  /**
-   * 拉取 CLI 端可用模型列表（@experimental，需要 CLI 支持 get_available_models 控制请求）。
-   * 失败时把异常抛给上层，上层决定 fallback。
-   */
+  /** 返回平台支持的模型列表（静态）。 */
   async listAvailableModels(): Promise<
     Array<{ modelId: string; name: string; description?: string }>
   > {
-    if (this.closed) throw new Error('会话已关闭');
-    await this.connect();
-    return this.sdk.getAvailableModels();
+    return AVAILABLE_MODELS;
   }
 
-  /**
-   * 构造一条多模态用户消息：第一块文本（哪怕空字符串），后面跟 N 张 base64 图。
-   *
-   * SDK 的 send() 接 `string | UserMessage`；带图片必须走对象形式，content 用 ContentBlock[]。
-   * 这里要补全 UserMessage 的几个必填字段（type/session_id/message/parent_tool_use_id），
-   * SDK 内部会以 session_id 关联本会话。
-   */
-  private buildUserMessage(text: string, images: InlineImage[]): UserMessage {
-    const content: ContentBlock[] = [];
-    // 文本块即使是空字符串也保留：多模态消息一般要带个引导文本，避免某些模型把"裸图"当 noise
-    content.push({ type: 'text', text: text || '请基于附图作答。' });
-    for (const img of images) {
-      content.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: img.mediaType as ImageMediaType,
-          data: img.dataBase64,
-        },
-      });
-    }
-    return {
-      type: 'user',
-      session_id: this.sdk.sessionId,
-      message: { role: 'user', content },
-      parent_tool_use_id: null,
-    };
+  /** 构造输入：纯文本直接传字符串；带图片用内容块数组。 */
+  private buildInput(text: string, images?: InlineImage[]): string | SdkMessage[] {
+    if (!images || images.length === 0) return text;
+    return [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: text || '请基于附图作答。' },
+          ...images.map((img) => imageBase64(img.dataBase64, img.mediaType)),
+        ],
+      },
+    ];
   }
 
   close(): void {
-    if (this.closed) return;
     this.closed = true;
-    try {
-      this.sdk.close();
-    } catch {
-      // ignore
-    }
+    this.abort?.abort();
   }
 
   get isClosed(): boolean {
@@ -253,136 +238,42 @@ export class AiSession {
 }
 
 /* -------------------------------------------------------------------------- */
-/* SDK Message → SseEvent 翻译                                                */
+/* AgentEvent → SseEvent 翻译                                                 */
 /* -------------------------------------------------------------------------- */
 
-function translateSdkMessage(msg: Message): SseEvent[] {
-  switch (msg.type) {
-    case 'assistant':
-      return translateAssistant(msg);
-    case 'stream_event':
-      return translatePartial(msg);
-    case 'user':
-      return translateUserToolResult(msg);
-    case 'result':
-      return [translateResult(msg)];
-    case 'system':
-      // SystemMessage(init) / CompactBoundaryMessage / StatusMessage 都走这里，
-      // 但目前我们都不消费它们（前端只关心 assistant/tool/result）。
-      return [];
-    case 'error':
-      return [{ type: 'error', message: msg.error }];
-    default:
-      // tool_progress / topic / file-history-snapshot 等暂时静默
-      return [];
-  }
-}
-
-/**
- * 终态 AssistantMessage：因为 includePartialMessages=true，text/thinking 已经被
- * stream_event 增量推送过了，这里只把 tool_use 取出来（它的 input 在 deltas
- * 阶段是 partial_json，没法用；终态一次给齐才稳）。
- */
-function translateAssistant(msg: AssistantMessage): SseEvent[] {
-  const out: SseEvent[] = [];
-  for (const block of msg.message.content) {
-    if (block.type === 'tool_use') {
-      out.push({
-        type: 'tool_use',
-        id: block.id,
-        name: block.name,
-        input: block.input,
-      });
-    }
-    // text/thinking：deltas 已经覆盖，跳过避免重复
-    // tool_result / image / redacted_thinking：不在 assistant 里出现，忽略
-  }
-  return out;
-}
-
-/**
- * PartialAssistantMessage（stream_event）→ 增量 SseEvent。
- * 只关心 content_block_delta 里的 text_delta / thinking_delta；其它（message_start
- * /content_block_start/_stop/message_delta/_stop）目前不消费——拿不到对应 UI 行为。
- */
-function translatePartial(msg: PartialAssistantMessage): SseEvent[] {
-  const ev = msg.event;
-  if (ev.type !== 'content_block_delta') return [];
-  const d = ev.delta;
-  if (d.type === 'text_delta') {
-    return d.text ? [{ type: 'text_delta', text: d.text }] : [];
-  }
-  if (d.type === 'thinking_delta') {
-    return d.thinking ? [{ type: 'thinking', text: d.thinking }] : [];
-  }
-  // input_json_delta / signature_delta：当前 UI 不消费
-  return [];
-}
-
-/**
- * SDK 的 user message 主要两种来源：
- *  1. 工具执行结果（content 是 ContentBlock[]，里面含 tool_result）
- *  2. 用户输入回显（content 是 string）— 我们自己发的，前端已经显示过了，不再回显
- */
-function translateUserToolResult(msg: UserMessage): SseEvent[] {
-  const out: SseEvent[] = [];
-  const content = msg.message.content;
-  if (typeof content === 'string') return out;
-  for (const block of content) {
-    if (block.type === 'tool_result') {
-      out.push({
+function translateEvent(ev: AgentEvent): SseEvent | null {
+  switch (ev.type) {
+    case 'text':
+      return ev.delta ? { type: 'text_delta', text: ev.delta } : null;
+    case 'thinking':
+      return ev.delta ? { type: 'thinking', text: ev.delta } : null;
+    case 'tool_call':
+      return { type: 'tool_use', id: ev.call.id, name: ev.call.name, input: ev.call.arguments };
+    case 'tool_result':
+      return {
         type: 'tool_result',
-        id: block.tool_use_id,
-        content: stringifyToolResultContent(block.content),
-        isError: !!block.is_error,
-      });
+        id: ev.result.callId,
+        content: ev.result.output,
+        isError: ev.result.isError,
+      };
+    case 'compaction_end': {
+      const k = (n: number) => `${Math.round(n / 1000)}k`;
+      return {
+        type: 'notice',
+        level: 'info',
+        text: `已自动压缩上下文（约 ${k(ev.beforeTokens)} → ${k(ev.afterTokens)} token）`,
+      };
     }
+    // step_start / message / compaction_start / done 不直接转发
+    default:
+      return null;
   }
-  return out;
-}
-
-function translateResult(msg: ResultMessage): SseEvent {
-  if (msg.subtype === 'success') {
-    return {
-      type: 'turn_end',
-      success: true,
-      durationMs: msg.duration_ms,
-      totalCostUsd: msg.total_cost_usd,
-      numTurns: msg.num_turns,
-    };
-  }
-  return {
-    type: 'turn_end',
-    success: false,
-    durationMs: msg.duration_ms,
-    totalCostUsd: msg.total_cost_usd,
-    numTurns: msg.num_turns,
-    errors: msg.errors,
-  };
-}
-
-/** tool_result.content 可能是 string 或 ContentBlock[]，统一拍成 string 给前端 */
-function stringifyToolResultContent(content: unknown): string {
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    const parts: string[] = [];
-    for (const block of content) {
-      if (!block || typeof block !== 'object') continue;
-      const b = block as { type?: string; text?: string };
-      if (b.type === 'text' && typeof b.text === 'string') {
-        parts.push(b.text);
-      } else {
-        // image / 其他：放个占位，前端能识别
-        parts.push(`[${b.type ?? 'unknown'} block]`);
-      }
-    }
-    return parts.join('\n');
-  }
-  if (content == null) return '';
-  return String(content);
 }
 
 function describeError(err: unknown): string {
+  if (err instanceof LLMError) {
+    return `${err.message}${err.type ? ` [${err.type}]` : ''}`;
+  }
   if (err instanceof Error) return err.message || err.name;
   return String(err);
 }

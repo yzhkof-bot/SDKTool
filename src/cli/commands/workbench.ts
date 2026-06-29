@@ -1,5 +1,5 @@
 import { startWorkbenchServer } from '../workbench/server.js';
-import { openInBrowser } from '../utils/server.js';
+import { openInBrowser, toBrowserUrl } from '../utils/server.js';
 import { UsageError } from '../errors.js';
 
 export interface WorkbenchCommandOptions {
@@ -43,7 +43,9 @@ export async function runWorkbenchCommand(
   deps.writeStdout(`[kingsdk] press Ctrl+C to stop\n`);
 
   if (opts.open !== false) {
-    openInBrowser(handle.url);
+    // handle.url 里嵌的是绑定地址；绑 0.0.0.0 时浏览器直连会 ERR_ADDRESS_INVALID，
+    // 这里转成局域网 IP / 127.0.0.1 再打开。
+    openInBrowser(toBrowserUrl(handle.url));
   }
 
   // 阻塞主进程：等待 SIGINT

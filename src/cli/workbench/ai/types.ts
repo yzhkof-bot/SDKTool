@@ -8,13 +8,11 @@
 /** /api/ai/health 响应：告知前端 AI 功能是否可用 */
 export interface AiHealthResponse {
   available: boolean;
-  /** provider 名，目前固定为 'codebuddy' */
-  provider: 'codebuddy';
+  /** provider 名，现为 'sagent-sdk'（底层走 Claude 代理） */
+  provider: string;
   /** 当前后端选用的模型；未配置则 undefined */
   model?: string;
-  /** 当前 SDK 子进程使用的 CodeBuddy 上网环境（如 ioa）；便于排查登录态问题 */
-  internetEnvironment?: string;
-  /** 不可用时的原因（缺凭据、SDK 起不来等） */
+  /** 不可用时的原因（缺凭据等） */
   reason?: string;
 }
 
@@ -99,6 +97,8 @@ export type SseEvent =
   | { type: 'tool_use'; id: string; name: string; input: unknown }
   /** 工具结果（成功或失败） */
   | { type: 'tool_result'; id: string; content: string; isError: boolean }
+  /** 系统提示（如"已自动压缩上下文"）；前端可作为淡灰系统行展示 */
+  | { type: 'notice'; level: 'info' | 'warn'; text: string }
   /** 一轮会话结束（含统计） */
   | {
       type: 'turn_end';

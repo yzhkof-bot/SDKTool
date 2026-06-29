@@ -20,6 +20,34 @@
     "maxGiB": 20
   },
 
+  // ai：Workbench AI 助手配置（底层走 sagent-sdk → Claude 代理）。
+  //   apiKey           必填：Claude 代理 API Key（key 过期/泄露请到平台重新申请）
+  //   baseUrl          可选：接口基址，默认内网 timiai 代理
+  //   model            可选：默认模型，默认 claude-sonnet-4.6
+  //   thinkingBudget   可选：设了就开扩展思考（数字，≥1024 且 < 输出上限）
+  //   --- 上下文自动压缩（对齐 Claude Code 的 auto-compact，下面三项均可省，有默认）---
+  //   contextWindow    模型上下文窗口（token），默认 200000
+  //   compactThreshold 占用超过 contextWindow*该值即触发压缩，默认 0.8
+  //   keepRecentRatio  压缩后保留最近原文占窗口的比例，默认 0.3
+  "ai": {
+    "apiKey": "GM5NjCsHEWpxBo4R7XIoR2pyNd6A2SMYydcAzC30",
+    "baseUrl": "http://api.timiai.woa.com/ai_api_manage/llmproxy",
+    "model": "claude-sonnet-4.6"
+  },
+
+  // wework：企业微信智能机器人长连接配置（底层走 @wecom/aibot-node-sdk WebSocket）。
+  //   botId     必填：智能机器人 BotID（企业微信管理后台「API 模式 → 长连接」获取）
+  //   secret    必填：长连接专用 Secret（与 Webhook 模式的 Token/EncodingAESKey 不同）
+  //   wsUrl     可选：连接地址，默认公有云 wss://openws.work.weixin.qq.com（私有部署需改）
+  //   autoReply 可选：收到文本消息是否自动 echo 回复，默认 true（仅供测试界面验证收发闭环）
+  //   也可用环境变量覆盖：SDKTOOL_WEWORK_BOT_ID / SDKTOOL_WEWORK_SECRET / SDKTOOL_WEWORK_WS_URL
+  "wework": {
+    "botId": "aib29cY3eNDLKPfHT_4lT8ADaMrQ-PXR_ZK",
+    "secret": "4pjvt4PoJBdemtARrTtlmwgpa9dzrHPASr2fdsOM6Tf",
+    "wsUrl": "wss://openws.work.weixin.qq.com",
+    "autoReply": true
+  },
+
   // pipelines：要在侧栏展示的流水线列表，按顺序显示，第一条为默认选中。
   //   key         唯一标识（前端/接口用，仅字母数字与 - _）
   //   label       侧栏主标题
