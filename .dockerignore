@@ -1,0 +1,8 @@
+dist/cli
+dist/electron
+release
+node_modules
+packages/*/node_modules
+.git
+.wb-logs
+*.log

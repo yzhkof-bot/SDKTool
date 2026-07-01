@@ -5,5 +5,5 @@
     "rootDir": "."
   },
   "include": ["packages/*/src/**/*"],
-  "exclude": ["node_modules", "**/dist", "tests", "**/*.test.ts"]
+  "exclude": ["node_modules", "**/dist", "tests", "**/*.test.ts", "packages/web"]
 }

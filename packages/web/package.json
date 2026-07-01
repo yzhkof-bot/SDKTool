@@ -1,0 +1,16 @@
+{
+  "name": "@kingsdk/web",
+  "version": "0.1.0",
+  "description": "King SDK workbench web frontend (Vite). Builds to static assets served by @kingsdk/server.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11"
+  }
+}

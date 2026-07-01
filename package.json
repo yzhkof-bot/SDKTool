@@ -9,16 +9,20 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsup && node scripts/buildViewerTemplate.mjs",
+    "build": "tsup && node scripts/buildViewerTemplate.mjs && npm run build:web && node scripts/collectWebDist.mjs",
     "build:viewer": "node scripts/buildViewerTemplate.mjs",
+    "build:web": "npm run -w @kingsdk/web build",
+    "build:server": "tsup && node scripts/buildViewerTemplate.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "cli": "tsx packages/cli/src/index.ts",
     "server": "node dist/server/main.cjs",
+    "server:web": "node dist/server/main.cjs --mode web --host 0.0.0.0 --port 7790",
     "electron": "npm run build && electron dist/electron/main.cjs",
     "electron:nobuild": "electron dist/electron/main.cjs",
+    "dist:electron": "npm run build && electron-builder",
     "clean": "rimraf dist packages/*/dist packages/viewer/templates",
     "wb": "node scripts/restart-workbench.mjs",
     "wb:nobuild": "node scripts/restart-workbench.mjs --no-build",
@@ -31,11 +35,35 @@
   "devDependencies": {
     "@types/node": "^22.9.0",
     "@types/yauzl": "^2.10.3",
+    "electron-builder": "^25.1.8",
     "happy-dom": "^20.9.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
+  },
+  "build": {
+    "appId": "com.kingsdk.workbench",
+    "productName": "KingSDK Workbench",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "packages/viewer/templates/**/*"
+    ],
+    "extraMetadata": {
+      "main": "dist/electron/main.cjs"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

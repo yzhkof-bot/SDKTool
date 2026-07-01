@@ -60,6 +60,16 @@ function serverEntry(): string {
   return candidates[0]!;
 }
 
+/** 前端静态资源目录（@kingsdk/web 的 Vite 构建产物），存在才返回。 */
+function webDist(): string | null {
+  const candidates = [
+    join(distRoot(), 'web'), // 打包后：与 server/electron 同级的 dist/web
+    join(process.cwd(), 'packages', 'web', 'dist'), // 开发：Vite 产物原位
+  ];
+  for (const p of candidates) if (existsSync(join(p, 'index.html'))) return p;
+  return null;
+}
+
 /**
  * spawn 本机 server 子进程，resolve 出实际访问 URL。
  * 优先读 stdout 的 READY 标记；标记迟迟不来时靠超时兜底拒绝。
@@ -68,6 +78,7 @@ function startServer(): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const entry = serverEntry();
     const configPath = join(app.getPath('userData'), 'pipelines.config.json');
+    const staticDir = webDist();
 
     const child = spawn(process.execPath, [entry, '--mode', 'desktop', '--host', '127.0.0.1', '--port', '0'], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -75,6 +86,8 @@ function startServer(): Promise<string> {
         ...process.env,
         // Electron 打包后 cwd 不可靠 → 显式指向 userData 下的配置（存在才生效）
         ...(existsSync(configPath) ? { SDKTOOL_PIPELINES_CONFIG: configPath } : {}),
+        // 桌面端复用 web Vite 构建产物；缺失时 server 自动回退 page.ts 内联渲染
+        ...(staticDir ? { SDKTOOL_STATIC_DIR: staticDir } : {}),
         KINGSDK_VERSION: app.getVersion(),
         // 让子进程以纯 node 模式跑（避免继承 ELECTRON_RUN_AS_NODE 之外的干扰）
         ELECTRON_RUN_AS_NODE: '1',

@@ -1,8 +1,8 @@
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { platform } from 'node:os';
-import { join } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { spawn } from 'node:child_process';
 
 import { getExtraAnalyzerMeta } from '@kingsdk/core/analyzers/index.js';
@@ -25,7 +25,7 @@ import { locateByMeta } from './locate.js';
 import { LocalProjectStore, startLocalProjectJob } from './localProject.js';
 import { startAnalyzeJob, startCompareJob, type InputSource } from './runner.js';
 import { JobStore, defaultCacheDir } from './store.js';
-import { renderWorkbenchPage } from './page.js';
+import { renderWorkbenchPage, PLATFORM_DEFS } from './page.js';
 import {
   checkAiHealth,
   ConversationError,
@@ -67,6 +67,12 @@ export interface WorkbenchServerOptions {
    * 缺省读环境变量 SDKTOOL_DEVOPS_ONLY（由启动脚本设置）。
    */
   devopsOnly?: boolean;
+  /**
+   * 前端静态资源目录（@kingsdk/web 的 Vite 构建产物 web/dist）。
+   * 提供且含 index.html 时，首页与静态资源由此目录托管；否则回退到 page.ts 内联渲染。
+   * 缺省读环境变量 SDKTOOL_STATIC_DIR（Electron / 部署脚本设置）。
+   */
+  staticDir?: string;
 }
 
 export interface WorkbenchServerHandle {
@@ -145,8 +151,11 @@ export async function startWorkbenchServer(
   const mode = resolveMode(options);
   const webMode = mode === 'web';
   if (webMode) log('[workbench] web 模式：仅支持蓝盾包对比，已禁用本地路径 / 目录浏览 / 配置本地工程 / 打开缓存目录\n');
+  // 前端静态资源目录：显式 > 环境变量。含 index.html 才启用，否则回退 page.ts。
+  const staticRoot = resolveStaticDir(options.staticDir);
+  if (staticRoot) log(`[workbench] 前端静态托管：${staticRoot}\n`);
   const server: Server = createServer((req, res) => {
-    handle(req, res, store, conversations, localProjects, devops, artifactCache, uploads, wework, options.toolVersion, log, prettyJson, webMode).catch((err) => {
+    handle(req, res, store, conversations, localProjects, devops, artifactCache, uploads, wework, options.toolVersion, log, prettyJson, webMode, staticRoot).catch((err) => {
       log(`[workbench] handler error: ${err?.stack ?? err}\n`);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -197,17 +206,37 @@ async function handle(
   log: (t: string) => void,
   prettyJson: boolean | undefined,
   webMode: boolean,
+  staticRoot: string | null,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x');
   const method = req.method ?? 'GET';
 
-  // 静态：工作台首页
+  // 静态：工作台首页。有 web/dist 时托管其 index.html（Vite 构建产物），否则回退 page.ts 内联渲染。
   if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
+    if (staticRoot) {
+      const served = await tryServeStatic(res, staticRoot, '/index.html');
+      if (served) return;
+    }
     sendHtml(res, renderWorkbenchPage(store.cacheDir, webMode ? 'web' : 'desktop'));
     return;
   }
   if (method === 'GET' && url.pathname === '/healthz') {
     sendText(res, 'ok');
+    return;
+  }
+
+  // 运行时配置：替代原先 SSR 注入的 window.__KINGSDK__。
+  // 独立 web 前端（@kingsdk/web 的静态构建产物）启动时 fetch 这个拿 mode/platforms/cacheDir/extras。
+  // 两模式都放行。
+  if (method === 'GET' && url.pathname === '/api/config') {
+    sendJson(res, 200, {
+      mode: webMode ? 'web' : 'desktop',
+      devopsOnly: webMode,
+      defaultPlatform: DEFAULT_PLATFORM,
+      platforms: PLATFORM_DEFS,
+      cacheDir: store.cacheDir,
+      extras: getExtraAnalyzerMeta(DEFAULT_PLATFORM),
+    });
     return;
   }
 
@@ -800,6 +829,12 @@ async function handle(
     return;
   }
 
+  // 前端静态资源（web/dist 下的 assets/*.js|css、favicon 等）。放在最后：API / 产物路由优先。
+  if (method === 'GET' && staticRoot && !url.pathname.startsWith('/api/') && !url.pathname.startsWith('/jobs/')) {
+    const served = await tryServeStatic(res, staticRoot, url.pathname);
+    if (served) return;
+  }
+
   sendJson(res, 404, { error: 'NOT_FOUND', path: url.pathname });
 }
 
@@ -1125,6 +1160,71 @@ function resolveMode(options: WorkbenchServerOptions): WorkbenchMode {
 function readDevopsOnlyEnv(): boolean {
   const v = (process.env.SDKTOOL_DEVOPS_ONLY ?? '').trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
+/**
+ * 解析前端静态资源目录：显式 options.staticDir > 环境变量 SDKTOOL_STATIC_DIR。
+ * 目录存在且含 index.html 才返回绝对路径，否则返回 null（回退 page.ts 内联渲染）。
+ */
+function resolveStaticDir(explicit?: string): string | null {
+  const raw = (explicit ?? process.env.SDKTOOL_STATIC_DIR ?? '').trim();
+  if (!raw) return null;
+  const dir = resolve(raw);
+  return existsSync(join(dir, 'index.html')) ? dir : null;
+}
+
+/** 常见静态资源 content-type。 */
+const STATIC_CONTENT_TYPES: Readonly<Record<string, string>> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.map': 'application/json; charset=utf-8',
+};
+
+/**
+ * 尝试从 staticRoot 托管 urlPath 对应的文件。命中并已响应返回 true，未命中返回 false（由调用方兜底）。
+ * 关键安全点：normalize + 前缀校验，杜绝 `../` 路径穿越读到 staticRoot 之外的文件。
+ */
+async function tryServeStatic(res: ServerResponse, staticRoot: string, urlPath: string): Promise<boolean> {
+  // 去查询串、解码、规范化
+  let rel = urlPath.split('?')[0] ?? '/';
+  try {
+    rel = decodeURIComponent(rel);
+  } catch {
+    return false;
+  }
+  if (rel === '/' || rel === '') rel = '/index.html';
+  const full = normalize(join(staticRoot, rel));
+  // 路径穿越防护：解析后必须仍在 staticRoot 之内
+  if (full !== staticRoot && !full.startsWith(staticRoot + sep)) return false;
+  if (!existsSync(full)) return false;
+  let st;
+  try {
+    st = statSync(full);
+  } catch {
+    return false;
+  }
+  if (!st.isFile()) return false;
+  const ct = STATIC_CONTENT_TYPES[extname(full).toLowerCase()] ?? 'application/octet-stream';
+  res.writeHead(200, {
+    'Content-Type': ct,
+    'Content-Length': st.size,
+    // 构建产物文件名带 hash，可长缓存；index.html 不缓存以便更新
+    'Cache-Control': rel.endsWith('.html') ? 'no-cache' : 'public, max-age=31536000, immutable',
+  });
+  createReadStream(full).pipe(res);
+  return true;
 }
 
 function parseExtras(raw: unknown): string[] | undefined {

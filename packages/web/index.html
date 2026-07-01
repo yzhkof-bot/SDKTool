@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KingSDK Hap Workbench</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div class="topbar">
+    <h1>KingSDK Workbench</h1>
+    <div class="topbar-sub">本地工作台 · 监听 127.0.0.1 · 零拷贝（不复制原始包）</div>
+    <div class="topbar-storage">
+      <span class="topbar-storage-label">历史记录目录</span>
+      <code class="topbar-storage-path" id="cache-dir-path"></code>
+      <button class="btn-icon-sm" id="btn-copy-cache-dir" title="复制路径">⎘</button>
+      <button class="btn-icon-sm" id="btn-open-cache-dir" title="在文件管理器中打开">📂</button>
+      <span class="topbar-storage-msg" id="cache-dir-msg"></span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="sidebar" id="devops-sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-title">流水线构建</div>
+      <div class="sidebar-sub" id="devops-sub">加载流水线…</div>
+    </div>
+    <div class="sidebar-toolbar">
+      <select id="devops-pipeline" class="devops-select" title="选择流水线" hidden></select>
+    </div>
+    <div class="sidebar-toolbar">
+      <select id="devops-status" class="devops-select" title="按构建状态过滤"><option value="">全部状态</option><option value="SUCCEED">成功</option><option value="FAILED">失败</option><option value="RUNNING">运行中</option><option value="CANCELED">已取消</option><option value="QUEUE">排队中</option><option value="STAGE_SUCCESS">阶段成功</option></select>
+      <button class="btn-icon-sm" id="devops-refresh" title="刷新">↻</button>
+    </div>
+    <div id="devops-list" class="devops-list"></div>
+    <div class="sidebar-foot">
+      <button class="btn-secondary devops-page-btn" id="devops-prev" disabled>← 上一页</button>
+      <span class="devops-page-info" id="devops-page-info">—</span>
+      <button class="btn-secondary devops-page-btn" id="devops-next" disabled>下一页 →</button>
+    </div>
+  </aside>
+    <div class="container" id="container" data-platform="harmony">
+    <div class="platform-segment" role="tablist" aria-label="选择平台">
+    <span class="platform-segment-label">平台</span>
+    <div class="platform-segment-chips"><button type="button" class="platform-chip active" data-platform="harmony">HarmonyOS</button><button type="button" class="platform-chip" data-platform="android">Android</button><button type="button" class="platform-chip disabled" data-platform="ios" disabled title="后续支持">iOS</button></div>
+  </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="analyze">分析单个包</button>
+      <button class="tab" data-tab="compare">对比两个包</button>
+      <button class="tab" data-tab="wework">企业微信机器人</button>
+    </div>
+
+    <section class="panel" data-section="analyze">
+      <h2 class="panel-title">分析</h2>
+      <p class="hint">三种方式选包：<b>拖到下方虚线框</b>（按 name+size 反查 Downloads/Desktop/Documents/cwd 下文件）、点<b>浏览…</b>、或直接<b>粘贴绝对路径</b>。文件不会被上传或复制。</p>
+      <div class="drop-row" data-input-id="analyze-path">
+        <div class="drop-row-tag" data-pkg-tag>包</div>
+        <div class="drop-row-main">
+          <div class="path-row">
+            <label>包路径</label>
+            <input type="text" id="analyze-path" data-dropinput placeholder="/abs/path/to/your.hap 或 D:\path\your.hap" />
+            <button class="btn-secondary" data-browse-target="analyze-path" data-filter=".hap,.json">浏览…</button>
+          </div>
+          <div class="row-status" data-status-for="analyze-path"></div>
+        </div>
+        <div class="drop-row-hint">拖到这里</div>
+      </div>
+      <div data-extras-host="analyze"><div class="extras-block" data-extras-block="analyze">
+    <div class="extras-title">可选深度分析（多选 · 默认开启，取消勾选可加速本次任务）</div>
+    <div class="extras-list"><label class="extras-item" for="extra-analyze-nativeSymbols">
+        <input type="checkbox" id="extra-analyze-nativeSymbols" data-extra-analyze="nativeSymbols" checked />
+        <div class="extras-item-text">
+          <div class="extras-item-name">Native 深度分析 (.so) <code>nativeSymbols</code></div>
+          <div class="extras-item-desc">逐 so 解剖 ELF：符号表 / 节区分布 / DT_NEEDED 依赖 / 安全编译选项 (NX/RELRO/PIE/Canary/FORTIFY) / 符号版本需求 (GLIBC 等) / build-id + 编译器 / .rodata 字符串池</div>
+        </div>
+      </label><label class="extras-item" for="extra-analyze-il2cppMetadata">
+        <input type="checkbox" id="extra-analyze-il2cppMetadata" data-extra-analyze="il2cppMetadata" checked />
+        <div class="extras-item-text">
+          <div class="extras-item-name">IL2CPP 元数据 (Unity 游戏) <code>il2cppMetadata</code></div>
+          <div class="extras-item-desc">解析 global-metadata.dat：Unity 版本指纹 / Assembly 列表 / 类名+方法名+字段名全集 / C# 字符串字面量池。仅对 Unity 游戏包有意义</div>
+        </div>
+      </label><label class="extras-item" for="extra-analyze-abcDetails">
+        <input type="checkbox" id="extra-analyze-abcDetails" data-extra-analyze="abcDetails" checked />
+        <div class="extras-item-text">
+          <div class="extras-item-name">ABC 内部细节 (.abc) <code>abcDetails</code></div>
+          <div class="extras-item-desc">解析每个 .abc 的 PANDA 头（magic / version / file_size / num_classes）+ SHA-256，便于发现 size 不变但内容已变的 abc</div>
+        </div>
+      </label></div>
+  </div></div>
+      <div class="actions">
+        <button class="btn-primary" id="btn-analyze">开始分析</button>
+      </div>
+      <div id="analyze-error" class="error" hidden></div>
+    </section>
+
+    <section class="panel" data-section="compare" hidden>
+      <h2 class="panel-title">对比</h2>
+      <p class="hint">两侧各是独立拖拽区——把<b>旧版包</b>拖到<b>左边</b>，<b>新版包</b>拖到<b>右边</b>。两侧需要是同一平台；也支持已生成的 .json 报告。文件不会被复制。</p>
+      <div class="drop-row" data-input-id="compare-left">
+        <div class="drop-row-tag tag-left">Baseline (左·旧)</div>
+        <div class="drop-row-main">
+          <div class="path-row">
+            <label>路径</label>
+            <input type="text" id="compare-left" data-dropinput placeholder="较早的包 / 报告 JSON" />
+            <button class="btn-secondary" data-browse-target="compare-left" data-filter=".hap,.json">浏览…</button>
+          </div>
+          <div class="row-status" data-status-for="compare-left"></div>
+        </div>
+        <div class="drop-row-hint">拖到这里 · 左</div>
+      </div>
+      <div class="drop-row" data-input-id="compare-right">
+        <div class="drop-row-tag tag-right">Candidate (右·新)</div>
+        <div class="drop-row-main">
+          <div class="path-row">
+            <label>路径</label>
+            <input type="text" id="compare-right" data-dropinput placeholder="较新的包 / 报告 JSON" />
+            <button class="btn-secondary" data-browse-target="compare-right" data-filter=".hap,.json">浏览…</button>
+          </div>
+          <div class="row-status" data-status-for="compare-right"></div>
+        </div>
+        <div class="drop-row-hint">拖到这里 · 右</div>
+      </div>
+      <div data-extras-host="compare"><div class="extras-block" data-extras-block="compare">
+    <div class="extras-title">可选深度分析（多选 · 默认开启，取消勾选可加速本次任务）</div>
+    <div class="extras-list"><label class="extras-item" for="extra-compare-nativeSymbols">
+        <input type="checkbox" id="extra-compare-nativeSymbols" data-extra-compare="nativeSymbols" checked />
+        <div class="extras-item-text">
+          <div class="extras-item-name">Native 深度分析 (.so) <code>nativeSymbols</code></div>
+          <div class="extras-item-desc">逐 so 解剖 ELF：符号表 / 节区分布 / DT_NEEDED 依赖 / 安全编译选项 (NX/RELRO/PIE/Canary/FORTIFY) / 符号版本需求 (GLIBC 等) / build-id + 编译器 / .rodata 字符串池</div>
+        </div>
+      </label><label class="extras-item" for="extra-compare-il2cppMetadata">
+        <input type="checkbox" id="extra-compare-il2cppMetadata" data-extra-compare="il2cppMetadata" checked />
+        <div class="extras-item-text">
+          <div class="extras-item-name">IL2CPP 元数据 (Unity 游戏) <code>il2cppMetadata</code></div>
+          <div class="extras-item-desc">解析 global-metadata.dat：Unity 版本指纹 / Assembly 列表 / 类名+方法名+字段名全集 / C# 字符串字面量池。仅对 Unity 游戏包有意义</div>
+        </div>
+      </label><label class="extras-item" for="extra-compare-abcDetails">
+        <input type="checkbox" id="extra-compare-abcDetails" data-extra-compare="abcDetails" checked />
+        <div class="extras-item-text">
+          <div class="extras-item-name">ABC 内部细节 (.abc) <code>abcDetails</code></div>
+          <div class="extras-item-desc">解析每个 .abc 的 PANDA 头（magic / version / file_size / num_classes）+ SHA-256，便于发现 size 不变但内容已变的 abc</div>
+        </div>
+      </label></div>
+  </div></div>
+      <div class="actions">
+        <button class="btn-primary" id="btn-compare">开始对比</button>
+      </div>
+      <div id="compare-error" class="error" hidden></div>
+    </section>
+
+    <section class="panel" data-section="wework" hidden>
+      <h2 class="panel-title">企业微信机器人 · 长连接测试 <span class="muted">(基于 @wecom/aibot-node-sdk WebSocket)</span></h2>
+      <p class="hint">用 <b>pipelines.config.json</b> 的 <code>wework</code> 段里配置的 BotID / Secret 建立长连接，验证收发是否打通。此页<b>不接入</b>分析/对比功能，仅做连通性测试。在企业微信里给机器人发消息即可在下方实时日志看到回调。</p>
+
+      <div class="ww-card">
+        <div class="ww-status-row">
+          <span class="ww-dot" id="ww-dot"></span>
+          <span class="ww-state-text" id="ww-state-text">加载中…</span>
+        </div>
+        <div class="ww-meta" id="ww-meta"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="ww-connect">连接</button>
+        <button class="btn-secondary" id="ww-disconnect">断开</button>
+        <label class="ww-toggle">收到文本消息时
+          <select id="ww-replymode" class="ww-select">
+            <option value="off">不自动回复</option>
+            <option value="stream">流式 echo（两段刷新）</option>
+            <option value="markdown">Markdown 富文本</option>
+            <option value="card">模板卡片（可点击）</option>
+            <option value="stream_card">流式 + 模板卡片</option>
+          </select>
+        </label>
+      </div>
+      <div id="ww-error" class="error" hidden></div>
+
+      <div class="ww-send">
+        <div class="ww-send-title">主动推送测试 <span class="muted">(需该用户先在会话里给机器人发过消息)</span></div>
+        <div class="path-row ww-send-row">
+          <label>chatid</label>
+          <input type="text" id="ww-chatid" placeholder="单聊填用户 userid / 群聊填 chatid" />
+          <button class="btn-secondary" id="ww-use-last" title="填入最近一次会话的 chatid">最近会话</button>
+        </div>
+        <div class="ww-send-row2">
+          <label class="ww-inline">消息类型
+            <select id="ww-sendkind" class="ww-select">
+              <option value="markdown">Markdown</option>
+              <option value="card">模板卡片（按钮交互）</option>
+              <option value="media">媒体素材</option>
+            </select>
+          </label>
+        </div>
+        <div class="ww-send-variant" data-variant="markdown">
+          <textarea id="ww-content" class="ww-textarea" placeholder="支持 markdown，例如：**加粗** 与 [链接](https://work.weixin.qq.com)"></textarea>
+        </div>
+        <div class="ww-send-variant" data-variant="card" hidden>
+          <p class="hint">将发送一张「按钮交互」示例卡片（含 确认 / 取消 按钮）。用户点击按钮后机器人会自动用 <code>aibot_respond_update_msg</code> 更新卡片。</p>
+        </div>
+        <div class="ww-send-variant" data-variant="media" hidden>
+          <div class="path-row ww-send-row">
+            <label>选择素材</label>
+            <select id="ww-media-pick" class="ww-select"></select>
+          </div>
+          <p class="hint">先在下方「临时素材上传」上传文件拿到 media_id，再回到这里选择并发送。视频会带默认标题/描述。</p>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" id="ww-send">主动发送</button>
+        </div>
+      </div>
+
+      <div class="ww-send">
+        <div class="ww-send-title">临时素材上传 <span class="muted">(分片上传，media_id 3 天内有效)</span></div>
+        <div class="path-row ww-send-row">
+          <label>类型</label>
+          <select id="ww-upload-type" class="ww-select">
+            <option value="image">图片 (png/jpg/gif ≤10M)</option>
+            <option value="file">文件 (≤20M)</option>
+            <option value="voice">语音 (amr ≤2M)</option>
+            <option value="video">视频 (mp4 ≤10M)</option>
+          </select>
+          <input type="file" id="ww-upload-file" class="ww-file" />
+          <button class="btn-secondary" id="ww-upload-btn">上传</button>
+        </div>
+        <div id="ww-media-list" class="ww-media-list"></div>
+      </div>
+
+      <div class="ww-log-head">
+        <span class="ww-log-title">实时日志</span>
+        <span class="ww-stats" id="ww-stats"></span>
+        <button class="btn-icon-sm" id="ww-clear" title="清空日志">清空</button>
+      </div>
+      <div id="ww-log" class="ww-log"></div>
+    </section>
+
+    <section class="panel" id="history-panel">
+      <h2 class="panel-title">历史记录 <span class="muted">(自动刷新，最近 50 条；点每行右侧 × 删单条)</span></h2>
+      <div class="hist-filter">
+    <span class="hist-filter-label">筛选</span>
+    <div class="hist-filter-chips"><button type="button" class="hist-filter-chip active" data-hist-filter="all">全部</button><button type="button" class="hist-filter-chip" data-hist-filter="harmony">HarmonyOS</button><button type="button" class="hist-filter-chip" data-hist-filter="android">Android</button><button type="button" class="hist-filter-chip" data-hist-filter="ios">iOS</button></div>
+  </div>
+      <div id="jobs"></div>
+    </section>
+    </div>
+  </div>
+
+  <!-- 文件选择 modal：实际就是服务端目录浏览器 -->
+  <div class="modal" id="picker" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong id="picker-title">选择 Hap / Report</strong>
+        <button class="btn-icon" id="picker-close" title="关闭">×</button>
+      </div>
+      <div class="modal-toolbar">
+        <button class="btn-icon" id="picker-up" title="上一级">↑</button>
+        <button class="btn-icon" id="picker-home" title="Home">⌂</button>
+        <button class="btn-icon" id="picker-root" title="根 / 盘符列表">/</button>
+        <input type="text" id="picker-cwd" placeholder="键入路径直接跳转，按 Enter" />
+      </div>
+      <div class="modal-body">
+        <div id="picker-list" class="picker-list"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="muted" id="picker-status">加载中…</span>
+        <button class="btn-primary" id="picker-pick-dir" hidden>选择当前目录</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 构建制品列表 modal -->
+  <div class="modal" id="art-modal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong id="art-title">制品列表</strong>
+        <button class="btn-icon" id="art-close" title="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="art-actions"></div>
+        <div id="art-list" class="art-list"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="muted" id="art-status">加载中…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配置本地工程进度 modal -->
+  <div class="modal" id="lp-modal" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong>配置本地工程</strong>
+        <button class="btn-icon" id="lp-close" title="关闭" disabled>×</button>
+      </div>
+      <div class="modal-body">
+        <div class="lp-meta" id="lp-meta"></div>
+        <div class="lp-steps" id="lp-steps"></div>
+        <div class="error lp-modal-error" id="lp-error" hidden></div>
+        <div class="lp-result" id="lp-result" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <span class="muted" id="lp-status">准备中…</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

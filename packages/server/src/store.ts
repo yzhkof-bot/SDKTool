@@ -27,6 +27,8 @@ import type { Platform, WorkbenchJob, WorkbenchJobKind } from '@kingsdk/shared/s
 export class JobStore {
   private readonly jobs = new Map<string, WorkbenchJob>();
   private readonly order: string[] = []; // 维持插入顺序，配合 list() 用
+  /** 上一次发出的 createdAt（毫秒时间戳），保证严格递增，避免同毫秒创建的 job 在重启后排序歧义 */
+  private lastCreatedMs = 0;
 
   constructor(public readonly cacheDir: string) {
     mkdirSync(cacheDir, { recursive: true });
@@ -52,13 +54,27 @@ export class JobStore {
       status: 'pending',
       label,
       inputs,
-      createdAt: new Date().toISOString(),
+      createdAt: this.nextCreatedAt(),
       ...(platform ? { platform } : {}),
     };
     this.jobs.set(id, job);
     this.order.unshift(id); // 最近的排前面
     this.persist(job);
     return job;
+  }
+
+  /**
+   * 生成严格递增的 createdAt ISO 串。
+   *
+   * Why：loadFromDisk 靠 createdAt 排序恢复历史顺序；若两个 job 落在同一毫秒，
+   * ISO 串相等 → 排序歧义 → 重启后顺序可能与创建序不一致（且随机翻转）。
+   * 这里保证每次至少 +1ms，让 createdAt 成为可靠的顺序键。
+   */
+  private nextCreatedAt(): string {
+    const now = Date.now();
+    const ms = now > this.lastCreatedMs ? now : this.lastCreatedMs + 1;
+    this.lastCreatedMs = ms;
+    return new Date(ms).toISOString();
   }
 
   get(id: string): WorkbenchJob | undefined {
