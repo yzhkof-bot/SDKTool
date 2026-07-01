@@ -8,10 +8,10 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   APK_SIG_KNOWN_IDS,
   parseApkSigningBlock,
-} from '../../src/core/analyzers/android/_apkSignature.js';
-import { androidApkSignatureAnalyzer } from '../../src/core/analyzers/android/apkSignature.js';
-import { openZipPackage } from '../../src/core/loader/zipPackage.js';
-import type { AnalyzerContext, ReportWarning } from '../../src/shared/schema.js';
+} from '@kingsdk/core/analyzers/android/_apkSignature.js';
+import { androidApkSignatureAnalyzer } from '@kingsdk/core/analyzers/android/apkSignature.js';
+import { openZipPackage } from '@kingsdk/core/loader/zipPackage.js';
+import type { AnalyzerContext, ReportWarning } from '@kingsdk/shared/schema.js';
 
 import {
   APK_SIG_ID_PADDING,

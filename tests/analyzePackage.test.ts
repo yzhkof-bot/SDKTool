@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzePackage } from '../src/core/index.js';
-import { SCHEMA_VERSION } from '../src/shared/schema.js';
+import { analyzePackage } from '@kingsdk/core/index.js';
+import { SCHEMA_VERSION } from '@kingsdk/shared/schema.js';
 
 import { buildFixtureHap, DEMO_MODULE_JSON } from './helpers/fixtureHap.js';
 
@@ -99,7 +99,7 @@ describe('analyzePackage (M1 端到端)', () => {
         throw new Error('boom!');
       },
     };
-    const { basicInfoAnalyzer, sizeAnalyzer } = await import('../src/core/analyzers/index.js');
+    const { basicInfoAnalyzer, sizeAnalyzer } = await import('@kingsdk/core/analyzers/index.js');
 
     const report = await analyzePackage(hapPath, {
       toolVersion: 'test',

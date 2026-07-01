@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzePackage, diffPackageReports } from '../../src/core/index.js';
+import { analyzePackage, diffPackageReports } from '@kingsdk/core/index.js';
 import {
   buildFixtureApk,
   DEMO_APK_PACKAGE,

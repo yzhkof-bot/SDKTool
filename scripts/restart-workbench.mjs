@@ -189,7 +189,7 @@ function buildLaunchCmd() {
   if (args.dev) {
     return {
       command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-      cmdArgs: ['tsx', 'src/cli/index.ts', ...wbArgs],
+      cmdArgs: ['tsx', 'packages/cli/src/index.ts', ...wbArgs],
       useShell: false,
     };
   }

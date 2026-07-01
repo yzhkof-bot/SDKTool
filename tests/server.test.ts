@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { startViewServer } from '../src/cli/utils/server.js';
-import type { PackageReport } from '../src/shared/schema.js';
+import { startViewServer } from '../packages/cli/src/utils/server.js';
+import type { PackageReport } from '@kingsdk/shared/schema.js';
 
 const SAMPLE_REPORT: PackageReport = {
   schemaVersion: '1.0',

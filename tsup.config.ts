@@ -1,14 +1,17 @@
 import { defineConfig } from 'tsup';
 
+// monorepo：包间通过 tsconfig.base.json 的 @kingsdk/* 路径别名指向源码，
+// esbuild 读取 tsconfig 的 paths 完成解析（.js 说明符会回退解析到同名 .ts 源）。
 export default defineConfig([
+  // CLI：自包含 cjs bundle（把 core/shared/viewer/server 全部内联打进来）
   {
     entry: {
-      'cli/index': 'src/cli/index.ts',
+      index: 'packages/cli/src/index.ts',
     },
     format: ['cjs'],
     target: 'node20',
     platform: 'node',
-    outDir: 'dist',
+    outDir: 'dist/cli',
     splitting: false,
     sourcemap: true,
     clean: true,
@@ -18,24 +21,10 @@ export default defineConfig([
       js: '#!/usr/bin/env node',
     },
   },
+  // Viewer (analyze)：浏览器端 IIFE bundle，被 buildViewerTemplate.mjs 内联到 report.template.html
   {
     entry: {
-      'core/index': 'src/core/index.ts',
-      'shared/index': 'src/shared/index.ts',
-    },
-    format: ['esm', 'cjs'],
-    target: 'node20',
-    platform: 'node',
-    outDir: 'dist',
-    splitting: false,
-    sourcemap: true,
-    clean: false,
-    dts: true,
-  },
-  // Viewer (analyze)：浏览器端 IIFE bundle，最终被 buildViewerTemplate.mjs 内联到 templates/report.template.html
-  {
-    entry: {
-      'viewer/main': 'src/viewer/main.ts',
+      'viewer/main': 'packages/viewer/src/main.ts',
     },
     format: ['iife'],
     globalName: 'KingsdkViewer',
@@ -48,10 +37,10 @@ export default defineConfig([
     dts: false,
     minify: true,
   },
-  // Viewer (diff)：浏览器端 IIFE bundle，被内联到 templates/diff.template.html
+  // Viewer (diff)：浏览器端 IIFE bundle，被内联到 diff.template.html
   {
     entry: {
-      'viewer/diff': 'src/viewer/diff/main.ts',
+      'viewer/diff': 'packages/viewer/src/diff/main.ts',
     },
     format: ['iife'],
     globalName: 'KingsdkDiffViewer',

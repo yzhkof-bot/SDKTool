@@ -5,7 +5,7 @@ import { randomBytes, createHash } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { analyzePackage, diffPackageReports } from '../../src/core/index.js';
+import { analyzePackage, diffPackageReports } from '@kingsdk/core/index.js';
 
 import { writeMiniZip } from '../helpers/miniZip.js';
 import {

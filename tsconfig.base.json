@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowSyntheticDefaultImports": true,
+    "verbatimModuleSyntax": false,
+    "baseUrl": ".",
+    "paths": {
+      "@kingsdk/shared/*": ["packages/shared/src/*"],
+      "@kingsdk/shared": ["packages/shared/src/index.ts"],
+      "@kingsdk/core/*": ["packages/core/src/*"],
+      "@kingsdk/core": ["packages/core/src/index.ts"],
+      "@kingsdk/viewer/*": ["packages/viewer/src/*"],
+      "@kingsdk/viewer": ["packages/viewer/src/index.ts"],
+      "@kingsdk/server/*": ["packages/server/src/*"],
+      "@kingsdk/server": ["packages/server/src/server.ts"]
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseAxml } from '../../src/core/analyzers/android/axml.js';
-import { extractAndroidManifest } from '../../src/core/analyzers/android/manifestExtract.js';
+import { parseAxml } from '@kingsdk/core/analyzers/android/axml.js';
+import { extractAndroidManifest } from '@kingsdk/core/analyzers/android/manifestExtract.js';
 import { buildAxml } from '../helpers/fixtureAxml.js';
 
 const ANDROID_NS = 'http://schemas.android.com/apk/res/android';

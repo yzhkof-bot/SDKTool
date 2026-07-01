@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { androidPermissionAnalyzer, derivePermissions } from '../../src/core/analyzers/android/permission.js';
+import { androidPermissionAnalyzer, derivePermissions } from '@kingsdk/core/analyzers/android/permission.js';
 import {
   ANDROID_PERMISSION_LEVELS,
   ANDROID_SENSITIVE_PERMISSIONS,
-} from '../../src/shared/constants.js';
-import type { AnalyzerContext, ReportWarning, VirtualPackage } from '../../src/shared/schema.js';
+} from '@kingsdk/shared/constants.js';
+import type { AnalyzerContext, ReportWarning, VirtualPackage } from '@kingsdk/shared/schema.js';
 
 import { buildAxml } from '../helpers/fixtureAxml.js';
 

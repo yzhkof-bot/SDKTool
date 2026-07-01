@@ -4,8 +4,8 @@ import {
   DATA_PLACEHOLDER,
   renderReportHtml,
   serializeForHtml,
-} from '../src/cli/utils/render.js';
-import type { PackageReport } from '../src/shared/schema.js';
+} from '@kingsdk/viewer/render.js';
+import type { PackageReport } from '@kingsdk/shared/schema.js';
 
 const SAMPLE_REPORT: PackageReport = {
   schemaVersion: '1.0',
@@ -62,7 +62,7 @@ describe('renderReportHtml', () => {
   it('默认模板（构建后）含 __DATA__ 占位且替换后可解析为 PackageReport', async () => {
     const { existsSync } = await import('node:fs');
     const { resolve } = await import('node:path');
-    const tplPath = resolve('templates/report.template.html');
+    const tplPath = resolve('packages/viewer/templates/report.template.html');
     if (!existsSync(tplPath)) {
       console.warn('[skip] templates/report.template.html 不存在，请先 npm run build');
       return;

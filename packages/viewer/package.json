@@ -1,0 +1,14 @@
+{
+  "name": "@kingsdk/viewer",
+  "version": "0.1.0",
+  "description": "King SDK report viewer: browser renderer + single-file HTML template injector.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@kingsdk/shared": "*"
+  }
+}

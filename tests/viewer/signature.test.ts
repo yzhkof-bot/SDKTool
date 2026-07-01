@@ -9,8 +9,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { PackageReport, PackageSignatureInfo } from '../../src/shared/schema.js';
-import { renderSignature } from '../../src/viewer/sections/signature.js';
+import type { PackageReport, PackageSignatureInfo } from '@kingsdk/shared/schema.js';
+import { renderSignature } from '@kingsdk/viewer/sections/signature.js';
 
 function reportWithSignature(
   platform: 'harmony' | 'android',

@@ -9,8 +9,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { PackageReport } from '../../src/shared/schema.js';
-import { renderManifest } from '../../src/viewer/sections/manifest.js';
+import type { PackageReport } from '@kingsdk/shared/schema.js';
+import { renderManifest } from '@kingsdk/viewer/sections/manifest.js';
 
 function makeAndroidReport(
   overrides: Partial<PackageReport['androidManifest']> = {},

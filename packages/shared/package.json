@@ -1,0 +1,11 @@
+{
+  "name": "@kingsdk/shared",
+  "version": "0.1.0",
+  "description": "King SDK shared types, schema and utilities.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  }
+}

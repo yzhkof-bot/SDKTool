@@ -14,9 +14,9 @@ import {
   deltaRatio,
   deltaText,
   fromTo,
-} from '../../src/viewer/diff/helpers.js';
-import { mountDiffApp } from '../../src/viewer/diff/app.js';
-import { SCHEMA_VERSION, type PackageDiffReport } from '../../src/shared/schema.js';
+} from '@kingsdk/viewer/diff/helpers.js';
+import { mountDiffApp } from '@kingsdk/viewer/diff/app.js';
+import { SCHEMA_VERSION, type PackageDiffReport } from '@kingsdk/shared/schema.js';
 
 /* -------------------------------------------------------------------------- */
 /* helpers                                                                     */

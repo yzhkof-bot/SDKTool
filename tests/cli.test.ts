@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { runAnalyzeCommand } from '../src/cli/commands/analyze.js';
-import { UsageError } from '../src/cli/errors.js';
+import { runAnalyzeCommand } from '../packages/cli/src/commands/analyze.js';
+import { UsageError } from '../packages/cli/src/errors.js';
 
 import { buildFixtureHap } from './helpers/fixtureHap.js';
 
@@ -93,7 +93,7 @@ describe('CLI analyze command (M1)', () => {
   it('--html 写入单文件 HTML 报告', async () => {
     const { existsSync } = await import('node:fs');
     const { resolve } = await import('node:path');
-    if (!existsSync(resolve('templates/report.template.html'))) {
+    if (!existsSync(resolve('packages/viewer/templates/report.template.html'))) {
       console.warn('[skip] templates/report.template.html 不存在，请先 npm run build');
       return;
     }

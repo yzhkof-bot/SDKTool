@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { runViewCommand } from '../src/cli/commands/view.js';
-import { UsageError } from '../src/cli/errors.js';
-import type { PackageReport } from '../src/shared/schema.js';
+import { runViewCommand } from '../packages/cli/src/commands/view.js';
+import { UsageError } from '../packages/cli/src/errors.js';
+import type { PackageReport } from '@kingsdk/shared/schema.js';
 
 const SAMPLE_REPORT: PackageReport = {
   schemaVersion: '1.0',

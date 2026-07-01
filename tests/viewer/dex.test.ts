@@ -4,8 +4,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { PackageReport } from '../../src/shared/schema.js';
-import { renderDex } from '../../src/viewer/sections/dex.js';
+import type { PackageReport } from '@kingsdk/shared/schema.js';
+import { renderDex } from '@kingsdk/viewer/sections/dex.js';
 
 function baseReport(overrides: Partial<PackageReport> = {}): PackageReport {
   return {

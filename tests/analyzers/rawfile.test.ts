@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzePackage } from '../../src/core/index.js';
+import { analyzePackage } from '@kingsdk/core/index.js';
 
 import { buildFixtureHap } from '../helpers/fixtureHap.js';
 
@@ -102,7 +102,7 @@ describe('RawfileAnalyzer', () => {
     // 改为：直接在 analyzer 上跑没有 resources/rawfile/ 的 fixture：
     //   buildFixtureHap 默认会写 14 个 rawfile 条目，因此这个 case 走 unit-style，
     //   通过 mock 一个空 entries 的 VirtualPackage。
-    const { rawfileAnalyzer } = await import('../../src/core/analyzers/harmony/rawfile.js');
+    const { rawfileAnalyzer } = await import('@kingsdk/core/analyzers/harmony/rawfile.js');
     const ctx = {
       hap: {
         filePath: '/tmp/empty.hap',
@@ -121,7 +121,7 @@ describe('RawfileAnalyzer', () => {
   });
 
   it('未命中 builtin/<id>/* 时 packages 字段省略', async () => {
-    const { rawfileAnalyzer } = await import('../../src/core/analyzers/harmony/rawfile.js');
+    const { rawfileAnalyzer } = await import('@kingsdk/core/analyzers/harmony/rawfile.js');
     const ctx = {
       hap: {
         filePath: '/tmp/x.hap',

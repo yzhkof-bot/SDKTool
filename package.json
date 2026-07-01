@@ -1,32 +1,12 @@
 {
-  "name": "@kingsdk/tools",
+  "name": "kingsdk-monorepo",
   "version": "0.1.0",
-  "description": "King SDK developer toolkit - HarmonyOS Hap analysis CLI and visual viewer.",
+  "description": "King SDK developer toolkit monorepo - core analysis engine, viewer, HTTP server, CLI.",
   "license": "MIT",
-  "private": false,
+  "private": true,
   "type": "module",
-  "bin": {
-    "kingsdk": "./dist/cli/index.cjs"
-  },
-  "main": "./dist/core/index.cjs",
-  "module": "./dist/core/index.js",
-  "types": "./dist/core/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.js",
-      "require": "./dist/core/index.cjs"
-    },
-    "./shared": {
-      "types": "./dist/shared/index.d.ts",
-      "import": "./dist/shared/index.js",
-      "require": "./dist/shared/index.cjs"
-    }
-  },
-  "files": [
-    "dist",
-    "templates",
-    "README.md"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
     "build": "tsup && node scripts/buildViewerTemplate.mjs",
@@ -35,8 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "cli": "tsx src/cli/index.ts",
-    "clean": "rimraf dist templates",
+    "cli": "tsx packages/cli/src/index.ts",
+    "clean": "rimraf dist packages/*/dist packages/viewer/templates",
     "wb": "node scripts/restart-workbench.mjs",
     "wb:nobuild": "node scripts/restart-workbench.mjs --no-build",
     "wb:dev": "node scripts/restart-workbench.mjs --dev",
@@ -44,13 +24,6 @@
   },
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "@wecom/aibot-node-sdk": "^1.0.7",
-    "@yzhkof-bot/sagent-sdk": "github:yzhkof-bot/SAgentSDK#main",
-    "cac": "^6.7.14",
-    "json5": "^2.2.3",
-    "yauzl": "^3.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

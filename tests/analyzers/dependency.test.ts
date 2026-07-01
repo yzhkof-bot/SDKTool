@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { analyzePackage } from '../../src/core/index.js';
+import { analyzePackage } from '@kingsdk/core/index.js';
 
 import { buildFixtureHap, DEMO_MODULE_JSON } from '../helpers/fixtureHap.js';
 

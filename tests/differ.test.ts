@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { diffPackageReports } from '../src/core/differ/index.js';
-import { keyBy, listDiff, numberDelta } from '../src/core/differ/utils.js';
-import { SCHEMA_VERSION } from '../src/shared/schema.js';
+import { diffPackageReports } from '@kingsdk/core/differ/index.js';
+import { keyBy, listDiff, numberDelta } from '@kingsdk/core/differ/utils.js';
+import { SCHEMA_VERSION } from '@kingsdk/shared/schema.js';
 import type {
   DexDetailsInfo,
   DexInfo,
@@ -17,7 +17,7 @@ import type {
   PackageResources,
   PackageSignatureInfo,
   PackageSizeInfo,
-} from '../src/shared/schema.js';
+} from '@kingsdk/shared/schema.js';
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                     */
@@ -543,7 +543,7 @@ describe('diffPackageReports - dexDetails', () => {
 /* dex method-level diff（9d）                                                   */
 /* -------------------------------------------------------------------------- */
 
-import type { DexMethodEntry } from '../src/shared/schema.js';
+import type { DexMethodEntry } from '@kingsdk/shared/schema.js';
 
 function dexMethod(overrides: Partial<DexMethodEntry> = {}): DexMethodEntry {
   return {

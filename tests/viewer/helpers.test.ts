@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { badge, h, kv, ratioBar, table } from '../../src/viewer/helpers.js';
+import { badge, h, kv, ratioBar, table } from '@kingsdk/viewer/helpers.js';
 
 describe('viewer/helpers', () => {
   describe('h()', () => {

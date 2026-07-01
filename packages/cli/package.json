@@ -1,0 +1,20 @@
+{
+  "name": "@kingsdk/cli",
+  "version": "0.1.0",
+  "description": "King SDK developer toolkit CLI - analyze / compare / view / workbench.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "kingsdk": "../../dist/cli/index.cjs"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@kingsdk/core": "*",
+    "@kingsdk/shared": "*",
+    "@kingsdk/viewer": "*",
+    "@kingsdk/server": "*",
+    "cac": "^6.7.14"
+  }
+}

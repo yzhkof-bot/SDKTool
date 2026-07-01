@@ -1,0 +1,23 @@
+{
+  "name": "@kingsdk/server",
+  "version": "0.1.0",
+  "description": "King SDK workbench HTTP API server (analyze / compare / devops / AI / wework).",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/server.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@kingsdk/core": "*",
+    "@kingsdk/shared": "*",
+    "@kingsdk/viewer": "*",
+    "@wecom/aibot-node-sdk": "^1.0.7",
+    "@yzhkof-bot/sagent-sdk": "github:yzhkof-bot/SAgentSDK#main",
+    "json5": "^2.2.3",
+    "yauzl": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/yauzl": "^2.10.3"
+  }
+}

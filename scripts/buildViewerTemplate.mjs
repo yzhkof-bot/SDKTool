@@ -1,8 +1,8 @@
-// 构建后处理：把 dist/viewer/{main,diff}.global.js 与 src/viewer/styles.css 内联到对应的 HTML shell，
-// 产出 templates/{report,diff}.template.html。
+// 构建后处理：把 dist/viewer/{main,diff}.global.js 与 packages/viewer/src/styles.css
+// 内联到对应的 HTML shell，产出 packages/viewer/templates/{report,diff}.template.html。
 //
-// 这些模板包含 __DATA_PLACEHOLDER__ 占位符；CLI render.ts 在运行时把 HapReport / HapDiffReport JSON
-// 注入进去，写出最终单文件 HTML，可双击直接在浏览器里打开，无需任何 HTTP 服务。
+// 这些模板包含 __DATA_PLACEHOLDER__ 占位符；viewer 包 render.ts 在运行时把
+// HapReport / HapDiffReport JSON 注入进去，写出最终单文件 HTML，可双击直接打开。
 
 import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -10,26 +10,28 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
+const viewerSrc = join(root, 'packages/viewer/src');
+const templatesOut = join(root, 'packages/viewer/templates');
 
 /** @type {Array<{ name: string, htmlShell: string, bundle: string, bundleFallback: string, out: string }>} */
 const TARGETS = [
   {
     name: 'report',
-    htmlShell: join(root, 'src/viewer/index.html'),
+    htmlShell: join(viewerSrc, 'index.html'),
     bundle: join(root, 'dist/viewer/main.global.js'),
     bundleFallback: join(root, 'dist/viewer/main.js'),
-    out: join(root, 'templates/report.template.html'),
+    out: join(templatesOut, 'report.template.html'),
   },
   {
     name: 'diff',
-    htmlShell: join(root, 'src/viewer/diff/index.html'),
+    htmlShell: join(viewerSrc, 'diff/index.html'),
     bundle: join(root, 'dist/viewer/diff.global.js'),
     bundleFallback: join(root, 'dist/viewer/diff.js'),
-    out: join(root, 'templates/diff.template.html'),
+    out: join(templatesOut, 'diff.template.html'),
   },
 ];
 
-const styles = await readFile(join(root, 'src/viewer/styles.css'), 'utf8');
+const styles = await readFile(join(viewerSrc, 'styles.css'), 'utf8');
 
 async function readIfExists(p) {
   try {
@@ -40,7 +42,7 @@ async function readIfExists(p) {
   }
 }
 
-await mkdir(join(root, 'templates'), { recursive: true });
+await mkdir(templatesOut, { recursive: true });
 
 for (const t of TARGETS) {
   const shell = await readFile(t.htmlShell, 'utf8');

@@ -7,10 +7,10 @@ import {
   extractDexStringList,
   parseDexHeader,
   readUleb128,
-} from '../../src/core/analyzers/android/_dex.js';
-import { androidDexAnalyzer } from '../../src/core/analyzers/android/dex.js';
-import { androidDexDetailsAnalyzer } from '../../src/core/analyzers/android/dexDetails.js';
-import type { AnalyzerContext, VirtualPackage } from '../../src/shared/schema.js';
+} from '@kingsdk/core/analyzers/android/_dex.js';
+import { androidDexAnalyzer } from '@kingsdk/core/analyzers/android/dex.js';
+import { androidDexDetailsAnalyzer } from '@kingsdk/core/analyzers/android/dexDetails.js';
+import type { AnalyzerContext, VirtualPackage } from '@kingsdk/shared/schema.js';
 
 import {
   DEMO_DEX_STRINGS,

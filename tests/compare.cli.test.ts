@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { runCompareCommand } from '../src/cli/commands/compare.js';
-import { UsageError } from '../src/cli/errors.js';
-import { analyzePackage } from '../src/core/index.js';
-import { SCHEMA_VERSION } from '../src/shared/schema.js';
+import { runCompareCommand } from '../packages/cli/src/commands/compare.js';
+import { UsageError } from '../packages/cli/src/errors.js';
+import { analyzePackage } from '@kingsdk/core/index.js';
+import { SCHEMA_VERSION } from '@kingsdk/shared/schema.js';
 
 import { buildFixtureHap } from './helpers/fixtureHap.js';
 
@@ -106,7 +106,7 @@ describe('CLI compare command (M4)', () => {
   });
 
   it('--html 产出包含 PackageDiffReport JSON 的单文件 HTML（依赖 build 过的 templates/diff.template.html）', async () => {
-    if (!existsSync(resolve('templates/diff.template.html'))) {
+    if (!existsSync(resolve('packages/viewer/templates/diff.template.html'))) {
       console.warn('[skip] templates/diff.template.html 不存在，请先 npm run build');
       return;
     }

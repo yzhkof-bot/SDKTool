@@ -9,8 +9,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { PackagePermission, PackageReport } from '../../src/shared/schema.js';
-import { renderPermissions } from '../../src/viewer/sections/permissions.js';
+import type { PackagePermission, PackageReport } from '@kingsdk/shared/schema.js';
+import { renderPermissions } from '@kingsdk/viewer/sections/permissions.js';
 
 function reportWithPermissions(
   platform: 'harmony' | 'android',

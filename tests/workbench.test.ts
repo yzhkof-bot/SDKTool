@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { browseDirectory, BrowseError } from '../src/cli/workbench/browse.js';
-import { locateByMeta } from '../src/cli/workbench/locate.js';
-import { JobStore } from '../src/cli/workbench/store.js';
+import { browseDirectory, BrowseError } from '@kingsdk/server/browse.js';
+import { locateByMeta } from '@kingsdk/server/locate.js';
+import { JobStore } from '@kingsdk/server/store.js';
 import {
   startWorkbenchServer,
   type WorkbenchServerHandle,
-} from '../src/cli/workbench/server.js';
+} from '@kingsdk/server/server.js';
 
 import { buildFixtureApk, DEMO_APK_PACKAGE } from './helpers/fixtureApk.js';
 import { buildFixtureHap } from './helpers/fixtureHap.js';
