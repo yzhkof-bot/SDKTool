@@ -22,7 +22,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu, shell } from 'electron';
 
 /**
  * 就绪标记：必须与 @kingsdk/server 的 main.ts READY_MARKER 保持一致。
@@ -143,11 +143,24 @@ function createWindow(url: string): void {
     width: 1440,
     height: 900,
     title: 'KingSDK Workbench',
+    // 去掉菜单栏：Windows/Linux 下不显示应用菜单栏（配合下方 Menu.setApplicationMenu(null)）
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(distRoot(), 'electron', 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+  // 彻底移除应用菜单（Win/Linux 整条菜单栏消失；macOS 顶部系统菜单由 OS 强制保留，窗口内无菜单）
+  mainWindow.setMenu(null);
+  // 历史记录里的报告链接是 <a target="_blank">：默认 Electron 会开一个裸 BrowserWindow。
+  // 这里改为交给系统默认浏览器打开（http/https 才放行），报告在外部浏览器新标签页显示，
+  // 不占用工作台窗口、也不弹 Electron 子窗口。
+  mainWindow.webContents.setWindowOpenHandler(({ url: target }) => {
+    if (target.startsWith('http://') || target.startsWith('https://')) {
+      void shell.openExternal(target);
+    }
+    return { action: 'deny' };
   });
   void mainWindow.loadURL(url);
   mainWindow.on('closed', () => {
@@ -163,6 +176,8 @@ function killServer(): void {
 }
 
 app.whenReady().then(async () => {
+  // 全局移除应用菜单（在建窗前设置，确保 Win/Linux 无菜单栏；也去掉默认快捷键菜单项）
+  Menu.setApplicationMenu(null);
   try {
     const url = await startServer();
     createWindow(url);
