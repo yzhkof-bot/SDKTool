@@ -1,0 +1,15 @@
+{
+  "name": "@kingsdk/electron",
+  "version": "0.1.0",
+  "description": "King SDK desktop shell (Electron) - spawns a local server subprocess and hosts the workbench UI.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "../../dist/electron/main.cjs",
+  "dependencies": {
+    "@kingsdk/server": "*"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}

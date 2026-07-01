@@ -21,6 +21,38 @@ export default defineConfig([
       js: '#!/usr/bin/env node',
     },
   },
+  // Server：独立可执行入口（Electron spawn / web 部署共用）
+  {
+    entry: {
+      main: 'packages/server/src/main.ts',
+    },
+    format: ['cjs'],
+    target: 'node20',
+    platform: 'node',
+    outDir: 'dist/server',
+    splitting: false,
+    sourcemap: true,
+    clean: false,
+    dts: false,
+    shims: false,
+  },
+  // Electron 主进程 + preload：cjs、node 平台、electron external（运行时由 electron 提供）
+  {
+    entry: {
+      main: 'packages/electron/src/main.ts',
+      preload: 'packages/electron/src/preload.ts',
+    },
+    format: ['cjs'],
+    target: 'node20',
+    platform: 'node',
+    outDir: 'dist/electron',
+    splitting: false,
+    sourcemap: true,
+    clean: false,
+    dts: false,
+    shims: false,
+    external: ['electron'],
+  },
   // Viewer (analyze)：浏览器端 IIFE bundle，被 buildViewerTemplate.mjs 内联到 report.template.html
   {
     entry: {
