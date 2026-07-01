@@ -1,4 +1,4 @@
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -347,6 +347,95 @@ describe('startWorkbenchServer', () => {
     expect(report.schemaVersion).toBe('1.0');
   });
 
+  it('上传 → 分析：POST /api/uploads 返回 uploadId，analyze 用 upload 来源跑通', async () => {
+    const hap = await buildFixtureHap();
+    const bytes = await readFile(hap);
+
+    // 1) 流式上传原始字节
+    const up = await fetch(`${handle.url}api/uploads?name=demo.hap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: bytes,
+    });
+    expect(up.status).toBe(201);
+    const { uploadId, size } = await up.json();
+    expect(typeof uploadId).toBe('string');
+    expect(size).toBe(bytes.length);
+
+    // 2) 用 upload 来源分析
+    const startResp = await fetch(`${handle.url}api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: { type: 'upload', uploadId, name: 'demo.hap' } }),
+    });
+    expect(startResp.status).toBe(202);
+    const { jobId } = await startResp.json();
+
+    const job = await pollUntilFinished(handle, jobId);
+    expect(job.status).toBe('done');
+    // 历史来源标记为上传
+    expect(job.inputs?.[0]).toContain('[上传]');
+
+    const report = await (await fetch(`${handle.url}jobs/${jobId}/json`)).json();
+    expect(report.schemaVersion).toBe('1.0');
+  });
+
+  it('上传 → 对比：两侧都用 upload 来源，同包自比 identical=true', async () => {
+    const hap = await buildFixtureHap();
+    const bytes = await readFile(hap);
+
+    async function upload(name: string): Promise<string> {
+      const r = await fetch(`${handle.url}api/uploads?name=${encodeURIComponent(name)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: bytes,
+      });
+      expect(r.status).toBe(201);
+      return (await r.json()).uploadId;
+    }
+    const leftId = await upload('a.hap');
+    const rightId = await upload('b.hap');
+
+    const startResp = await fetch(`${handle.url}api/compare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        left: { type: 'upload', uploadId: leftId, name: 'a.hap' },
+        right: { type: 'upload', uploadId: rightId, name: 'b.hap' },
+      }),
+    });
+    expect(startResp.status).toBe(202);
+    const { jobId } = await startResp.json();
+
+    const job = await pollUntilFinished(handle, jobId);
+    expect(job.status).toBe('done');
+
+    const diff = await (await fetch(`${handle.url}jobs/${jobId}/json`)).json();
+    expect(diff.summary.identical).toBe(true);
+  });
+
+  it('POST /api/uploads 缺 name → 400', async () => {
+    const r = await fetch(`${handle.url}api/uploads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: Buffer.from('x'),
+    });
+    expect(r.status).toBe(400);
+    expect((await r.json()).error).toBe('BAD_REQUEST');
+  });
+
+  it('analyze 引用不存在的 uploadId → job 落 error', async () => {
+    const startResp = await fetch(`${handle.url}api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: { type: 'upload', uploadId: '0123456789abcdef', name: 'x.hap' } }),
+    });
+    expect(startResp.status).toBe(202);
+    const { jobId } = await startResp.json();
+    const job = await pollUntilFinished(handle, jobId);
+    expect(job.status).toBe('error');
+  });
+
   it('POST /api/analyze 带 platform=android 跑通 .apk fixture，job + report 都标 android', async () => {
     const apk = await buildFixtureApk();
 
@@ -630,6 +719,95 @@ describe('startWorkbenchServer', () => {
     const r = await fetch(`${handle.url}api/no-such-route`);
     expect(r.status).toBe(404);
     expect((await r.json()).error).toBe('NOT_FOUND');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* web 模式：屏蔽一切"碰服务器本机文件系统"的能力（远程部署安全）              */
+/* -------------------------------------------------------------------------- */
+
+describe('startWorkbenchServer web 模式', () => {
+  let handle: WorkbenchServerHandle;
+
+  beforeEach(async () => {
+    const cacheDir = await newTmp();
+    handle = await startWorkbenchServer({
+      port: 0,
+      toolVersion: 'wb-test',
+      cacheDir,
+      mode: 'web',
+      log: () => {},
+    });
+  });
+
+  afterEach(async () => {
+    await handle.close();
+  });
+
+  it('首页注入 mode=web 且 devopsOnly 别名为 true', async () => {
+    const text = await (await fetch(handle.url)).text();
+    expect(text).toContain('mode: "web"');
+    expect(text).toContain('devopsOnly: true');
+  });
+
+  it('GET /api/browse → 403 WEB_MODE（不暴露服务器目录树）', async () => {
+    const dir = await newTmp();
+    const r = await fetch(`${handle.url}api/browse?dir=${encodeURIComponent(dir)}`);
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toBe('WEB_MODE');
+  });
+
+  it('POST /api/open-cache-dir → 403 WEB_MODE（不在服务器弹窗）', async () => {
+    const r = await fetch(`${handle.url}api/open-cache-dir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toBe('WEB_MODE');
+  });
+
+  it('POST /api/local-project → 403 WEB_MODE（不往服务器磁盘写）', async () => {
+    const r = await fetch(`${handle.url}api/local-project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buildId: 'b1', targetDir: '/tmp' }),
+    });
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toBe('WEB_MODE');
+  });
+
+  it('POST /api/analyze 带本地路径 → 403（仅接受蓝盾制品来源）', async () => {
+    const hap = await buildFixtureHap();
+    const r = await fetch(`${handle.url}api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: hap }),
+    });
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toBe('DEVOPS_ONLY');
+  });
+
+  it('上传流在 web 模式同样放行（上传→分析跑通）', async () => {
+    const hap = await buildFixtureHap();
+    const bytes = await readFile(hap);
+    const up = await fetch(`${handle.url}api/uploads?name=demo.hap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: bytes,
+    });
+    expect(up.status).toBe(201);
+    const { uploadId } = await up.json();
+
+    const startResp = await fetch(`${handle.url}api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: { type: 'upload', uploadId, name: 'demo.hap' } }),
+    });
+    expect(startResp.status).toBe(202);
+    const { jobId } = await startResp.json();
+    const job = await pollUntilFinished(handle, jobId);
+    expect(job.status).toBe('done');
   });
 });
 

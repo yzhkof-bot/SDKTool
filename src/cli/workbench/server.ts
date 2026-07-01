@@ -18,7 +18,9 @@ import {
 } from './devops.js';
 import { DevopsConfigError, loadDevopsConfig } from './devopsConfig.js';
 import { ArtifactCache } from './artifactCache.js';
-import { WeworkBotManager } from './wework.js';
+import { UploadStore, UploadError } from './uploadStore.js';
+import { WeworkBotManager, WEWORK_REPLY_MODES } from './wework.js';
+import type { WeworkReplyMode, WeworkSendRequest } from './wework.js';
 import { locateByMeta } from './locate.js';
 import { LocalProjectStore, startLocalProjectJob } from './localProject.js';
 import { startAnalyzeJob, startCompareJob, type InputSource } from './runner.js';
@@ -32,6 +34,17 @@ import {
 } from './ai/index.js';
 import type { InlineImage, InlineImageMediaType } from './ai/types.js';
 
+/**
+ * workbench 运行形态：
+ *  - 'desktop'：本机（CLI / Electron 内嵌 server）。全功能，允许本地路径输入、
+ *    服务端目录浏览、配置本地工程、打开缓存目录。
+ *  - 'web'：远程部署（server 跑在别的机器）。所有"碰服务器本机文件系统"的能力
+ *    都屏蔽，只接受蓝盾制品来源——因为对远程用户来说服务器磁盘既无意义又危险。
+ *
+ * 旧的 devopsOnly 语义是本模式的一个子集，'web' 完整覆盖它。
+ */
+export type WorkbenchMode = 'desktop' | 'web';
+
 export interface WorkbenchServerOptions {
   port?: number;
   host?: string;
@@ -44,8 +57,14 @@ export interface WorkbenchServerOptions {
    */
   prettyJson?: boolean;
   /**
-   * devops-only（仅蓝盾包）模式：开启后分析/对比界面禁用本地路径输入，
-   * 只接受蓝盾制品来源。缺省读环境变量 SDKTOOL_DEVOPS_ONLY（由启动脚本设置）。
+   * 运行形态，见 {@link WorkbenchMode}。缺省按以下优先级解析：
+   * options.mode > options.devopsOnly(true→web) > 环境变量 SDKTOOL_DEVOPS_ONLY > 'desktop'。
+   */
+  mode?: WorkbenchMode;
+  /**
+   * @deprecated 用 {@link mode} 代替。等价于 mode:'web'；仅为兼容既有 Linux 部署脚本保留。
+   * devops-only（仅蓝盾包）模式：开启后分析/对比界面禁用本地路径输入，只接受蓝盾制品来源。
+   * 缺省读环境变量 SDKTOOL_DEVOPS_ONLY（由启动脚本设置）。
    */
   devopsOnly?: boolean;
 }
@@ -89,6 +108,8 @@ export async function startWorkbenchServer(
   const store = new JobStore(options.cacheDir ?? defaultCacheDir(port));
   const conversations = new ConversationManager({ store, log });
   const localProjects = new LocalProjectStore();
+  // 上传件临时存储（分析/对比的本地文件来源统一走上传，边收边写盘）
+  const uploads = new UploadStore(store.cacheDir);
 
   // 蓝盾流水线注册表（来自 pipelines.config.json）。配置错误时给出清晰报错而非静默。
   let devops: DevopsRegistry;
@@ -106,7 +127,12 @@ export async function startWorkbenchServer(
   log(`[workbench] 制品缓存目录 ${devops.artifactCache.dir}（上限 ${(devops.artifactCache.maxBytes / (1024 ** 3)).toFixed(0)} GiB）\n`);
 
   // 企业微信智能机器人长连接管理器（仅供「企业微信机器人」测试界面用，进程内单例）。
-  const wework = new WeworkBotManager(loadDevopsConfig().wework, log);
+  // 收到的图片/文件/视频会下载解密落盘到缓存目录下的 wework-media/。
+  const wework = new WeworkBotManager(
+    loadDevopsConfig().wework,
+    log,
+    join(store.cacheDir, 'wework-media'),
+  );
   if (wework.configured) {
     log('[workbench] 企业微信机器人：已读取 wework 配置，可在「企业微信机器人」标签页连接测试\n');
   } else {
@@ -114,12 +140,13 @@ export async function startWorkbenchServer(
   }
 
   const prettyJson = options.prettyJson;
-  // devops-only 标记：由启动脚本（如 Linux 部署脚本）设环境变量 SDKTOOL_DEVOPS_ONLY 打开。
-  // 打开后分析/对比只接受蓝盾制品来源，禁用本地路径输入（前端隐藏 + 后端兜底拒绝）。
-  const devopsOnly = options.devopsOnly ?? readDevopsOnlyEnv();
-  if (devopsOnly) log('[workbench] devops-only 模式：仅支持蓝盾包对比，已禁用本地路径输入\n');
+  // 运行形态解析：mode 显式最高优先，其次兼容旧 devopsOnly / 环境变量。
+  // webMode 为内部统一的布尔视图，贯穿路由门控与前端注入。
+  const mode = resolveMode(options);
+  const webMode = mode === 'web';
+  if (webMode) log('[workbench] web 模式：仅支持蓝盾包对比，已禁用本地路径 / 目录浏览 / 配置本地工程 / 打开缓存目录\n');
   const server: Server = createServer((req, res) => {
-    handle(req, res, store, conversations, localProjects, devops, artifactCache, wework, options.toolVersion, log, prettyJson, devopsOnly).catch((err) => {
+    handle(req, res, store, conversations, localProjects, devops, artifactCache, uploads, wework, options.toolVersion, log, prettyJson, webMode).catch((err) => {
       log(`[workbench] handler error: ${err?.stack ?? err}\n`);
       if (!res.headersSent) {
         res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -164,18 +191,19 @@ async function handle(
   localProjects: LocalProjectStore,
   devops: DevopsRegistry,
   artifactCache: ArtifactCache,
+  uploads: UploadStore,
   wework: WeworkBotManager,
   toolVersion: string,
   log: (t: string) => void,
   prettyJson: boolean | undefined,
-  devopsOnly: boolean,
+  webMode: boolean,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://x');
   const method = req.method ?? 'GET';
 
   // 静态：工作台首页
   if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-    sendHtml(res, renderWorkbenchPage(store.cacheDir, devopsOnly));
+    sendHtml(res, renderWorkbenchPage(store.cacheDir, webMode ? 'web' : 'desktop'));
     return;
   }
   if (method === 'GET' && url.pathname === '/healthz') {
@@ -185,9 +213,35 @@ async function handle(
 
   // API
   if (method === 'POST' && url.pathname === '/api/open-cache-dir') {
+    // web 模式：缓存目录在远程服务器上，"打开"无意义且会在服务器弹窗，直接拒绝
+    if (webMode) {
+      sendJson(res, 403, { error: 'WEB_MODE', message: 'web 模式不支持打开服务器本机目录' });
+      return;
+    }
     const cacheDir = store.cacheDir;
     openInExplorer(cacheDir, log);
     sendJson(res, 200, { opened: cacheDir });
+    return;
+  }
+
+  // 上传本地文件（分析/对比的"本地文件"来源统一走这里，两模式都放行）。
+  // 原始字节直接流式落盘（不占内存），文件名走 ?name= 查询参数；返回 uploadId。
+  if (method === 'POST' && url.pathname === '/api/uploads') {
+    const name = url.searchParams.get('name') ?? '';
+    if (!name.trim()) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: '缺少 name 查询参数（原始文件名）' });
+      return;
+    }
+    try {
+      const rec = await uploads.saveFromRequest(req, name.trim());
+      sendJson(res, 201, { uploadId: rec.uploadId, name: rec.name, size: rec.size });
+    } catch (e) {
+      if (e instanceof UploadError) {
+        sendJson(res, e.statusCode, { error: 'UPLOAD_FAILED', message: e.message });
+      } else {
+        throw e;
+      }
+    }
     return;
   }
 
@@ -205,6 +259,11 @@ async function handle(
   }
 
   if (method === 'GET' && url.pathname === '/api/browse') {
+    // web 模式：屏蔽服务端目录浏览，避免暴露远程服务器文件系统
+    if (webMode) {
+      sendJson(res, 403, { error: 'WEB_MODE', message: 'web 模式不支持浏览服务器目录' });
+      return;
+    }
     try {
       const dir = url.searchParams.get('dir') ?? undefined;
       const result = await browseDirectory(dir || undefined);
@@ -287,6 +346,11 @@ async function handle(
 
   // 配置本地工程：下载 il2cpp 产物 → 解压 → 覆盖工程 Data
   if (method === 'POST' && url.pathname === '/api/local-project') {
+    // web 模式：会往服务器磁盘写并要求本地目标目录，远程无意义且危险，屏蔽
+    if (webMode) {
+      sendJson(res, 403, { error: 'WEB_MODE', message: 'web 模式不支持配置本地工程' });
+      return;
+    }
     const body = await readJson(req).catch((e) => ({ __error: e }));
     if ('__error' in (body as object)) {
       sendJson(res, 400, { error: 'BAD_JSON', message: String((body as { __error: Error }).__error.message) });
@@ -390,7 +454,7 @@ async function handle(
       sendJson(res, 400, { error: 'BAD_REQUEST', message: '制品来源参数不完整（需要 buildId / artifactPath / name）' });
       return;
     }
-    if (devopsOnly && src.kind === 'path') {
+    if (webMode && src.kind === 'path') {
       sendJson(res, 403, { error: 'DEVOPS_ONLY', message: '当前为蓝盾包模式，仅支持蓝盾制品来源，不接受本地路径' });
       return;
     }
@@ -412,6 +476,7 @@ async function handle(
       prettyJson,
       devops,
       artifactCache,
+      uploads,
     });
     sendJson(res, 202, { jobId: id });
     return;
@@ -434,7 +499,7 @@ async function handle(
       sendJson(res, 400, { error: 'BAD_REQUEST', message: '制品来源参数不完整（需要 buildId / artifactPath / name）' });
       return;
     }
-    if (devopsOnly && (left.kind === 'path' || right.kind === 'path')) {
+    if (webMode && (left.kind === 'path' || right.kind === 'path')) {
       sendJson(res, 403, { error: 'DEVOPS_ONLY', message: '当前为蓝盾包模式，仅支持蓝盾制品来源，不接受本地路径' });
       return;
     }
@@ -456,6 +521,7 @@ async function handle(
       prettyJson,
       devops,
       artifactCache,
+      uploads,
     });
     sendJson(res, 202, { jobId: id });
     return;
@@ -613,22 +679,101 @@ async function handle(
     return;
   }
 
+  if (method === 'POST' && url.pathname === '/api/wework/reply-mode') {
+    const body = (await readJson(req).catch((e) => ({ __error: e }))) as
+      | { mode?: unknown; __error?: Error };
+    if (body.__error) {
+      sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
+      return;
+    }
+    const mode = body.mode;
+    if (typeof mode !== 'string' || !(WEWORK_REPLY_MODES as readonly string[]).includes(mode)) {
+      sendJson(res, 400, {
+        error: 'BAD_REQUEST',
+        message: `mode 取值非法，允许：${WEWORK_REPLY_MODES.join(' | ')}`,
+      });
+      return;
+    }
+    wework.setReplyMode(mode as WeworkReplyMode);
+    sendJson(res, 200, { ...wework.getState() });
+    return;
+  }
+
   if (method === 'POST' && url.pathname === '/api/wework/clear-log') {
     wework.clearLog();
     sendJson(res, 200, { ...wework.getState() });
     return;
   }
 
+  if (method === 'POST' && url.pathname === '/api/wework/upload-media') {
+    const body = (await readJson(req, MESSAGE_BODY_MAX_BYTES).catch((e) => ({ __error: e }))) as
+      | { type?: unknown; filename?: unknown; dataBase64?: unknown; __error?: Error };
+    if (body.__error) {
+      sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
+      return;
+    }
+    const type = body.type;
+    if (type !== 'file' && type !== 'image' && type !== 'voice' && type !== 'video') {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: 'type 必须是 file | image | voice | video' });
+      return;
+    }
+    const filename = typeof body.filename === 'string' ? body.filename : '';
+    const dataBase64 = typeof body.dataBase64 === 'string' ? body.dataBase64 : '';
+    if (!dataBase64) {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: 'dataBase64 不能为空' });
+      return;
+    }
+    const result = await wework.uploadMedia(type, filename, dataBase64);
+    if (!result.ok) {
+      sendJson(res, 400, { error: 'WEWORK_UPLOAD_FAILED', message: result.message ?? '上传失败' });
+      return;
+    }
+    sendJson(res, 200, { item: result.item, ...wework.getState() });
+    return;
+  }
+
   if (method === 'POST' && url.pathname === '/api/wework/send') {
-    const body = (await readJson(req).catch((e) => ({ __error: e }))) as
-      | { chatid?: unknown; content?: unknown; __error?: Error };
+    const body = (await readJson(req).catch((e) => ({ __error: e }))) as {
+      kind?: unknown;
+      chatid?: unknown;
+      content?: unknown;
+      mediaType?: unknown;
+      mediaId?: unknown;
+      title?: unknown;
+      description?: unknown;
+      __error?: Error;
+    };
     if (body.__error) {
       sendJson(res, 400, { error: 'BAD_JSON', message: String(body.__error.message) });
       return;
     }
     const chatid = typeof body.chatid === 'string' ? body.chatid : '';
-    const content = typeof body.content === 'string' ? body.content : '';
-    const result = await wework.sendMarkdown(chatid, content);
+    // 兼容旧前端：不带 kind 视为 markdown
+    const kind = typeof body.kind === 'string' ? body.kind : 'markdown';
+    let request: WeworkSendRequest;
+    if (kind === 'markdown') {
+      request = { kind: 'markdown', chatid, content: typeof body.content === 'string' ? body.content : '' };
+    } else if (kind === 'card') {
+      request = { kind: 'card', chatid };
+    } else if (kind === 'media') {
+      const mediaType = body.mediaType;
+      if (mediaType !== 'file' && mediaType !== 'image' && mediaType !== 'voice' && mediaType !== 'video') {
+        sendJson(res, 400, { error: 'BAD_REQUEST', message: 'mediaType 必须是 file | image | voice | video' });
+        return;
+      }
+      request = {
+        kind: 'media',
+        chatid,
+        mediaType,
+        mediaId: typeof body.mediaId === 'string' ? body.mediaId : '',
+        ...(typeof body.title === 'string' ? { title: body.title } : {}),
+        ...(typeof body.description === 'string' ? { description: body.description } : {}),
+      };
+    } else {
+      sendJson(res, 400, { error: 'BAD_REQUEST', message: 'kind 必须是 markdown | card | media' });
+      return;
+    }
+    const result = await wework.send(request);
     if (!result.ok) {
       sendJson(res, 400, { error: 'WEWORK_SEND_FAILED', message: result.message ?? '发送失败' });
       return;
@@ -946,12 +1091,31 @@ function toInputSource(sourceRaw: unknown, legacyPath: unknown): InputSource | '
       if (!p) return 'INVALID';
       return { kind: 'path', path: p };
     }
+    if (type === 'upload') {
+      const uploadId = typeof s.uploadId === 'string' ? s.uploadId.trim() : '';
+      const name = typeof s.name === 'string' ? s.name.trim() : '';
+      if (!uploadId || !name) return 'INVALID';
+      return { kind: 'upload', uploadId, name };
+    }
     return 'INVALID';
   }
   if (typeof legacyPath === 'string' && legacyPath.trim()) {
     return { kind: 'path', path: legacyPath.trim() };
   }
   return 'EMPTY';
+}
+
+/**
+ * 解析运行形态，优先级：
+ *   1. options.mode 显式指定
+ *   2. options.devopsOnly === true → 'web'（兼容旧调用方）
+ *   3. 环境变量 SDKTOOL_DEVOPS_ONLY 为真 → 'web'（兼容旧部署脚本）
+ *   4. 兜底 'desktop'
+ */
+function resolveMode(options: WorkbenchServerOptions): WorkbenchMode {
+  if (options.mode) return options.mode;
+  if (options.devopsOnly) return 'web';
+  return readDevopsOnlyEnv() ? 'web' : 'desktop';
 }
 
 /**

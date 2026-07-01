@@ -1,18 +1,22 @@
 /**
  * 企业微信智能机器人长连接管理器（封装官方 SDK @wecom/aibot-node-sdk）。
  *
- * 定位：仅供 workbench「企业微信机器人」测试界面使用，验证 BotID/Secret 能否建立长连接、
- * 收发消息是否打通。**不接入项目任何分析/对比功能**，是一个独立的连通性测试器。
+ * 定位：仅供 workbench「企业微信机器人」测试界面使用，把文档里的各种消息形式都做成可一键尝试：
+ *  - 流式回复（aibot_respond_msg，stream 两段刷新）
+ *  - Markdown 富文本回复
+ *  - 模板卡片回复（button_interaction，点按钮 → 自动 updateTemplateCard 更新卡片）
+ *  - 流式 + 模板卡片组合回复
+ *  - 进入会话欢迎语
+ *  - 主动推送（markdown / 模板卡片 / 媒体）
+ *  - 临时素材上传（分片）+ 媒体消息发送
+ *  - 收到图片/文件/视频自动下载并 AES 解密落盘
  *
- * 设计：
- *  - 进程内单例（一个 botId 同一时刻只能有一个有效长连接，SDK 内部已含心跳/重连）
- *  - 维护一个环形日志缓冲（连接/认证/收消息/回消息/事件/错误），前端按 seq 增量轮询
- *  - 收到文本消息可选自动 echo 回复（autoReply），快速验证「用户发 → 机器人收 → 回复」闭环
- *  - 收到进入会话事件自动回欢迎语（5 秒内）
- *  - 暴露主动推送（sendMessage）供测试主动发消息
- *
- * 注意：所有 SDK 调用都包了 try/catch，单条失败只记日志，不影响长连接本身。
+ * **不接入项目任何分析/对比功能**，是一个独立的连通性 / 协议验证器。
+ * 所有 SDK 调用都包了 try/catch，单条失败只记日志，不影响长连接本身。
  */
+
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { WSClient, generateReqId } from '@wecom/aibot-node-sdk';
 import type {
@@ -20,6 +24,8 @@ import type {
   BaseMessage,
   TextMessage,
   EventMessage,
+  TemplateCard,
+  WeComMediaType,
 } from '@wecom/aibot-node-sdk';
 
 import type { WeworkConfig } from './devopsConfig.js';
@@ -32,52 +38,92 @@ export type WeworkStatus =
   | 'closed' // 连接断开（可能在重连）
   | 'error'; // 配置缺失或致命错误
 
+/** 收到文本消息时的自动回复行为。 */
+export type WeworkReplyMode =
+  | 'off' // 不自动回复
+  | 'stream' // 流式 echo（两段刷新，演示流式）
+  | 'markdown' // 一段 markdown 富文本回复
+  | 'card' // 按钮交互模板卡片（点按钮会触发 template_card_event）
+  | 'stream_card'; // 流式 + 模板卡片组合
+
+export const WEWORK_REPLY_MODES: WeworkReplyMode[] = [
+  'off',
+  'stream',
+  'markdown',
+  'card',
+  'stream_card',
+];
+
 /** 一条日志的方向/级别。 */
 export type WeworkLogDir = 'system' | 'in' | 'out' | 'error';
 
 /** 环形日志缓冲里的一条记录。 */
 export interface WeworkLogEntry {
-  /** 自增序号，前端据此做增量轮询 */
   seq: number;
-  /** epoch 毫秒 */
   ts: number;
   dir: WeworkLogDir;
-  /** WebSocket 命令（aibot_msg_callback / aibot_respond_msg / ping 等），可空 */
   cmd?: string;
-  /** 人类可读摘要（前端主显示） */
   text: string;
-  /** 原始结构（点开可查看，已尽量裁剪体积） */
   detail?: unknown;
 }
 
-/** 最近一次会话上下文，方便测试界面「回到最近会话主动发消息」。 */
+/** 最近一次会话上下文。 */
 export interface WeworkLastChat {
   chatid?: string;
   chattype?: string;
   userid?: string;
 }
 
+/** 最近上传的临时素材记录。 */
+export interface WeworkMediaItem {
+  mediaId: string;
+  type: WeComMediaType;
+  filename: string;
+  size: number;
+  at: number;
+}
+
 /** 给前端的状态快照（含增量日志）。 */
 export interface WeworkState {
-  /** botId/secret 是否都已配置 */
   configured: boolean;
-  /** 脱敏后的 botId（前 6 + … + 后 4），未配置为空串 */
   botIdMasked: string;
   wsUrl: string;
   status: WeworkStatus;
   connected: boolean;
   autoReply: boolean;
+  replyMode: WeworkReplyMode;
   lastChat: WeworkLastChat | null;
   stats: { received: number; replied: number; sent: number };
-  /** 自请求的 sinceSeq 之后的新日志（升序） */
+  recentMedia: WeworkMediaItem[];
+  mediaDir: string;
   logs: WeworkLogEntry[];
-  /** 当前缓冲里的最大 seq（首屏 / 增量基准） */
   latestSeq: number;
 }
 
-const MAX_LOG_ENTRIES = 1000;
+/** 主动发送 / 媒体发送的入参。 */
+export type WeworkSendRequest =
+  | { kind: 'markdown'; chatid: string; content: string }
+  | { kind: 'card'; chatid: string }
+  | {
+      kind: 'media';
+      chatid: string;
+      mediaType: WeComMediaType;
+      mediaId: string;
+      title?: string;
+      description?: string;
+    };
 
-/** 脱敏 botId / secret，避免日志或前端泄露完整凭据。 */
+const MAX_LOG_ENTRIES = 1000;
+const MAX_RECENT_MEDIA = 20;
+
+/** 各媒体类型大小上限（字节，base64 解码后）。 */
+const MEDIA_SIZE_LIMIT: Record<WeComMediaType, number> = {
+  image: 10 * 1024 * 1024,
+  voice: 2 * 1024 * 1024,
+  video: 10 * 1024 * 1024,
+  file: 20 * 1024 * 1024,
+};
+
 function mask(s: string): string {
   if (!s) return '';
   if (s.length <= 12) return s.slice(0, 2) + '***';
@@ -87,20 +133,26 @@ function mask(s: string): string {
 export class WeworkBotManager {
   private readonly cfg: WeworkConfig;
   private readonly log: (t: string) => void;
+  private readonly mediaDir: string;
 
   private client: WSClient | null = null;
   private status: WeworkStatus = 'idle';
   private autoReply: boolean;
+  private replyMode: WeworkReplyMode;
   private lastChat: WeworkLastChat | null = null;
   private readonly stats = { received: 0, replied: 0, sent: 0 };
+  private readonly recentMedia: WeworkMediaItem[] = [];
 
   private readonly logs: WeworkLogEntry[] = [];
   private seqCounter = 0;
 
-  constructor(cfg: WeworkConfig, log: (t: string) => void) {
+  constructor(cfg: WeworkConfig, log: (t: string) => void, mediaDir: string) {
     this.cfg = cfg;
     this.autoReply = cfg.autoReply;
+    // 初始回复模式：autoReply 开 → 流式 echo；关 → off
+    this.replyMode = cfg.autoReply ? 'stream' : 'off';
     this.log = log;
+    this.mediaDir = mediaDir;
   }
 
   get configured(): boolean {
@@ -109,14 +161,12 @@ export class WeworkBotManager {
 
   /* ----------------------------- 公开操作 ----------------------------- */
 
-  /** 建立长连接（已连接则先断开重连）。返回是否成功发起。 */
   connect(): { ok: boolean; message?: string } {
     if (!this.configured) {
       this.status = 'error';
       this.append('error', '未配置 BotID / Secret，请在 pipelines.config.json 的 wework 段填写');
       return { ok: false, message: 'wework 未配置 botId / secret' };
     }
-    // 已有连接先拆掉，避免同一 bot 多连接互踢
     this.teardownClient();
 
     this.status = 'connecting';
@@ -128,9 +178,7 @@ export class WeworkBotManager {
         botId: this.cfg.botId,
         secret: this.cfg.secret,
         wsUrl: this.cfg.wsUrl,
-        // 测试场景：有限重连，避免凭据错误时无限重连刷屏
         maxReconnectAttempts: 5,
-        // 收敛 SDK 自身日志到 workbench 日志（debug 静默）
         logger: {
           debug: () => {},
           info: (m: string) => this.log(`[wework] ${m}\n`),
@@ -156,45 +204,61 @@ export class WeworkBotManager {
     return { ok: true };
   }
 
-  /** 主动断开长连接。 */
   disconnect(): void {
     this.teardownClient();
     this.status = 'idle';
     this.append('system', '已主动断开连接');
   }
 
-  /** 切换自动 echo 回复开关。 */
+  /** 旧开关：等价于 replyMode 在 stream / off 间切换（保留兼容前端 toggle）。 */
   setAutoReply(enabled: boolean): void {
     this.autoReply = enabled;
-    this.append('system', `自动回复已${enabled ? '开启' : '关闭'}`);
+    this.replyMode = enabled ? (this.replyMode === 'off' ? 'stream' : this.replyMode) : 'off';
+    this.append('system', `自动回复已${enabled ? '开启' : '关闭'}（模式：${this.replyMode}）`);
   }
 
-  /** 清空日志缓冲（seq 不回退，前端会以新的 latestSeq 为基准）。 */
+  /** 设置收到文本消息时的回复模式。 */
+  setReplyMode(mode: WeworkReplyMode): void {
+    this.replyMode = mode;
+    this.autoReply = mode !== 'off';
+    this.append('system', `回复模式已切换为：${replyModeLabel(mode)}`);
+  }
+
   clearLog(): void {
     this.logs.length = 0;
     this.append('system', '日志已清空');
   }
 
-  /**
-   * 主动推送一条 markdown 消息到指定会话。
-   * chatid：单聊填用户 userid，群聊填群 chatid。
-   */
-  async sendMarkdown(chatid: string, content: string): Promise<{ ok: boolean; message?: string }> {
+  /** 主动发送：markdown / 模板卡片 / 媒体。 */
+  async send(req: WeworkSendRequest): Promise<{ ok: boolean; message?: string }> {
     if (!this.client || !this.client.isConnected) {
       return { ok: false, message: '长连接未建立，请先连接' };
     }
-    if (!chatid.trim()) return { ok: false, message: 'chatid 不能为空' };
-    if (!content.trim()) return { ok: false, message: '消息内容不能为空' };
+    const chatid = req.chatid.trim();
+    if (!chatid) return { ok: false, message: 'chatid 不能为空' };
     try {
-      await this.client.sendMessage(chatid.trim(), {
-        msgtype: 'markdown',
-        markdown: { content },
-      });
+      if (req.kind === 'markdown') {
+        if (!req.content.trim()) return { ok: false, message: '消息内容不能为空' };
+        await this.client.sendMessage(chatid, { msgtype: 'markdown', markdown: { content: req.content } });
+        this.append('out', `主动推送 markdown 到 ${chatid}：${preview(req.content)}`, 'aibot_send_msg', {
+          chatid,
+          content: req.content,
+        });
+      } else if (req.kind === 'card') {
+        const card = buildSampleCard();
+        await this.client.sendMessage(chatid, { msgtype: 'template_card', template_card: card });
+        this.append('out', `主动推送模板卡片到 ${chatid}（task_id=${card.task_id}）`, 'aibot_send_msg', card);
+      } else {
+        if (!req.mediaId.trim()) return { ok: false, message: 'mediaId 不能为空' };
+        await this.client.sendMediaMessage(
+          chatid,
+          req.mediaType,
+          req.mediaId.trim(),
+          req.mediaType === 'video' ? { title: req.title, description: req.description } : undefined,
+        );
+        this.append('out', `主动推送 ${req.mediaType} 媒体到 ${chatid}（media_id=${preview(req.mediaId, 24)}）`, 'aibot_send_msg');
+      }
       this.stats.sent += 1;
-      this.append('out', `主动推送到 ${chatid.trim()}：${preview(content)}`, 'aibot_send_msg', {
-        chatid: chatid.trim(),
-        content,
-      });
       return { ok: true };
     } catch (e) {
       this.append('error', `主动推送失败：${errMsg(e)}`, 'aibot_send_msg');
@@ -202,7 +266,51 @@ export class WeworkBotManager {
     }
   }
 
-  /** 给前端的状态快照（含 sinceSeq 之后的增量日志）。 */
+  /** 上传临时素材（base64 → Buffer → SDK 分片上传）。 */
+  async uploadMedia(
+    type: WeComMediaType,
+    filename: string,
+    dataBase64: string,
+  ): Promise<{ ok: boolean; message?: string; item?: WeworkMediaItem }> {
+    if (!this.client || !this.client.isConnected) {
+      return { ok: false, message: '长连接未建立，请先连接' };
+    }
+    if (!filename.trim()) return { ok: false, message: 'filename 不能为空' };
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(dataBase64, 'base64');
+    } catch {
+      return { ok: false, message: 'dataBase64 解码失败' };
+    }
+    if (buffer.length < 5) return { ok: false, message: '文件过小（至少 5 字节）' };
+    const limit = MEDIA_SIZE_LIMIT[type];
+    if (buffer.length > limit) {
+      return { ok: false, message: `${type} 超过上限 ${(limit / (1024 * 1024)).toFixed(0)}MB` };
+    }
+    try {
+      const result = await this.client.uploadMedia(buffer, { type, filename: filename.trim() });
+      const item: WeworkMediaItem = {
+        mediaId: result.media_id,
+        type: result.type,
+        filename: filename.trim(),
+        size: buffer.length,
+        at: Date.now(),
+      };
+      this.recentMedia.unshift(item);
+      if (this.recentMedia.length > MAX_RECENT_MEDIA) this.recentMedia.length = MAX_RECENT_MEDIA;
+      this.append(
+        'out',
+        `上传素材成功：${item.filename}（${item.type}，${fmtBytes(item.size)}）→ media_id ${preview(item.mediaId, 24)}`,
+        'aibot_upload_media_finish',
+        { media_id: item.mediaId, type: item.type },
+      );
+      return { ok: true, item };
+    } catch (e) {
+      this.append('error', `上传素材失败：${errMsg(e)}`, 'aibot_upload_media_finish');
+      return { ok: false, message: errMsg(e) };
+    }
+  }
+
   getState(sinceSeq = 0): WeworkState {
     const logs = sinceSeq > 0 ? this.logs.filter((l) => l.seq > sinceSeq) : this.logs.slice();
     return {
@@ -212,14 +320,16 @@ export class WeworkBotManager {
       status: this.status,
       connected: Boolean(this.client?.isConnected),
       autoReply: this.autoReply,
+      replyMode: this.replyMode,
       lastChat: this.lastChat,
       stats: { ...this.stats },
+      recentMedia: this.recentMedia.slice(),
+      mediaDir: this.mediaDir,
       logs,
       latestSeq: this.seqCounter,
     };
   }
 
-  /** 进程退出 / server 关闭时调用。 */
   dispose(): void {
     this.teardownClient();
   }
@@ -260,27 +370,23 @@ export class WeworkBotManager {
       this.status = 'connecting';
       this.append('system', 'WebSocket 已连接，等待认证…');
     });
-
     client.on('authenticated', () => {
       this.status = 'connected';
       this.append('system', '✓ 认证成功，长连接已就绪（aibot_subscribe ok）');
     });
-
     client.on('disconnected', (reason: string) => {
       this.status = 'closed';
       this.append('system', `连接断开：${reason || '未知原因'}`);
     });
-
     client.on('reconnecting', (attempt: number) => {
       this.status = 'connecting';
       this.append('system', `正在重连…（第 ${attempt} 次）`);
     });
-
     client.on('error', (err: Error) => {
       this.append('error', `SDK 错误：${err?.message ?? String(err)}`);
     });
 
-    // 所有消息（统一记一条收件日志）
+    // 所有消息：统一记一条收件日志
     client.on('message', (frame: WsFrame<BaseMessage>) => {
       const body = frame.body;
       this.stats.received += 1;
@@ -295,13 +401,26 @@ export class WeworkBotManager {
       );
     });
 
-    // 文本消息：可选自动 echo 回复（流式两段，演示流式刷新）
+    // 文本消息：按 replyMode 自动回复
     client.on('message.text', (frame: WsFrame<TextMessage>) => {
-      if (!this.autoReply) return;
-      void this.echoReply(frame);
+      void this.replyByMode(frame);
     });
 
-    // 事件回调（统一记一条）
+    // 媒体消息：自动下载 + AES 解密落盘
+    client.on('message.image', (frame: WsFrame<BaseMessage>) => {
+      const img = (frame.body as { image?: { url?: string; aeskey?: string } }).image;
+      void this.downloadAndSave('image', img?.url, img?.aeskey);
+    });
+    client.on('message.file', (frame: WsFrame<BaseMessage>) => {
+      const f = (frame.body as { file?: { url?: string; aeskey?: string } }).file;
+      void this.downloadAndSave('file', f?.url, f?.aeskey);
+    });
+    client.on('message.video', (frame: WsFrame<BaseMessage>) => {
+      const v = (frame.body as { video?: { url?: string; aeskey?: string } }).video;
+      void this.downloadAndSave('video', v?.url, v?.aeskey);
+    });
+
+    // 事件回调
     client.on('event', (frame: WsFrame<EventMessage>) => {
       const body = frame.body;
       this.rememberChat(body);
@@ -312,30 +431,49 @@ export class WeworkBotManager {
         slimMessage(body),
       );
     });
-
-    // 进入会话事件：自动回欢迎语（需 5 秒内）
     client.on('event.enter_chat', (frame: WsFrame<EventMessage>) => {
       void this.welcomeReply(frame);
     });
+    client.on('event.template_card_event', (frame: WsFrame<EventMessage>) => {
+      void this.updateCardOnClick(frame);
+    });
   }
 
-  /** 文本消息 echo 回复（流式：先「思考中」，再回显内容）。 */
-  private async echoReply(frame: WsFrame<TextMessage>): Promise<void> {
-    if (!this.client) return;
+  /** 按 replyMode 回复文本消息。 */
+  private async replyByMode(frame: WsFrame<TextMessage>): Promise<void> {
+    if (!this.client || this.replyMode === 'off') return;
     const content = frame.body?.text?.content ?? '';
-    const streamId = generateReqId('stream');
     try {
-      await this.client.replyStream(frame, streamId, '正在思考…', false);
-      await this.client.replyStream(
-        frame,
-        streamId,
-        `已收到你的消息：\n\n> ${content}\n\n（这是 KingSDK 工作台的连通性测试自动回复）`,
-        true,
-      );
+      if (this.replyMode === 'stream') {
+        const streamId = generateReqId('stream');
+        await this.client.replyStream(frame, streamId, '正在思考…', false);
+        await this.client.replyStream(
+          frame,
+          streamId,
+          `已收到你的消息：\n\n> ${content}\n\n（KingSDK 工作台流式 echo 测试回复）`,
+          true,
+        );
+        this.append('out', `流式 echo 回复：${preview(content)}`, 'aibot_respond_msg', { streamId });
+      } else if (this.replyMode === 'markdown') {
+        const streamId = generateReqId('stream');
+        await this.client.replyStream(frame, streamId, buildMarkdownSample(content), true);
+        this.append('out', 'Markdown 富文本回复（含标题/列表/代码/表格）', 'aibot_respond_msg', { streamId });
+      } else if (this.replyMode === 'card') {
+        const card = buildSampleCard();
+        await this.client.replyTemplateCard(frame, card);
+        this.append('out', `模板卡片回复（task_id=${card.task_id}，点按钮可触发更新）`, 'aibot_respond_msg', card);
+      } else if (this.replyMode === 'stream_card') {
+        const streamId = generateReqId('stream');
+        const card = buildSampleCard();
+        await this.client.replyStreamWithCard(frame, streamId, '正在处理你的请求…', false, {
+          templateCard: card,
+        });
+        await this.client.replyStreamWithCard(frame, streamId, `处理完成 ✅\n\n你说的是：**${content}**`, true);
+        this.append('out', `流式 + 模板卡片组合回复（task_id=${card.task_id}）`, 'aibot_respond_msg', card);
+      }
       this.stats.replied += 1;
-      this.append('out', `已 echo 回复：${preview(content)}`, 'aibot_respond_msg', { streamId, content });
     } catch (e) {
-      this.append('error', `echo 回复失败：${errMsg(e)}`, 'aibot_respond_msg');
+      this.append('error', `回复失败（${this.replyMode}）：${errMsg(e)}`, 'aibot_respond_msg');
     }
   }
 
@@ -353,6 +491,49 @@ export class WeworkBotManager {
       this.append('error', `回复欢迎语失败：${errMsg(e)}`, 'aibot_respond_welcome_msg');
     }
   }
+
+  /** 模板卡片按钮点击 → 更新卡片。 */
+  private async updateCardOnClick(frame: WsFrame<EventMessage>): Promise<void> {
+    if (!this.client) return;
+    const ev = frame.body?.event as { event_key?: string; task_id?: string } | undefined;
+    const key = ev?.event_key ?? '';
+    const taskId = ev?.task_id;
+    const updated: TemplateCard = {
+      card_type: 'text_notice',
+      main_title: {
+        title: key === 'confirm' ? '已确认 ✅' : key === 'cancel' ? '已取消 ❌' : `已点击：${key || '未知'}`,
+        desc: '卡片已通过 aibot_respond_update_msg 更新',
+      },
+      sub_title_text: `事件 key=${key}`,
+      ...(taskId ? { task_id: taskId } : {}),
+    };
+    try {
+      await this.client.updateTemplateCard(frame, updated);
+      this.stats.replied += 1;
+      this.append('out', `卡片已更新（点击 key=${key}）`, 'aibot_respond_update_msg', updated);
+    } catch (e) {
+      this.append('error', `更新卡片失败：${errMsg(e)}`, 'aibot_respond_update_msg');
+    }
+  }
+
+  /** 下载并 AES 解密媒体，落盘到 mediaDir。 */
+  private async downloadAndSave(
+    kind: WeComMediaType,
+    url: string | undefined,
+    aeskey: string | undefined,
+  ): Promise<void> {
+    if (!this.client || !url) return;
+    try {
+      const { buffer, filename } = await this.client.downloadFile(url, aeskey);
+      await mkdir(this.mediaDir, { recursive: true });
+      const safe = sanitizeName(filename || `${kind}_${Date.now()}`);
+      const outPath = join(this.mediaDir, `${Date.now()}_${safe}`);
+      await writeFile(outPath, buffer);
+      this.append('in', `已下载并解密${kind}：${safe}（${fmtBytes(buffer.length)}）→ ${outPath}`, 'download');
+    } catch (e) {
+      this.append('error', `下载/解密${kind}失败：${errMsg(e)}`, 'download');
+    }
+  }
 }
 
 /* ----------------------------- 工具函数 ----------------------------- */
@@ -361,13 +542,87 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** 截断长文本用于摘要展示。 */
 function preview(s: string, max = 60): string {
   const one = (s ?? '').replace(/\s+/g, ' ').trim();
   return one.length > max ? one.slice(0, max) + '…' : one;
 }
 
-/** 不同消息类型的一句话摘要。 */
+function fmtBytes(b: number): string {
+  if (!Number.isFinite(b) || b < 0) return '0 B';
+  const u = ['B', 'KiB', 'MiB', 'GiB'];
+  let i = 0;
+  let v = b;
+  while (v >= 1024 && i < u.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${i === 0 ? v.toFixed(0) : v.toFixed(2)} ${u[i]}`;
+}
+
+function sanitizeName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, '_').slice(0, 120) || 'file';
+}
+
+function replyModeLabel(m: WeworkReplyMode): string {
+  return (
+    {
+      off: '不自动回复',
+      stream: '流式 echo',
+      markdown: 'Markdown 富文本',
+      card: '模板卡片',
+      stream_card: '流式 + 卡片',
+    } as Record<WeworkReplyMode, string>
+  )[m];
+}
+
+/** 一段演示常见 markdown 语法的示例回复。 */
+function buildMarkdownSample(userContent: string): string {
+  return [
+    '## 🤖 Markdown 富文本回复',
+    '',
+    `你刚才说：**${userContent}**`,
+    '',
+    '---',
+    '### 列表',
+    '- 无序项 A',
+    '- 无序项 B',
+    '  - 子项 B1',
+    '1. 有序项 1',
+    '2. 有序项 2',
+    '',
+    '> 这是一段引用',
+    '',
+    '`行内代码` 与代码块：',
+    '```',
+    'console.log("hello kingsdk");',
+    '```',
+    '',
+    '| 名称 | 值 |',
+    '| :-- | --: |',
+    '| 流式 | ✅ |',
+    '| 卡片 | ✅ |',
+  ].join('\n');
+}
+
+/** 构造一张按钮交互模板卡片（带确认/取消按钮，可点击触发 template_card_event）。 */
+function buildSampleCard(): TemplateCard {
+  return {
+    card_type: 'button_interaction',
+    source: { desc: 'KingSDK 工作台' },
+    main_title: { title: 'KingSDK 测试卡片', desc: '点击下方按钮会触发 template_card_event' },
+    sub_title_text: '点击后机器人会自动更新这张卡片',
+    horizontal_content_list: [
+      { keyname: '类型', value: 'button_interaction' },
+      { keyname: '用途', value: '连通性测试' },
+    ],
+    button_list: [
+      { text: '确认', key: 'confirm', style: 1 },
+      { text: '取消', key: 'cancel', style: 2 },
+    ],
+    task_id: `task_${Date.now()}`,
+  };
+}
+
 function summarizeMessage(body: BaseMessage | undefined): string {
   if (!body) return '';
   switch (body.msgtype) {
@@ -388,10 +643,7 @@ function summarizeMessage(body: BaseMessage | undefined): string {
   }
 }
 
-/**
- * 裁剪消息体用于日志 detail：去掉可能很长的 url，保留结构关键字段。
- * 避免把 5 分钟有效的下载直链长期留在内存/前端。
- */
+/** 裁剪消息体用于日志 detail：截断长 url，隐藏 aeskey。 */
 function slimMessage(body: unknown): unknown {
   if (!body || typeof body !== 'object') return body;
   try {

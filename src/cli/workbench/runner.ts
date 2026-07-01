@@ -15,13 +15,22 @@ import { renderDiffHtml, renderReportHtml } from '../utils/render.js';
 import type { ArtifactCache } from './artifactCache.js';
 import type { DevopsRegistry } from './devops.js';
 import type { JobStore } from './store.js';
+import type { UploadStore } from './uploadStore.js';
 
 /**
- * analyze/compare 的一个输入来源：要么是本地路径，要么是一条蓝盾制品引用
- * （引用阶段不下载，运行时由 runner 经 ArtifactCache 解析成本地路径）。
+ * analyze/compare 的一个输入来源：本地路径 / 上传件 / 一条蓝盾制品引用
+ * （devops 引用阶段不下载，运行时由 runner 经 ArtifactCache 解析成本地路径；
+ * upload 已由 UploadStore 落盘，运行时解析成临时路径并在分析后删除）。
  */
 export type InputSource =
   | { kind: 'path'; path: string }
+  | {
+      kind: 'upload';
+      /** UploadStore 返回的上传标识 */
+      uploadId: string;
+      /** 原始文件名（展示 / 历史用） */
+      name: string;
+    }
   | {
       kind: 'devops';
       /** 流水线 key；缺省用默认流水线 */
@@ -49,6 +58,8 @@ export interface RunnerDeps {
   devops?: DevopsRegistry;
   /** 蓝盾制品本地下载缓存；仅当输入含 devops source 时必需 */
   artifactCache?: ArtifactCache;
+  /** 上传件存储；仅当输入含 upload source 时必需 */
+  uploads?: UploadStore;
   /**
    * 磁盘 JSON 产物是否使用缩进（2 空格）。默认 true。
    *
@@ -313,12 +324,14 @@ function baseName(p: string): string {
 /** 人类可读标题（用于 job.label）。 */
 function sourceTitle(s: InputSource): string {
   if (s.kind === 'path') return baseName(s.path);
+  if (s.kind === 'upload') return s.name;
   return s.name + (s.buildNum != null ? ` #${s.buildNum}` : '');
 }
 
 /** 写进 job.inputs 的描述串（历史里能看出来源）。 */
 function sourceInputLabel(s: InputSource): string {
   if (s.kind === 'path') return s.path;
+  if (s.kind === 'upload') return `[上传] ${s.name}`;
   const pipe = s.pipeline ? `${s.pipeline} ` : '';
   return `[蓝盾] ${pipe}${s.name}${s.buildNum != null ? ` #${s.buildNum}` : ''}`;
 }
@@ -337,6 +350,11 @@ async function resolveSource(
 ): Promise<{ path: string; release: () => void }> {
   if (source.kind === 'path') {
     return { path: source.path, release: () => {} };
+  }
+  if (source.kind === 'upload') {
+    if (!deps.uploads) throw new Error('服务未配置上传存储，无法解析上传件');
+    // acquire 会校验 uploadId 存在；release 删除临时文件（一次性消费）
+    return deps.uploads.acquire(source.uploadId);
   }
   if (!deps.devops) throw new Error('服务未配置蓝盾流水线，无法下载制品');
   if (!deps.artifactCache) throw new Error('服务未配置制品缓存目录，无法下载制品');

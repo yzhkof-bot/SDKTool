@@ -60,11 +60,14 @@ const PLATFORM_DEFS: ReadonlyArray<PlatformUIDef> = [
   },
 ];
 
-export function renderWorkbenchPage(cacheDir: string, devopsOnly = false): string {
-  return PAGE_HTML(getExtraAnalyzerMeta(DEFAULT_PLATFORM), cacheDir, devopsOnly);
+export type WorkbenchMode = 'desktop' | 'web';
+
+export function renderWorkbenchPage(cacheDir: string, mode: WorkbenchMode = 'desktop'): string {
+  return PAGE_HTML(getExtraAnalyzerMeta(DEFAULT_PLATFORM), cacheDir, mode);
 }
 
-function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string, devopsOnly: boolean): string {
+function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string, mode: WorkbenchMode): string {
+  const webMode = mode === 'web';
   const extrasAnalyze = renderExtrasBlock(extras, 'analyze');
   const extrasCompare = renderExtrasBlock(extras, 'compare');
   const cacheDirEsc = escHtml(cacheDir);
@@ -178,7 +181,15 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string, devopsOnly: bo
       <div class="actions">
         <button class="btn-primary" id="ww-connect">连接</button>
         <button class="btn-secondary" id="ww-disconnect">断开</button>
-        <label class="ww-toggle"><input type="checkbox" id="ww-autoreply" /> 收到文本消息自动 echo 回复</label>
+        <label class="ww-toggle">收到文本消息时
+          <select id="ww-replymode" class="ww-select">
+            <option value="off">不自动回复</option>
+            <option value="stream">流式 echo（两段刷新）</option>
+            <option value="markdown">Markdown 富文本</option>
+            <option value="card">模板卡片（可点击）</option>
+            <option value="stream_card">流式 + 模板卡片</option>
+          </select>
+        </label>
       </div>
       <div id="ww-error" class="error" hidden></div>
 
@@ -189,10 +200,47 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string, devopsOnly: bo
           <input type="text" id="ww-chatid" placeholder="单聊填用户 userid / 群聊填 chatid" />
           <button class="btn-secondary" id="ww-use-last" title="填入最近一次会话的 chatid">最近会话</button>
         </div>
-        <textarea id="ww-content" class="ww-textarea" placeholder="支持 markdown，例如：**加粗** 与 [链接](https://work.weixin.qq.com)"></textarea>
+        <div class="ww-send-row2">
+          <label class="ww-inline">消息类型
+            <select id="ww-sendkind" class="ww-select">
+              <option value="markdown">Markdown</option>
+              <option value="card">模板卡片（按钮交互）</option>
+              <option value="media">媒体素材</option>
+            </select>
+          </label>
+        </div>
+        <div class="ww-send-variant" data-variant="markdown">
+          <textarea id="ww-content" class="ww-textarea" placeholder="支持 markdown，例如：**加粗** 与 [链接](https://work.weixin.qq.com)"></textarea>
+        </div>
+        <div class="ww-send-variant" data-variant="card" hidden>
+          <p class="hint">将发送一张「按钮交互」示例卡片（含 确认 / 取消 按钮）。用户点击按钮后机器人会自动用 <code>aibot_respond_update_msg</code> 更新卡片。</p>
+        </div>
+        <div class="ww-send-variant" data-variant="media" hidden>
+          <div class="path-row ww-send-row">
+            <label>选择素材</label>
+            <select id="ww-media-pick" class="ww-select"></select>
+          </div>
+          <p class="hint">先在下方「临时素材上传」上传文件拿到 media_id，再回到这里选择并发送。视频会带默认标题/描述。</p>
+        </div>
         <div class="actions">
           <button class="btn-primary" id="ww-send">主动发送</button>
         </div>
+      </div>
+
+      <div class="ww-send">
+        <div class="ww-send-title">临时素材上传 <span class="muted">(分片上传，media_id 3 天内有效)</span></div>
+        <div class="path-row ww-send-row">
+          <label>类型</label>
+          <select id="ww-upload-type" class="ww-select">
+            <option value="image">图片 (png/jpg/gif ≤10M)</option>
+            <option value="file">文件 (≤20M)</option>
+            <option value="voice">语音 (amr ≤2M)</option>
+            <option value="video">视频 (mp4 ≤10M)</option>
+          </select>
+          <input type="file" id="ww-upload-file" class="ww-file" />
+          <button class="btn-secondary" id="ww-upload-btn">上传</button>
+        </div>
+        <div id="ww-media-list" class="ww-media-list"></div>
       </div>
 
       <div class="ww-log-head">
@@ -274,7 +322,9 @@ function PAGE_HTML(extras: ExtraAnalyzerMeta[], cacheDir: string, devopsOnly: bo
     window.__KINGSDK__ = {
       defaultPlatform: ${JSON.stringify(defaultPlatform)},
       platforms: ${platformDefsJson},
-      devopsOnly: ${JSON.stringify(devopsOnly)},
+      mode: ${JSON.stringify(mode)},
+      // devopsOnly 是 mode==='web' 的兼容别名，保留给既有前端逻辑读取
+      devopsOnly: ${JSON.stringify(webMode)},
     };
   </script>
   <script>${SCRIPT}</script>
@@ -695,6 +745,19 @@ body { margin: 0; background: var(--color-bg); color: var(--color-text); font-fa
 .ww-meta code { background: var(--color-code-bg); padding: 1px 6px; border-radius: 4px; color: var(--color-text); }
 .ww-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text); cursor: pointer; }
 .ww-toggle input { cursor: pointer; }
+.ww-select { font-size: 12px; padding: 5px 8px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); }
+.ww-select:focus { outline: none; border-color: var(--color-primary); }
+.ww-inline { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.ww-send-row2 { margin-bottom: 10px; }
+.ww-send-variant { margin-bottom: 6px; }
+.ww-file { font-size: 12px; color: var(--color-text); }
+.ww-media-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.ww-media-item { display: grid; grid-template-columns: 56px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 10px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; font-size: 12px; }
+.ww-media-type { font-size: 10px; font-weight: 600; text-align: center; padding: 1px 0; border-radius: 4px; background: var(--color-primary-bg); color: var(--color-primary); }
+.ww-media-name { font-family: var(--font-mono); word-break: break-all; }
+.ww-media-id { font-family: var(--font-mono); font-size: 10px; color: var(--color-muted); }
+.ww-media-copy { background: transparent; border: 1px solid var(--color-border); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; color: var(--color-muted); }
+.ww-media-copy:hover { border-color: var(--color-primary); color: var(--color-primary); }
 .ww-send { margin-top: 14px; padding: 12px 14px; background: var(--color-surface-elev); border: 1px solid var(--color-border); border-radius: 8px; }
 .ww-send-title { font-size: 13px; font-weight: 500; margin-bottom: 10px; }
 .ww-send-row { margin-bottom: 10px; }
@@ -1165,11 +1228,15 @@ const SCRIPT = `
     });
   });
 
-  // ---------- devops-only 模式：禁用本地路径输入 ----------
+  // ---------- web 模式：禁用一切"碰服务器本机文件系统"的入口 ----------
+  // （DEVOPS_ONLY 是 mode==='web' 的别名，见 window.__KINGSDK__ 注入）
   (function applyDevopsOnly() {
     if (!DEVOPS_ONLY) return;
     // 隐藏所有"浏览…"按钮
     $$('button[data-browse-target]').forEach(function(b){ b.hidden = true; });
+    // 隐藏"打开缓存目录"按钮（远程 web 下会开在服务器机器上，无意义）
+    var openCacheBtn = document.getElementById('btn-open-cache-dir');
+    if (openCacheBtn) openCacheBtn.hidden = true;
     // 路径框只读 + 提示从左侧蓝盾构建加入
     ['analyze-path','compare-left','compare-right'].forEach(function(id){
       var inp = document.getElementById(id);
@@ -1531,7 +1598,8 @@ const SCRIPT = `
       var lp = currentPipeline && currentPipeline.localProject;
       var hapArt = lp ? arts.find(function(a){ return (a.name || '').toLowerCase().endsWith(lp.hapSuffix.toLowerCase()); }) : null;
       var zipsArt = lp ? arts.find(function(a){ return (a.name || '').toLowerCase().endsWith(lp.zipsSuffix.toLowerCase()); }) : null;
-      if (hapArt && zipsArt) {
+      // 配置本地工程要选本机目录并往磁盘写，web 模式屏蔽（后端也会 403 兜底）
+      if (!DEVOPS_ONLY && hapArt && zipsArt) {
         var cfgBtn = el('button', { class: 'btn-config-proj' }, '⚙ 配置本地工程');
         cfgBtn.addEventListener('click', function() {
           closeArtModal();
@@ -1773,40 +1841,77 @@ const SCRIPT = `
     var statsEl = $('#ww-stats');
     var logBox = $('#ww-log');
     var errBox = $('#ww-error');
-    var autoReplyCb = $('#ww-autoreply');
+    var replyModeSel = $('#ww-replymode');
     var chatidInput = $('#ww-chatid');
     var contentInput = $('#ww-content');
+    var sendKindSel = $('#ww-sendkind');
+    var mediaPick = $('#ww-media-pick');
+    var mediaList = $('#ww-media-list');
+    var uploadType = $('#ww-upload-type');
+    var uploadFile = $('#ww-upload-file');
     if (!logBox) return; // 面板不存在（理论不会）
 
     var wwSeq = 0;            // 已渲染到的最大日志 seq（增量轮询基准）
     var lastChat = null;      // 最近一次会话上下文
-    var autoReplyDirty = false; // 用户正在操作开关时，避免轮询覆盖
+    var replyModeDirty = false; // 用户正在操作下拉时，避免轮询覆盖
+    var recentMedia = [];     // 最近上传的素材
 
     var STATE_TEXT = {
       idle: '未连接', connecting: '连接中…', connected: '已连接（认证成功）',
       closed: '连接已断开', error: '错误',
     };
+    var POST_JSON = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
 
     function showErr(msg) { errBox.hidden = false; errBox.textContent = msg; }
     function clearErr() { errBox.hidden = true; errBox.textContent = ''; }
 
-    // 应用状态（状态/元信息/统计/开关），不负责日志
+    // 应用状态（状态/元信息/统计/回复模式/素材），不负责日志
     function applyStatus(s) {
       var st = s.status || 'idle';
       dot.className = 'ww-dot ' + (s.connected ? 'connected' : st);
-      stateText.textContent = (STATE_TEXT[st] || st) + (s.connected ? '' : '');
+      stateText.textContent = STATE_TEXT[st] || st;
       meta.innerHTML = '';
       if (!s.configured) {
         meta.appendChild(el('span', { class: 'err' }, '⚠ 未配置 botId / secret，请编辑 pipelines.config.json 的 wework 段'));
       } else {
         meta.appendChild(el('span', null, ['BotID ', el('code', null, s.botIdMasked || '-')]));
         meta.appendChild(el('span', null, ['地址 ', el('code', null, s.wsUrl || '-')]));
+        if (s.mediaDir) meta.appendChild(el('span', null, ['媒体落盘 ', el('code', null, s.mediaDir)]));
       }
       if (s.stats) {
         statsEl.textContent = '收 ' + s.stats.received + ' · 回 ' + s.stats.replied + ' · 主动发 ' + s.stats.sent;
       }
-      if (!autoReplyDirty) autoReplyCb.checked = !!s.autoReply;
+      if (!replyModeDirty && s.replyMode) replyModeSel.value = s.replyMode;
       lastChat = s.lastChat || null;
+      if (Array.isArray(s.recentMedia)) { recentMedia = s.recentMedia; renderMedia(); }
+    }
+
+    function renderMedia() {
+      // 主动发送的素材下拉
+      var prev = mediaPick.value;
+      mediaPick.innerHTML = '';
+      if (!recentMedia.length) {
+        mediaPick.appendChild(el('option', { value: '' }, '（暂无，请先上传）'));
+      } else {
+        recentMedia.forEach(function(m) {
+          mediaPick.appendChild(el('option', { value: m.mediaId + '|' + m.type }, m.type + ' · ' + m.filename));
+        });
+        if (prev) mediaPick.value = prev;
+      }
+      // 素材列表
+      mediaList.innerHTML = '';
+      recentMedia.forEach(function(m) {
+        var copyBtn = el('button', { class: 'ww-media-copy', title: '复制 media_id' }, '复制 id');
+        copyBtn.addEventListener('click', function() {
+          if (navigator.clipboard) navigator.clipboard.writeText(m.mediaId);
+        });
+        mediaList.appendChild(el('div', { class: 'ww-media-item' }, [
+          el('span', { class: 'ww-media-type' }, m.type),
+          el('span', { class: 'ww-media-name', title: m.filename }, m.filename),
+          el('span', { class: 'ww-media-id', title: m.mediaId }, fmtBytes(m.size)),
+          copyBtn,
+        ]));
+      });
     }
 
     function dirText(d) { return { system: '系统', in: '收', out: '发', error: '错误' }[d] || d; }
@@ -1854,32 +1959,35 @@ const SCRIPT = `
 
     $('#ww-connect').addEventListener('click', async function() {
       clearErr();
-      try {
-        await jsonFetch('/api/wework/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-        await poll();
-      } catch (e) { showErr(e.message); }
+      try { await jsonFetch('/api/wework/connect', Object.assign({ body: '{}' }, POST_JSON)); await poll(); }
+      catch (e) { showErr(e.message); }
     });
 
     $('#ww-disconnect').addEventListener('click', async function() {
       clearErr();
-      try {
-        await jsonFetch('/api/wework/disconnect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-        await poll();
-      } catch (e) { showErr(e.message); }
+      try { await jsonFetch('/api/wework/disconnect', Object.assign({ body: '{}' }, POST_JSON)); await poll(); }
+      catch (e) { showErr(e.message); }
     });
 
-    autoReplyCb.addEventListener('change', async function() {
-      autoReplyDirty = true;
+    replyModeSel.addEventListener('change', async function() {
+      replyModeDirty = true;
       clearErr();
       try {
-        await jsonFetch('/api/wework/auto-reply', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: autoReplyCb.checked }),
-        });
+        await jsonFetch('/api/wework/reply-mode', Object.assign({ body: JSON.stringify({ mode: replyModeSel.value }) }, POST_JSON));
         await poll();
       } catch (e) { showErr(e.message); }
-      finally { autoReplyDirty = false; }
+      finally { replyModeDirty = false; }
     });
+
+    // 主动发送类型切换：显示对应输入区
+    function syncSendVariant() {
+      var kind = sendKindSel.value;
+      $$('.ww-send-variant').forEach(function(v) {
+        v.hidden = v.getAttribute('data-variant') !== kind;
+      });
+    }
+    sendKindSel.addEventListener('change', syncSendVariant);
+    syncSendVariant();
 
     $('#ww-use-last').addEventListener('click', function() {
       if (lastChat && lastChat.chatid) { chatidInput.value = lastChat.chatid; }
@@ -1890,15 +1998,43 @@ const SCRIPT = `
     $('#ww-send').addEventListener('click', async function() {
       clearErr();
       var chatid = chatidInput.value.trim();
-      var content = contentInput.value;
       if (!chatid) { showErr('请填 chatid'); return; }
-      if (!content.trim()) { showErr('请填要发送的内容'); return; }
+      var kind = sendKindSel.value;
+      var body = { kind: kind, chatid: chatid };
+      if (kind === 'markdown') {
+        if (!contentInput.value.trim()) { showErr('请填要发送的 markdown 内容'); return; }
+        body.content = contentInput.value;
+      } else if (kind === 'media') {
+        var picked = mediaPick.value;
+        if (!picked) { showErr('请先在下方上传素材，再选择'); return; }
+        var parts = picked.split('|');
+        body.mediaId = parts[0];
+        body.mediaType = parts[1];
+      }
       try {
-        await jsonFetch('/api/wework/send', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatid: chatid, content: content }),
+        await jsonFetch('/api/wework/send', Object.assign({ body: JSON.stringify(body) }, POST_JSON));
+        if (kind === 'markdown') contentInput.value = '';
+        await poll();
+      } catch (e) { showErr(e.message); }
+    });
+
+    // 素材上传：浏览器读文件 → base64 → POST
+    $('#ww-upload-btn').addEventListener('click', async function() {
+      clearErr();
+      var f = uploadFile.files && uploadFile.files[0];
+      if (!f) { showErr('请先选择文件'); return; }
+      try {
+        var dataUrl = await new Promise(function(resolve, reject) {
+          var r = new FileReader();
+          r.onload = function() { resolve(String(r.result)); };
+          r.onerror = function() { reject(new Error('读取文件失败')); };
+          r.readAsDataURL(f);
         });
-        contentInput.value = '';
+        var b64 = dataUrl.indexOf(',') >= 0 ? dataUrl.slice(dataUrl.indexOf(',') + 1) : dataUrl;
+        await jsonFetch('/api/wework/upload-media', Object.assign({
+          body: JSON.stringify({ type: uploadType.value, filename: f.name, dataBase64: b64 }),
+        }, POST_JSON));
+        uploadFile.value = '';
         await poll();
       } catch (e) { showErr(e.message); }
     });
@@ -1906,9 +2042,8 @@ const SCRIPT = `
     $('#ww-clear').addEventListener('click', async function() {
       clearErr();
       try {
-        var s = await jsonFetch('/api/wework/clear-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        var s = await jsonFetch('/api/wework/clear-log', Object.assign({ body: '{}' }, POST_JSON));
         logBox.innerHTML = '';
-        wwSeq = s.latestSeq || wwSeq;
         applyStatus(s);
         appendLogs(s.logs);
         wwSeq = s.latestSeq || wwSeq;
